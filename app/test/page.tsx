@@ -48,7 +48,9 @@ const Test = async () => {
     } catch (error: any) {
         console.error(`Download error: ${error.message}`);
         return (
-            <></>
+            <>
+                <p>{error.message}</p>
+            </>
         )
     }
 }
