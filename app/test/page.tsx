@@ -29,13 +29,14 @@ const Test = async () => {
         }
     };
 
-    console.log(binanceUrl);
-    
+    //console.log(binanceUrl);
+    let binanceResponse = 'aaa'
+
     try {
         const res = await fetch(binanceUrl, header)
         const transactions: Transaction[] = await res.json()
 
-        console.log(JSON.stringify(transactions));
+        binanceResponse = JSON.stringify(transactions);
 
         return (
             <>
@@ -49,6 +50,8 @@ const Test = async () => {
         console.error(`Download error: ${error.message}`);
         return (
             <>
+                <p>{binanceUrl}</p>
+                <p>{binanceResponse}</p>
                 <p>{error.message}</p>
             </>
         )
