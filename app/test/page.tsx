@@ -1,102 +1,34 @@
-import React from "react";
+'use client'
 
-interface Transaction {
-    orderId: number;
-}
+import React, { useState, useEffect } from 'react';
 
-const Test = async () => {
-    let binanceUrl = 'https://api.binance.com/api/v3/allOrders';
-    
-    const apiKey: string = 'wHI8QhwsZIbSESD9bVmkk8GYD7Vx8Kq6Jw5b1R5mAHkuV8NqnC64peSgCVCNOAcJ';
-    const apiSecret: string = 'KMBJ6Hxw5Tjuf7h3u8BehdeFeRlLBgaffcZm79VLGWz6XETSmGpA8obhuXnmCKr6';
-    
-    const params: Record<string, any> = {
-        'symbol': 'SOLUSDT',
-        'timestamp': Math.floor(Date.now())
-    }
-
-    const query = new URLSearchParams(params).toString();
-    
-    //const sign = this.getSignature(query, this.apiSecret || '');
-    const sign = require('crypto').createHmac('sha256', apiSecret).update(query).digest('hex');
-    
-    binanceUrl += `?${query}&signature=${sign}`;
-
-    const header: RequestInit = {
-        'headers': {
-            'Content-Type': 'application/json',
-            'X-MBX-APIKEY': apiKey 
-        }
-    };
-
-    //console.log(binanceUrl);
-    let binanceResponse = 'aaa'
-
-    try {
-        const res = await fetch(binanceUrl, header)
-        const transactions: Transaction[] = await res.json()
-
-        binanceResponse = JSON.stringify(transactions);
-
-        return (
-            <>
-                <h1>Transactions</h1>
-                <ul>
-                    {transactions.map(transaction => <li>{transaction.orderId}</li>)}
-                </ul>
-            </>
-        );
-    } catch (error: any) {
-        console.error(`Download error: ${error.message}`);
-        return (
-            <>
-                <p>{binanceUrl}</p>
-                <p>{binanceResponse}</p>
-                <p>{error.message}</p>
-            </>
-        )
-    }
-}
-
-
-
-export default Test
-
-/*
-// app/test/page.tsx
-
-import React, { useState, useEffect } from "react";
-import dynamic from 'next/dynamic';
-//import TestComponent from "../../components/TextComponent";
-
-const DynamicTestComponent = dynamic(
-  () => import('../../components/TestComponent.tsx'),
-  { ssr: false } // Mark the component to be excluded from server-side rendering
-);
-
-export default function Test() {
-  const [result, setResult] = useState(null);
+const TestPage: React.FC = () => {
+    console.log('test')
+  const [apiResponse, setApiResponse] = useState<string | null>(null);
 
   useEffect(() => {
+    setApiResponse("5");
+    /*
     const fetchData = async () => {
-      // Your data fetching logic here
-
       try {
-        // Simulate a call to BinanceAPI
-        const apiResult = { example: 'data' };
-        setResult(apiResult);
-      } catch (error) {
+        const response = await fetch('/api/hello');
+        const data = await response.json();
+        console.log(data)
+        setApiResponse(data.message);
+      } catch (error: any) {
         console.error('Error fetching data:', error.message);
       }
     };
 
-    fetchData();
+    fetchData();*/
   }, []); // Empty dependency array ensures the effect runs only once, similar to componentDidMount
 
   return (
     <div>
-      <DynamicTestComponent result={result} />
+      <h1>API Response:</h1>
+      <p>{apiResponse}</p>
     </div>
   );
-}
-*/
+};
+
+export default TestPage;
