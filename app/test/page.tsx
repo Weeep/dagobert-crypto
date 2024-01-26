@@ -36,18 +36,16 @@ function formatTransaction(transaction: Transaction) {
 }
 
 const TestPage: React.FC = () => {
-    console.log('test')
   const [apiResponse, setApiResponse] = useState<Transaction[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/hello');
+        const response = await fetch('/api/transactions');
         const data = await response.json();
-        console.log(data)
         setApiResponse(data);
       } catch (error: any) {
-        console.error('Error fetching data:', error.message);
+        console.error('Error fetching data:', error.message);   // TODO
       }
     };
 
