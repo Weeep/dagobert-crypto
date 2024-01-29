@@ -1,3 +1,33 @@
+const transactions = [
+    {
+        "symbol": "SOLUSDT",
+        "totalUSDTspent": "15.44",
+        "executedQty": "0.62000000",
+        "cummulativeQuoteQty": "24.90540000",
+        "type": "LIMIT",
+        "side": "BUY",
+        "updateTime": "2024. 01. 29. 08:23",
+    },
+    {
+        "symbol": "MATICUSDT",
+        "totalUSDTspent": "28.622428",
+        "executedQty": "0.82000000",
+        "cummulativeQuoteQty": "34.90540000",
+        "type": "LIMIT",
+        "side": "SELL",
+        "updateTime": "2024. 01. 25. 18:33",
+    },
+    {
+        "symbol": "AVAXUSDT",
+        "totalUSDTspent": "28.622428",
+        "executedQty": "0.82000000",
+        "cummulativeQuoteQty": "34.90540000",
+        "type": "LIMIT",
+        "side": "BUY",
+        "updateTime": "2024. 01. 15. 11:33",
+    }
+]
+
 // import axios from 'axios';
 
 // class BinanceAPI {
