@@ -11,8 +11,8 @@
 interface TransactionIf {
     symbol: string;
     orderId: number;
-    executedQty: number;
-    cummulativeQuoteQty: number;
+    executedQty: string;
+    cummulativeQuoteQty: string;
     status: string;
     type: string;
     side: string;

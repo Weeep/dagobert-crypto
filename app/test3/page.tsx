@@ -1,35 +1,50 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import TransactionIf from '../components/TransactionIf';
-import TransactionCardContainer from '../components/TransactionCardContainer';
+import React, { useState, useEffect } from "react";
+import TransactionIf from "../components/TransactionIf";
+import TransactionCardContainer from "../components/TransactionCardContainer";
 
 const TransactionViewer = () => {
   const symbols: string[] = [
-    'BTC', 'ETH', 'ADA', 'DOT', 
-    'BNB', 'XRP', 'SOL', 'TRX', 
-    'AVAX', 'MATIC', 'SHIB', 'ICP', 'ARB'];
-  const [currentSymbol, setCurrentSymbol] = useState<string>('');
+    "BTC",
+    "ETH",
+    "ADA",
+    "DOT",
+    "BNB",
+    "XRP",
+    "SOL",
+    "TRX",
+    "AVAX",
+    "MATIC",
+    "SHIB",
+    "ICP",
+    "ARB",
+  ];
+  const [currentSymbol, setCurrentSymbol] = useState<string>("");
   const [transactionData, setTransactionData] = useState<TransactionIf[]>([]);
-  let transactionsAggregated: TransactionIf[] = []
+  let transactionsAggregated: TransactionIf[] = [];
 
   const fetchTransactionData = async (index: number) => {
-    if(index < symbols.length) {
+    if (index < symbols.length) {
       const symbol: string = symbols[index];
       try {
         setCurrentSymbol(`Fetching ${symbol}`);
         const response = await fetch(`/api/transactions?symbol=${symbol}USDT`);
-        const data: TransactionIf[] = await response.json();
-        if(response.status !== 200) {
-          throw response.status + '-' + JSON.stringify(data)
+        const data = await response.json();
+        if (response.status !== 200 || data?.code) {
+          throw response.status + "-" + JSON.stringify(data);
         }
 
-        const transactions: TransactionIf[] = data.filter(obj => obj.status === 'FILLED');
+        console.log(data);
 
-        transactionsAggregated = [...transactionsAggregated, ...transactions]
+        const transactions: TransactionIf[] = (data as TransactionIf[]).filter(
+          (obj) => obj.status === "FILLED"
+        );
+
+        transactionsAggregated = [...transactionsAggregated, ...transactions];
         transactionsAggregated.sort((a, b) => b.updateTime - a.updateTime);
-        setTransactionData(transactionsAggregated)
-        fetchTransactionData(index+1);
+        setTransactionData(transactionsAggregated);
+        fetchTransactionData(index + 1);
       } catch (error) {
         console.error(`Error fetching data for ${symbol}:`, error);
       }
@@ -38,9 +53,9 @@ const TransactionViewer = () => {
     }
   };
 
-  let useEffectFirst = true
+  let useEffectFirst = true;
   useEffect(() => {
-    if(useEffectFirst) {
+    if (useEffectFirst) {
       useEffectFirst = false;
       fetchTransactionData(0);
     }
@@ -48,9 +63,7 @@ const TransactionViewer = () => {
 
   return (
     <div>
-      <div>
-        {currentSymbol && <p>{currentSymbol}</p>}
-      </div>
+      <div>{currentSymbol && <p>{currentSymbol}</p>}</div>
       <TransactionCardContainer transactions={transactionData} />
     </div>
   );

@@ -9,36 +9,49 @@ export default async function handler(
       return res.status(400).json({ error: 'Invalid symbol parameter' });
     }
 
-    let binanceUrl = 'https://api.binance.com/api/v3/allOrders';
-        
     const apiKey: string = process.env.BAPI_KEY as string;
     const apiSecret: string = process.env.BAPI_SEC as string;
     
-    const params: Record<string, any> = {
-        symbol,
-        'timestamp': Math.floor(Date.now() - 3000)
-    }
-
-    const query = new URLSearchParams(params).toString();
-    
-    const sign = require('crypto').createHmac('sha256', apiSecret).update(query).digest('hex');
-    
-    binanceUrl += `?${query}&signature=${sign}`;
-
-    const header: RequestInit = {
-        'headers': {
-            'Content-Type': 'application/json',
-            'X-MBX-APIKEY': apiKey 
+    let tryToFetch = true;
+    let msCounter = 0;
+    let resultCode = 0;
+    let resultBody = '';
+    while(tryToFetch && msCounter <= 10) {
+        let binanceUrl = 'https://api.binance.com/api/v3/allOrders';
+        const params: Record<string, any> = {
+            symbol,
+            'timestamp': Math.floor(Date.now() + 5000 - (msCounter * 1000))
         }
-    };
-
-    try {
-        const binanceRes = await fetch(binanceUrl, header)
+        //console.log(msCounter)
+        msCounter++;
         
-        const transactions = await binanceRes.json()
+        const query = new URLSearchParams(params).toString();
+        
+        const sign = require('crypto').createHmac('sha256', apiSecret).update(query).digest('hex');
+        
+        binanceUrl += `?${query}&signature=${sign}`;
 
-        res.status(200).json(transactions)
-    } catch (error: any) {
-        res.status(error.response?.status || 500).json(error.message);
+        const header: RequestInit = {
+            'headers': {
+                'Content-Type': 'application/json',
+                'X-MBX-APIKEY': apiKey 
+            }
+        };
+
+        try {
+            const binanceRes = await fetch(binanceUrl, header)
+            
+            const transactions = await binanceRes.json()
+            tryToFetch = (transactions?.code == -1021)
+
+            resultCode = 200
+            resultBody = transactions
+        } catch (e: any) {
+            tryToFetch = false
+            resultCode = (e.response?.status || 500)
+            resultBody = e.message
+        }
     }
+
+    res.status(resultCode).json(resultBody)
 }
