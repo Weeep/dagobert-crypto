@@ -1,11 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import TransactionIf from "../components/TransactionIf";
 
 interface Props {
   transaction: TransactionIf;
 }
 
-const TransactionCard1: React.FC<Props> = ({ transaction }) => {
+/*
+const TransactionCard2: React.FC<Props> = ({ transaction }) => {
   return (
     <div className={"bg-slate-50 p-4 rounded-md shadow-md"}>
       <h2 className="text-xl font-semibold mb-2 text-black">
@@ -25,13 +26,30 @@ const TransactionCard1: React.FC<Props> = ({ transaction }) => {
       >
         {transaction.side}
       </p>
+      <p className={`text-xs bg-green-100 p-1`}>{transaction.side}</p>
     </div>
   );
 };
+*/
 
 const TransactionCard: React.FC<Props> = ({ transaction }) => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  const handleClick = () => {
+    setIsVisible(false);
+  };
+
   return (
-    <div className={"bg-slate-50 p-4 rounded-md shadow-md"}>
+    <div
+      onClick={handleClick}
+      style={{ display: isVisible ? "block" : "none" }}
+      className={"bg-slate-50 p-4 rounded-md shadow-md"}
+    >
+      <div style={{ display: "none" }}>
+        <span className="bg-red-100"></span>
+        <span className="bg-green-100"></span>
+        TODO: It looks without these the below aggregation does not work
+      </div>
       <h2 className="text-xl font-semibold mb-2 text-black">
         {transaction.symbol} - ${p(transaction.cummulativeQuoteQty, 2)}
       </h2>
