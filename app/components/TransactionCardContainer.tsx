@@ -17,7 +17,9 @@ const TransactionCardContainer: React.FC<Props> = ({ transactions }) => {
     }
   };
 
-  const uniqueSymbols = Array.from(new Set(transactions.map((t) => t.symbol)));
+  const uniqueSymbols = Array.from(
+    new Set(transactions.map((t) => t.symbol))
+  ).sort();
   const filteredData = transactions.filter((t: TransactionIf) => {
     return selectedSymbols.length === 0 || selectedSymbols.includes(t.symbol);
   });
