@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import TransactionIf from "../components/TransactionIf";
+import { TransactionIf } from "./Interfaces";
 
 interface Props {
   transaction: TransactionIf;
@@ -39,9 +39,9 @@ const TransactionCard: React.FC<Props> = ({ transaction }) => {
     setIsVisible(false);
   };
 
+  //onClick={handleClick}
   return (
     <div
-      onClick={handleClick}
       style={{ display: isVisible ? "block" : "none" }}
       className={"bg-slate-50 p-4 rounded-md shadow-md"}
     >
@@ -73,12 +73,20 @@ const TransactionCard: React.FC<Props> = ({ transaction }) => {
           )}
         </b>
       </p>
+      <p className="text-xs text-gray-500 mb-2">
+        {getTargetPrices(
+          getPrice(transaction.cummulativeQuoteQty, transaction.executedQty),
+          [-5, -3, 3, 5, 10]
+        ).map((item) => (
+          <span>| {item} |</span>
+        ))}
+      </p>
     </div>
   );
 };
 
 function p(strNum: any, fixedTo: number = 0, multiplier: number = 1) {
-  const num = parseFloat(strNum as unknown as string); //.toFixed(2)
+  const num = parseFloat(strNum as unknown as string);
   let fixed = fixedTo;
   if (fixed == 0) {
     fixed = 3;
@@ -92,6 +100,14 @@ function p(strNum: any, fixedTo: number = 0, multiplier: number = 1) {
   }
 
   return parseFloat((num * multiplier).toFixed(fixed));
+}
+
+function getTargetPrices(initialNumber: number, targets: number[]) {
+  return targets.map((target) => {
+    return p(
+      parseFloat(((initialNumber * (100 + target)) / 100) as unknown as string)
+    );
+  });
 }
 
 function getPrice(cummulativeQuoteQty: string, executedQty: string) {

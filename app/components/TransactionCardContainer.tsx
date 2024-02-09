@@ -1,12 +1,25 @@
 import React, { useState } from "react";
-import TransactionIf from "../components/TransactionIf";
+import { TransactionIf, SymbolPriceIf } from "./Interfaces";
 import TransactionCard from "../components/TransactionCard";
 
 interface Props {
   transactions: TransactionIf[];
+  symbolPrices: SymbolPriceIf[];
 }
 
-const TransactionCardContainer: React.FC<Props> = ({ transactions }) => {
+const convertArrayToObject = (
+  array: SymbolPriceIf[]
+): { [key: string]: number } => {
+  return array.reduce((obj: { [key: string]: number }, item: SymbolPriceIf) => {
+    obj[item.symbol] = parseFloat(item.price as unknown as string);
+    return obj;
+  }, {});
+};
+
+const TransactionCardContainer: React.FC<Props> = ({
+  transactions,
+  symbolPrices,
+}) => {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
 
   const handleCheckboxChange = (symbol: string) => {
@@ -24,6 +37,9 @@ const TransactionCardContainer: React.FC<Props> = ({ transactions }) => {
     return selectedSymbols.length === 0 || selectedSymbols.includes(t.symbol);
   });
 
+  //console.log(symbolPrices);
+  const symbolPricesObj = convertArrayToObject(symbolPrices);
+
   return (
     <div className="container mx-auto p-8">
       <div className="flex flex-wrap gap-4">
@@ -35,7 +51,11 @@ const TransactionCardContainer: React.FC<Props> = ({ transactions }) => {
               onChange={() => handleCheckboxChange(symbol)}
               className="form-checkbox h-5 w-5 text-indigo-600"
             />
-            <span className="ml-2 text-gray-800">{symbol}</span>
+            <span className="ml-2">
+              {symbol}
+              <br />
+              <small>${symbolPricesObj[symbol]}</small>
+            </span>
           </label>
         ))}
       </div>

@@ -1,7 +1,7 @@
 import { kv } from "@vercel/kv";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { binanceapilib } from "../../pages/api/binanceapi";
-import TransactionIf from "../../app/components/TransactionIf";
+import { libAllOrders } from "./binanceapi/allOrders";
+import { TransactionIf } from "../../app/components/Interfaces";
 
 interface Transactions {
   transactions: TransactionIf[];
@@ -64,7 +64,7 @@ const refreshDbFromBinance = async (
   fromTimestamp: boolean = true
 ): Promise<Transactions> => {
   try {
-    const { resultCode, resultBody } = await binanceapilib({
+    const { resultCode, resultBody } = await libAllOrders({
       symbol,
       startTime: fromTimestamp
         ? (await kv.get(
