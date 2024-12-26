@@ -21,6 +21,22 @@ const TransactionCardContainer: React.FC<Props> = ({
   symbolPrices,
 }) => {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
+  const [markedForRemove, setMarkedForRemove] = useState<number[]>([]);
+
+  const handleTransactionMarked = (
+    transactionOrderId: number,
+    add: boolean
+  ) => {
+    let newMarkedForRemove: number[] = [];
+    if (add) {
+      newMarkedForRemove = [...markedForRemove, transactionOrderId];
+    } else {
+      newMarkedForRemove = markedForRemove.filter(function (item) {
+        return item !== transactionOrderId;
+      });
+    }
+    setMarkedForRemove(newMarkedForRemove);
+  };
 
   const handleCheckboxChange = (symbol: string) => {
     if (selectedSymbols.includes(symbol)) {
@@ -42,6 +58,13 @@ const TransactionCardContainer: React.FC<Props> = ({
 
   return (
     <div className="container mx-auto p-8">
+      {markedForRemove.length > 1 ? (
+        <button className="m-10 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800">
+          Merge
+        </button>
+      ) : (
+        ""
+      )}
       <div className="flex flex-wrap gap-4">
         {uniqueSymbols.map((symbol: string) => (
           <label key={symbol} className="flex items-center">
@@ -69,6 +92,7 @@ const TransactionCardContainer: React.FC<Props> = ({
             <TransactionCard
               key={transaction.orderId}
               transaction={transaction}
+              onClick={handleTransactionMarked}
             />
           ))}
       </div>

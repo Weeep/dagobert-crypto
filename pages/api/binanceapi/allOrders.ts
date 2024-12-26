@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import binanceapiutils from "../../../utils/binanceapiutil";
+import binanceapiutil from "../../../utils/binanceapiutil";
 
 export default async function allOrders(
   req: NextApiRequest,
@@ -19,5 +19,5 @@ export async function libAllOrders({ symbol = "", startTime = "0" }) {
     return { resultCode, resultBody };
   }
 
-  return binanceapiutils("allOrders", { symbol, startTime });
+  return binanceapiutil("allOrders", { symbol, startTime });
 }

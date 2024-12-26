@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 /*
 "symbol": "SOLUSDT",
@@ -13,30 +13,32 @@ import React, { useState, useEffect } from 'react';
 "updateTime": 1654168978315,
 */
 interface Transaction {
-    symbol: string;
-    orderId: number;
-    executedQty: string;
-    cummulativeQuoteQty: string;
-    status: string;
-    type: string;
-    side: string;
-    updateTime: number;
+  symbol: string;
+  orderId: number;
+  executedQty: string;
+  cummulativeQuoteQty: string;
+  status: string;
+  type: string;
+  side: string;
+  updateTime: number;
 }
 
 function formatTransaction(transaction: Transaction) {
-  console.log(transaction.symbol)  
+  console.log(transaction.symbol);
   return (
-        <div key={transaction.orderId}>
-            <hr />
-            <p>{transaction.symbol}</p>
-            <p>{transaction.orderId}</p>
-            <p>{transaction.executedQty}</p>
-            <p>{getAmount(transaction.cummulativeQuoteQty, transaction.executedQty)}</p>
-            <p>{formatDate(transaction.updateTime)}</p>
-            <p>{transaction.side}</p>
-            <hr />
-        </div>
-    );
+    <div key={transaction.orderId}>
+      <hr />
+      <p>{transaction.symbol}</p>
+      <p>{transaction.orderId}</p>
+      <p>{transaction.executedQty}</p>
+      <p>
+        {getAmount(transaction.cummulativeQuoteQty, transaction.executedQty)}
+      </p>
+      <p>{formatDate(transaction.updateTime)}</p>
+      <p>{transaction.side}</p>
+      <hr />
+    </div>
+  );
 }
 
 function getAmount(cummulativeQuoteQty: string, executedQty: string) {
@@ -53,8 +55,8 @@ function formatDate(epoch: number) {
 }
 
 const TestPage: React.FC = () => {
-  const coins = ['SOL', 'MATIC', 'ARB']; //, 'DOT', 'AVAX', 'ETH', 'BTC'];
-  
+  const coins = ["SOL", "MATIC", "ARB"]; //, 'DOT', 'AVAX', 'ETH', 'BTC'];
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [coin, setCoin] = useState<string>(coins.shift() as string);
 
@@ -86,42 +88,47 @@ const TestPage: React.FC = () => {
   //}
   }, [coin]);*/
 
-  let firstUseEffect: boolean = true
+  console.log("aaaaaaaaaaaaaa");
+
+  let firstUseEffect: boolean = true;
   useEffect(() => {
-    
-    if(firstUseEffect) {
-      firstUseEffect = false
-    
+    if (firstUseEffect) {
+      firstUseEffect = false;
+
       const fetchData = async (coin: string) => {
         try {
           const response = await fetch(`/api/transactions?symbol=${coin}USDT`);
           const data = await response.json();
-          if(response.status !== 200) {
-            throw response.status + '-' + JSON.stringify(data)
+          console.log(`### ${response.status} ###`);
+          if (response.status !== 200) {
+            throw response.status + "-" + JSON.stringify(data);
           }
 
-          let newApiResponse = transactions
-          newApiResponse.push(...data)
+          let newApiResponse = transactions;
+          newApiResponse.push(...data);
           //console.log(newApiResponse[0])
           newApiResponse.sort((a, b) => b.updateTime - a.updateTime);
           //setApiResponse(newApiResponse); ..
-          setTransactions((prev) => {prev.push(...data); return prev});
+          setTransactions((prev) => {
+            prev.push(...data);
+            return prev;
+          });
         } catch (error: any) {
-          console.error('Error fetching data:', error?.message || error);   // TODO
+          console.error("Error fetching data:", error?.message || error); // TODO
         }
       };
 
       for (const c of coins) {
         fetchData(c);
       }
-    } 
+    }
   }, []); // Empty dependency array ensures the effect runs only once, similar to componentDidMount
 
   return (
     <div>
       <h1>API Response:</h1>
-      <p>Fetch coin: {coin}</p> 
-      {transactions.map(transaction => formatTransaction(transaction))}
+      <p>Fetch coin: {coin}</p>
+      {transactions.map((transaction) => formatTransaction(transaction))}
     </div>
   );
 };

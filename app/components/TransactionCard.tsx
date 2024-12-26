@@ -3,6 +3,7 @@ import { TransactionIf } from "./Interfaces";
 
 interface Props {
   transaction: TransactionIf;
+  onClick: (transactionOrderId: number, remove: boolean) => void;
 }
 
 /*
@@ -32,22 +33,29 @@ const TransactionCard2: React.FC<Props> = ({ transaction }) => {
 };
 */
 
-const TransactionCard: React.FC<Props> = ({ transaction }) => {
-  const [isVisible, setIsVisible] = useState(true);
+const TransactionCard: React.FC<Props> = ({ transaction, onClick }) => {
+  const [isMarked, setIsMarked] = useState(false);
 
   const handleClick = () => {
-    setIsVisible(false);
+    //console.log(transaction.orderId);
+    onClick(transaction.orderId, !isMarked);
+    setIsMarked(!isMarked);
+    //setIsVisible(false);
   };
 
-  //onClick={handleClick}
+  //
   return (
     <div
-      style={{ display: isVisible ? "block" : "none" }}
-      className={"bg-slate-50 p-4 rounded-md shadow-md"}
+      onClick={handleClick}
+      className={`bg-${
+        isMarked ? "blue" : "slate"
+      }-100 p-4 rounded-md shadow-md`}
     >
       <div style={{ display: "none" }}>
         <span className="bg-red-100"></span>
         <span className="bg-green-100"></span>
+        <span className="bg-slate-100"></span>
+        <span className="bg-blue-100"></span>
         TODO: It looks without these the below aggregation does not work
       </div>
       <h2 className="text-xl font-semibold mb-2 text-black">
@@ -78,7 +86,7 @@ const TransactionCard: React.FC<Props> = ({ transaction }) => {
           getPrice(transaction.cummulativeQuoteQty, transaction.executedQty),
           [-5, -3, 3, 5, 10]
         ).map((item) => (
-          <span>| {item} |</span>
+          <span key={transaction.orderId + item}>| {item} |</span>
         ))}
       </p>
     </div>

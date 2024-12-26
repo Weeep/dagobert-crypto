@@ -23,6 +23,7 @@ const symbols: string[] = [
   "SHIBUSDT",
   "ICPUSDT",
   "ARBUSDT",
+  "SOLUSDC",
 ];
 
 let allBinanceTransactions: TransactionIf[] = [];
@@ -44,7 +45,7 @@ export default async function handler(
   } else {
     if (action === "refreshDb") {
       for (const symbol of symbols) {
-        await refreshDbFromBinance(symbol, statusStr, false);
+        await refreshSymbolOrdersInDbFromBinance(symbol, statusStr, false);
       }
 
       console.log("all done");
@@ -58,7 +59,7 @@ export default async function handler(
   }
 }
 
-const refreshDbFromBinance = async (
+const refreshSymbolOrdersInDbFromBinance = async (
   symbol: string,
   status: string,
   fromTimestamp: boolean = true
@@ -106,6 +107,8 @@ const refreshDbFromBinance = async (
 
 const getTransactionsFromDb = async (status: string): Promise<Transactions> => {
   const allTransactions = (await kv.hgetall("transactions")) || {};
+
+  console.log(`DEBUG eee ${allTransactions} eee`);
 
   let filteredTransactions: TransactionIf[] = Object.values(
     allTransactions

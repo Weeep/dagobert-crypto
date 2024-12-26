@@ -44,7 +44,6 @@ export default async function binanceapiutil(
 
     try {
       const binanceRes = await fetch(binanceUrl, header);
-
       const transactions = await binanceRes.json();
       tryToFetch = transactions?.code == -1021;
 
