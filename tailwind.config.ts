@@ -1,24 +1,41 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  //module.exports = {
+  darkMode: "class",
+  content: ["./app/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
-      backgroundImage: {
-        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-conic":
-          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-      },
       colors: {
-        bgGreen100: "#abcdef",
-        customColor: "#fedcba",
+        cyan: {
+          500: "#22d3ee",
+          600: "#06b6d4",
+          700: "#0e7490",
+        },
       },
     },
   },
   plugins: [],
+  //};
+
+  // content: [
+  //   "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+  //   "./components/**/*.{js,ts,jsx,tsx,mdx}",
+  //   "./app/**/*.{js,ts,jsx,tsx,mdx}",
+  // ],
+  // theme: {
+  //   extend: {
+  //     backgroundImage: {
+  //       "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+  //       "gradient-conic":
+  //         "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+  //     },
+  //     colors: {
+  //       bgGreen100: "#abcdef",
+  //       customColor: "#fedcba",
+  //     },
+  //   },
+  // },
+  // plugins: [],
 };
 export default config;
