@@ -1,7 +1,8 @@
-import { kv } from "@vercel/kv";
+import { ukv as kv } from "../../utils/dbapiutil";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { libAllOrders } from "./binanceapi/allOrders";
 import { TransactionIf } from "../../app/components/Interfaces";
+import { ApiResponse, TransactionsApiResponse } from "@/utils/types";
 
 interface Transactions {
   transactions: TransactionIf[];
@@ -40,8 +41,17 @@ export default async function handler(
   let statusStr = status && typeof status === "string" ? status : "";
 
   if (!action) {
-    const transactions: Transactions = await getTransactionsFromDb(statusStr);
-    res.status(transactions.responseCode).json(transactions.transactions);
+    const transactions: TransactionsApiResponse = await getTransactionsFromDb(
+      statusStr
+    );
+    if (transactions.apiResponse.ok) {
+      res.status(transactions.apiResponse.code).json(transactions.transactions); //why JSON.stringify not needed?
+    } else {
+      console.log(transactions.apiResponse.error + " sssssssss");
+      res
+        .status(transactions.apiResponse.code)
+        .json({ error: transactions.apiResponse.error });
+    }
   } else {
     if (action === "refreshDb") {
       for (const symbol of symbols) {
@@ -59,22 +69,41 @@ export default async function handler(
   }
 }
 
+//TODO not used probably or should not be used
 const refreshSymbolOrdersInDbFromBinance = async (
   symbol: string,
   status: string,
   fromTimestamp: boolean = true
-): Promise<Transactions> => {
+): Promise<TransactionsApiResponse> => {
+  let apiResponse: ApiResponse;
   try {
-    const { resultCode, resultBody } = await libAllOrders({
+    let startTime: string = "0";
+    if (fromTimestamp) {
+      apiResponse = await kv.get(
+        `updated_time_of_last_processed_transaction_${symbol}`
+      );
+      if (!apiResponse.ok) {
+        return {
+          transactions: null,
+          apiResponse,
+        };
+      }
+      startTime = apiResponse.response === null ? "0" : apiResponse.response;
+    }
+
+    apiResponse = await libAllOrders({
       symbol,
-      startTime: fromTimestamp
-        ? (await kv.get(
-            `updated_time_of_last_processed_transaction_${symbol}`
-          )) || "0"
-        : "0",
+      startTime,
     });
 
-    let transactions = JSON.parse(resultBody) as TransactionIf[];
+    if (!apiResponse.ok) {
+      return {
+        transactions: null,
+        apiResponse,
+      };
+    }
+
+    let transactions = JSON.parse(apiResponse.response) as TransactionIf[];
     if (
       transactions.length > 0 &&
       transactions[0]?.orderId &&
@@ -89,15 +118,18 @@ const refreshSymbolOrdersInDbFromBinance = async (
 
     return {
       transactions: transactions,
-      responseCode: 200,
-      error: null,
-    } as Transactions;
+      apiResponse,
+    } as TransactionsApiResponse;
   } catch (e: any) {
     return {
-      transactions: [] as TransactionIf[],
-      responseCode: e.response?.status || 500,
-      error: e.message,
-    } as Transactions;
+      transactions: null,
+      apiResponse: {
+        ok: false,
+        response: null,
+        code: e.response?.status || 500,
+        error: e.message,
+      } as ApiResponse,
+    } as TransactionsApiResponse;
   }
 
   //return new Promise((resolve, reject) => {
@@ -105,8 +137,19 @@ const refreshSymbolOrdersInDbFromBinance = async (
   //});
 };
 
-const getTransactionsFromDb = async (status: string): Promise<Transactions> => {
-  const allTransactions = (await kv.hgetall("transactions")) || {};
+const getTransactionsFromDb = async (
+  status: string
+): Promise<TransactionsApiResponse> => {
+  //const allTransactions = (await kv.hgetall("transactions")) || {};
+  const dbResponse: ApiResponse = await kv.hgetall("transactions");
+  if (!dbResponse.ok) {
+    return {
+      transactions: null,
+      apiResponse: dbResponse,
+    };
+  }
+
+  const allTransactions = dbResponse.response ? dbResponse.response : {};
 
   console.log(`DEBUG eee ${allTransactions} eee`);
 
@@ -119,13 +162,14 @@ const getTransactionsFromDb = async (status: string): Promise<Transactions> => {
       (obj) => obj.status === status
     );
 
+  //console.log("DEBUG fff " + JSON.stringify(filteredTransactions) + " fff");
+
   //return new Promise((resolve, reject) => {
   //  resolve({
   return {
     transactions: filteredTransactions,
-    responseCode: 200,
-    error: null,
-  } as Transactions;
+    apiResponse: dbResponse,
+  } as TransactionsApiResponse;
   //  });
   //});
 };

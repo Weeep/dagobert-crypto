@@ -1,22 +1,27 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import binanceapiutils from "../../../utils/binanceapiutil";
+import { ApiResponse } from "@/utils/types";
 
 export default async function allOrders(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const { resultCode, resultBody } = await libAllOrders(req.query);
-  res.status(resultCode).json(resultBody);
+  const response: ApiResponse = await libAllOrders(req.query);
+  if (response.ok) {
+    res.status(response.code).json(JSON.stringify(response.response));
+  } else {
+    res.status(response.code).json({ error: response.error });
+  }
 }
 
-export async function libAllOrders({ symbols = "" }) {
-  let resultCode: number = 500;
-  let resultBody: string = "";
-
+export async function libAllOrders({ symbols = "" }): Promise<ApiResponse> {
   if (!symbols || symbols === "" || typeof symbols !== "string") {
-    resultCode = 400;
-    resultBody = '{error: "Invalid symbol parameter"}';
-    return { resultCode, resultBody };
+    return {
+      ok: false,
+      code: 400,
+      error: "Invalid symbol parameter",
+      response: null,
+    } as ApiResponse;
   }
 
   return binanceapiutils("ticker/price", { symbols }, false, false);

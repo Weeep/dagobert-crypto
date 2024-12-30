@@ -3,7 +3,7 @@ import { TransactionIf } from "./Interfaces";
 
 interface Props {
   transaction: TransactionIf;
-  onClick: (transactionOrderId: number, remove: boolean) => void;
+  onClick: (transaction: TransactionIf, remove: boolean) => void;
 }
 
 /*
@@ -38,7 +38,7 @@ const TransactionCard: React.FC<Props> = ({ transaction, onClick }) => {
 
   const handleClick = () => {
     //console.log(transaction.orderId);
-    onClick(transaction.orderId, !isMarked);
+    onClick(transaction, !isMarked);
     setIsMarked(!isMarked);
     //setIsVisible(false);
   };

@@ -1,8 +1,15 @@
+import { ApiResponse } from "./types";
+
 const apiKey: string = process.env.BAPI_KEY as string;
 const apiSecret: string = process.env.BAPI_SEC as string;
 
-let resultCode: number;
-let resultBody: string;
+//let resultCode: number;
+//let resultBody: string;
+
+let ok: boolean;
+let code: number;
+let response: any;
+let error: any;
 
 // Binance API doc
 // https://binance-docs.github.io/apidocs/spot/en/#symbol-price-ticker
@@ -12,7 +19,7 @@ export default async function binanceapiutil(
   params: Record<string, any>,
   createTimestamp: boolean = true,
   createSign: boolean = true
-) {
+): Promise<ApiResponse> {
   let tryToFetch = true;
   let msCounter = 0;
   while (tryToFetch && msCounter <= 10) {
@@ -47,18 +54,24 @@ export default async function binanceapiutil(
       const transactions = await binanceRes.json();
       tryToFetch = transactions?.code == -1021;
 
-      resultCode = 200;
-      resultBody = transactions;
+      ok = true;
+      code = 200;
+      response = transactions;
+      error = null;
     } catch (e: any) {
       tryToFetch = false;
-      resultCode = e.response?.status || 500;
-      resultBody = e.message;
+
+      ok = false;
+      code = e.response?.status || 500;
+      response = null;
+      error = e.message;
     }
   }
 
   return {
-    resultCode,
-    resultBody:
-      typeof resultBody !== "string" ? JSON.stringify(resultBody) : resultBody,
+    ok,
+    code,
+    response,
+    error,
   };
 }

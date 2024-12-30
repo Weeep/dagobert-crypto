@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface Props {
   info: string;
@@ -7,8 +7,7 @@ interface Props {
 const ProgressInfo: React.FC<Props> = ({ info }) => {
   return (
     <div>
-      <h1>Progress Info</h1>
-      <pre>{info}</pre>
+      <div>{info}</div>
     </div>
   );
 };

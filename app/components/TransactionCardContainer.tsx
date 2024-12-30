@@ -21,18 +21,18 @@ const TransactionCardContainer: React.FC<Props> = ({
   symbolPrices,
 }) => {
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
-  const [markedForRemove, setMarkedForRemove] = useState<number[]>([]);
+  const [markedForRemove, setMarkedForRemove] = useState<TransactionIf[]>([]);
 
   const handleTransactionMarked = (
-    transactionOrderId: number,
+    transaction: TransactionIf,
     add: boolean
   ) => {
-    let newMarkedForRemove: number[] = [];
+    let newMarkedForRemove: TransactionIf[] = [];
     if (add) {
-      newMarkedForRemove = [...markedForRemove, transactionOrderId];
+      newMarkedForRemove = [...markedForRemove, transaction];
     } else {
       newMarkedForRemove = markedForRemove.filter(function (item) {
-        return item !== transactionOrderId;
+        return item !== transaction;
       });
     }
     setMarkedForRemove(newMarkedForRemove);
@@ -59,9 +59,12 @@ const TransactionCardContainer: React.FC<Props> = ({
   return (
     <div className="container mx-auto p-8">
       {markedForRemove.length > 1 ? (
-        <button className="m-10 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800">
-          Merge
-        </button>
+        <>
+          <button className="m-10 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800">
+            Merge
+          </button>
+          <div>{JSON.stringify(markedForRemove)}</div>
+        </>
       ) : (
         ""
       )}
