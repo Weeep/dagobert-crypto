@@ -26,7 +26,7 @@ export default async function handler(
       return res.status(400).json({ error: "Failed to get info from DB" });
     }
 
-    return res.status(200).json(kvRes.response !== null ? kvRes.response : []);
+    return res.status(200).json(kvRes.response); // !== null ? kvRes.response : []);
   } else if (req.method === "DELETE") {
     const { key, value } = req.body;
 

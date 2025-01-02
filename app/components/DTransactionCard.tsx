@@ -1,44 +1,61 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TransactionIf } from "./Interfaces";
+import { DagobertTransaction } from "@/utils/types";
 
 interface Props {
   transaction: TransactionIf;
-  onClick: (transaction: TransactionIf, remove: boolean) => void;
+  onClick: (transaction: DagobertTransaction, remove: boolean) => void;
 }
 
-/*
-const TransactionCard2: React.FC<Props> = ({ transaction }) => {
-  return (
-    <div className={"bg-slate-50 p-4 rounded-md shadow-md"}>
-      <h2 className="text-xl font-semibold mb-2 text-black">
-        {transaction.symbol} - ${p(transaction.cummulativeQuoteQty, 2)}
-      </h2>
-      <p className="text-sm text-gray-600 mb-2">
-        {p(transaction.executedQty)} (
-        {p(getPrice(transaction.cummulativeQuoteQty, transaction.executedQty))})
-      </p>
-      <p className="text-xs text-gray-500 mb-2">
-        {transaction.type.toLowerCase()} - {formatDate(transaction.updateTime)}
-      </p>
-      <p
-        className={`text-xs bg-${
-          transaction.side === "BUY" ? "green" : "red"
-        }-100 p-1`}
-      >
-        {transaction.side}
-      </p>
-      <p className={`text-xs bg-green-100 p-1`}>{transaction.side}</p>
-    </div>
-  );
-};
-*/
-
-const TransactionCard: React.FC<Props> = ({ transaction, onClick }) => {
+const DTransactionCard: React.FC<Props> = ({ transaction, onClick }) => {
   const [isMarked, setIsMarked] = useState(false);
+  const [cardValues, setCardValues] = useState<DagobertTransaction>({
+    orderId: 0,
+    pair: "",
+    incomeUsd: 0,
+    date: "",
+    side: "",
+    qty: 0,
+    price: 0,
+  });
+
+  const calculateCardValues = (transaction: TransactionIf) => {
+    /*
+    pair: string; // SOLUSDC
+    spentUsd: number; //8.03
+    date: Date; //24. 12. 29.
+    side: string; // SELL
+    qty: number; // 0.041
+    price: number; // 195.94
+    */
+
+    const cqq = p(transaction.cummulativeQuoteQty, 2);
+
+    const cv: DagobertTransaction = {
+      orderId: transaction.orderId,
+      pair: transaction.symbol,
+      incomeUsd: transaction.side === "SELL" ? cqq : 0 - cqq,
+      date: formatDate(transaction.updateTime),
+      side: transaction.side,
+      qty: p(transaction.executedQty),
+      price: p(
+        getPrice(transaction.cummulativeQuoteQty, transaction.executedQty)
+      ),
+    };
+
+    setCardValues(cv);
+  };
+
+  let useEffectFirst = true;
+  useEffect(() => {
+    if (useEffectFirst) {
+      useEffectFirst = false;
+      calculateCardValues(transaction);
+    }
+  }, []);
 
   const handleClick = () => {
-    //console.log(transaction.orderId);
-    onClick(transaction, !isMarked);
+    onClick(cardValues, !isMarked);
     setIsMarked(!isMarked);
     //setIsVisible(false);
   };
@@ -59,27 +76,26 @@ const TransactionCard: React.FC<Props> = ({ transaction, onClick }) => {
         TODO: It looks without these the below aggregation does not work
       </div>
       <h2 className="text-xl font-semibold mb-2 text-black">
-        {transaction.symbol} - ${p(transaction.cummulativeQuoteQty, 2)}
+        {cardValues.pair}&nbsp;&nbsp;
+        {cardValues.incomeUsd >= 0
+          ? "+" + cardValues.incomeUsd
+          : cardValues.incomeUsd}
+        $&nbsp;&nbsp;{cardValues.qty}
       </h2>
       <p className="text-xs text-gray-500 mb-2">
-        {formatDate(transaction.updateTime)}:{" "}
+        {cardValues.date}:{" "}
         <span
           className={`bg-${
-            transaction.side === "BUY" ? "green" : "red"
+            cardValues.side === "BUY" ? "green" : "red"
           }-100 p-1`}
         >
-          {transaction.side}
+          {cardValues.side}
         </span>{" "}
-        <b>
-          {p(transaction.executedQty)} {transaction.symbol.replace("USDT", "")}
-        </b>
+        {/*<b>
+          {cardValues.qty} {cardValues.pair.replace(/USDT$|USDC$/g, "")}
+        </b>*/}
         {" on "}
-        <b>
-          $
-          {p(
-            getPrice(transaction.cummulativeQuoteQty, transaction.executedQty)
-          )}
-        </b>
+        <b>${cardValues.price}</b>
       </p>
       <p className="text-xs text-gray-500 mb-2">
         {getTargetPrices(
@@ -137,4 +153,4 @@ function formatDate(epoch: number) {
   }).format(date);
 }
 
-export default TransactionCard;
+export default DTransactionCard;

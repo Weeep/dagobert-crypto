@@ -6,11 +6,11 @@ export default async function allOrders(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const response: ApiResponse = await libAllOrders(req.query);
-  if (response.ok) {
-    res.status(response.code).json(JSON.stringify(response.response));
+  const apiResponse: ApiResponse = await libAllOrders(req.query);
+  if (apiResponse.ok) {
+    res.status(apiResponse.code).json(JSON.stringify(apiResponse.response));
   } else {
-    res.status(response.code).json({ error: response.error });
+    res.status(apiResponse.code).json({ error: apiResponse.error });
   }
 }
 

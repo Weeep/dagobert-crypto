@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import ProgressInfo from "./ProgressInfo";
 
-export default function Config() {
+export default function PageConfig() {
   const [pairs, setPairs] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState<string>("");
   const [dbConnStatusStr, setDbConnStatusStr] = useState<string>("Checking...");
@@ -70,8 +70,6 @@ export default function Config() {
   };
 
   const updateOrdersViaBinanceApi = async () => {
-    //const pairs = ["DOTUSDT", "SOLUSDT"];
-
     for (const pair of pairs) {
       try {
         setOrdersUpdateInfo(`Fetching ${pair} orders via Binance API`);
@@ -112,19 +110,21 @@ export default function Config() {
     }
   };
 
-  const addFollowedPairs = () => {
+  const addFollowedPairs = (title: string) => {
     return (
       <>
-        <h2 className="text-3x1 font-semibold my-3">Followed Pairs</h2>
+        <h2 className="text-xl font-semibold my-3">{title}</h2>
 
-        <div className="ml-8 flex space-x-2 my-2">
+        <div className="ml-8 flex flex-wrap">
           {pairs.map((pair, index) => (
             <div
               key={index}
-              className="bg-gray-300 text-gray-800 flex space-x-2 rounded-full p-2"
+              className="w-24 bg-gray-300 text-gray-800 flex justify-between rounded-full p-2 mr-2 mb-2"
             >
-              <div>{pair}</div>
-              <button onClick={() => handleDelete(pair)}>{redCross}</button>
+              <div className="text-xs">{pair}</div>
+              <button className="text-xs" onClick={() => handleDelete(pair)}>
+                {redCross}
+              </button>
             </div>
           ))}
         </div>
@@ -147,12 +147,10 @@ export default function Config() {
     );
   };
 
-  const addDbBinanceUpdate = () => {
+  const addDbBinanceUpdate = (title: string) => {
     return (
       <>
-        <h2 className="text-3x1 font-semibold my-3">
-          Update Orders in Database via Binance API
-        </h2>
+        <h2 className="text-xl font-semibold my-3">{title}</h2>
         <div className="flex space-x-2 items-center">
           <button
             className="ml-8 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800"
@@ -166,19 +164,27 @@ export default function Config() {
     );
   };
 
+  let i = 1;
+
   return (
     <>
       <h1 className="text-4xl font-semibold mb-4">Config</h1>
 
-      <h2 className="text-3x1 font-semibold my-3">Database Connection</h2>
+      <h2 className="text-xl font-semibold my-3">{i++}. Database Connection</h2>
       <p className="ml-8">
         {isDbConnOk ? greenPipe : redCross} {dbConnStatusStr}
       </p>
 
-      <h2 className="text-3x1 font-semibold my-3">Binance API Connection</h2>
+      <h2 className="text-xl font-semibold my-3">
+        {i++}. Binance API Connection
+      </h2>
 
-      {isDbConnOk ? addFollowedPairs() : ""}
-      {isDbConnOk ? addDbBinanceUpdate() : ""}
+      {isDbConnOk ? addFollowedPairs(`${i++}. Followed Pairs`) : ""}
+      {isDbConnOk
+        ? addDbBinanceUpdate(
+            `${i++}. Update Orders in Database via Binance API`
+          )
+        : ""}
     </>
   );
 }

@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Transactions from "./components/Transactions";
-import OrderHistory from "./components/OrderHistory";
-import Config from "./components/Config";
+import PageTransactions from "./components/PageTransactions";
+import PageOrderHistory from "./components/PageOrderHistory";
+import PageConfig from "./components/PageConfig";
 
 const pages = {
-  Transactions: Transactions,
-  "Order History": OrderHistory,
-  Config: Config,
+  Transactions: PageTransactions,
+  "Order History": PageOrderHistory,
+  Config: PageConfig,
 };
 
 export default function Home() {

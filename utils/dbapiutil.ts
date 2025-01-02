@@ -38,6 +38,10 @@ class DbApiUtil {
     return this.handleOperation(() => kv.hset(key, kvObject));
   }
 
+  async hget(key: string, field: string): Promise<ApiResponse> {
+    return this.handleOperation(() => kv.hget(key, field));
+  }
+
   async hgetall(key: string): Promise<ApiResponse> {
     return this.handleOperation(() => kv.hgetall(key));
   }

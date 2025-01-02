@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
 import { TransactionIf, SymbolPriceIf } from "./Interfaces";
-import TransactionCardContainer from "./TransactionCardContainer";
+import DTransactionCardContainer from "./DTransactionCardContainer";
 import ProgressInfo from "./ProgressInfo";
+import PairsAndPrices from "./PairsAndPrices";
+import DTransactionGroupContainer from "./DTransactionGroupContainer";
 
-const Transactions = () => {
+const PageTransactions = () => {
   const [transactionData, setTransactionData] = useState<TransactionIf[]>([]);
-  const [symbolPrices, setSymbolPrices] = useState<SymbolPriceIf[]>([]);
+  const [numOfTransactions, setnumOfTransactions] = useState<number>(0);
+
+  const [symbolPrices, setSymbolPrices] = useState<SymbolPriceIf[]>([]); //TODO move symbolPrices to PairsAndPrices and rename it to pair
+  const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
+
   const [progressInfo, setProgressInfo] = useState<string>("");
 
   let useEffectFirst = true;
@@ -13,18 +19,19 @@ const Transactions = () => {
     if (useEffectFirst) {
       useEffectFirst = false;
       fetchTransactionData();
+
+      fetchPrices();
+      const intervalId = setInterval(fetchPrices, 15000);
     }
   }, []);
 
   const fetchTransactionData = async () => {
-    const response = await fetch(`/api/transactions?status=FILLED`);
+    const response = await fetch(`/api/dbapi/transactions2`); //transactions?status=FILLED`);
     const data = await response.json();
     if (response.status !== 200 || data?.code) {
       setProgressInfo(`\u274C ERROR: ${data.error}`);
       return;
     } else {
-      console.log(`sasasa ${data.length} sasasasa`);
-      //console.log("qqqqrrr" + JSON.stringify(data) + " qqqrrr");
       if (data.length === 0) {
         setProgressInfo(
           "No transaction in the database, fetch them by pressing Refresh (via binance api)."
@@ -32,21 +39,17 @@ const Transactions = () => {
       }
       (data as TransactionIf[]).sort((a, b) => b.updateTime - a.updateTime);
       setTransactionData(data);
+      setnumOfTransactions(data.length);
     }
-    //} catch (error) {
-    ///console.error(`Error fetching data:`, error);
-    //}
-
-    fetchPrices();
-    const intervalId = setInterval(fetchPrices, 15000);
   };
 
   const fetchPrices = async () => {
     try {
-      //const fetchPairs = async () => {
       const pairsResponse = await fetch(`/api/dbapi/pairs?key=pairs`);
       if (pairsResponse.ok) {
         const pairs = await pairsResponse.json();
+
+        if ((pairs as string[]).length === 0) return;
 
         const response = await fetch(
           `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(pairs)}`
@@ -67,14 +70,21 @@ const Transactions = () => {
   };
 
   return (
-    <div>
+    <div className="mx-auto">
       <div>{progressInfo}</div>
-      <TransactionCardContainer
-        transactions={transactionData}
-        symbolPrices={symbolPrices}
+      <PairsAndPrices
+        pairsAndPrices={symbolPrices}
+        setSelectedPairs={setSelectedPairs}
+        selectedPairs={selectedPairs}
       />
+      <DTransactionCardContainer
+        transactions={transactionData}
+        numOfTransactions={numOfTransactions}
+        selectedPairs={selectedPairs}
+      />
+      <DTransactionGroupContainer />
     </div>
   );
 };
 
-export default Transactions;
+export default PageTransactions;

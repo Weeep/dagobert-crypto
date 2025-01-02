@@ -17,6 +17,7 @@ export interface TransactionIf {
   type: string;
   side: string;
   updateTime: number;
+  grouped: boolean;
 }
 
 export interface SymbolPriceIf {
