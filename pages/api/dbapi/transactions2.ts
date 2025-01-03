@@ -1,6 +1,7 @@
 import { TransactionIf } from "@/app/components/Interfaces";
 import { ukv } from "@/utils/dbapiutil";
-import { ApiResponse } from "@/utils/types";
+import { getPrice, stringToRoundedFloat } from "@/utils/helper";
+import { ApiResponse, DagobertTransaction } from "@/utils/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
@@ -10,29 +11,75 @@ export default async function handler(
   switch (req.method) {
     // --- setTransactions
     case "POST":
-      const { data } = req.body;
+      const { type, data } = req.body;
 
-      if (!data) {
+      if (!type || !data) {
         res.status(400).json({ error: "Missing data" });
       }
 
-      let transactions = JSON.parse(data) as TransactionIf[]; // TODO !!!
-      if (
-        transactions.length > 0 &&
-        transactions[0]?.orderId &&
-        transactions[0]?.updateTime
-      ) {
-        transactions.map(async (transaction) => {
-          //transaction.grouped = false;
-          await ukv.hset("transactions", {
-            [transaction.orderId]: transaction,
-          });
-        });
-        // TODO check it successfully done?
-      }
+      const binanceApiOrdersToDTransactions = () => {
+        let transactions = JSON.parse(data) as TransactionIf[]; // TODO !!!
+        if (
+          transactions.length > 0 &&
+          transactions[0]?.orderId &&
+          transactions[0]?.updateTime
+        ) {
+          transactions.map(async (bnceTransaction) => {
+            const dbResp = await ukv.hget(
+              "dtransactions",
+              bnceTransaction.orderId.toString()
+            );
+            if (!dbResp.ok) {
+              return { s: 400, j: { success: false } }; //TODO
+            }
 
-      res.status(200).json({ success: true });
-      break;
+            console.log("rrrr|" + JSON.stringify(dbResp.response) + "|rrrrr");
+
+            if (dbResp.response === null) {
+              const cqq = stringToRoundedFloat(
+                bnceTransaction.cummulativeQuoteQty,
+                2
+              );
+
+              const dtransaction: DagobertTransaction = {
+                orderId: bnceTransaction.orderId.toString(),
+                pair: bnceTransaction.symbol,
+                amount: bnceTransaction.side === "SELL" ? cqq : 0 - cqq,
+                dateEpoch: bnceTransaction.updateTime,
+                date: new Date(bnceTransaction.updateTime),
+                side: bnceTransaction.side,
+                executed: stringToRoundedFloat(bnceTransaction.executedQty),
+                price: stringToRoundedFloat(
+                  getPrice(
+                    bnceTransaction.cummulativeQuoteQty,
+                    bnceTransaction.executedQty
+                  )
+                ),
+                status: bnceTransaction.status,
+                grouped: false,
+              };
+
+              await ukv.hset("dtransactions", {
+                [dtransaction.orderId]: dtransaction,
+              });
+            }
+          });
+          // TODO check it successfully done?
+        }
+
+        return { s: 200, j: { success: true } };
+      };
+
+      switch (type.toString().toLowerCase()) {
+        case "binanceapi":
+          const { s, j } = binanceApiOrdersToDTransactions();
+          res.status(s).json(j);
+          break;
+        case "binancecsvfile":
+          break;
+        default:
+          res.status(400).json({ error: "Invalid 'type' parameter" });
+      }
 
     // --- getTransactions
     case "GET":
@@ -42,10 +89,10 @@ export default async function handler(
       console.log(id);
 
       if (id) {
-        dbResponse = await ukv.hget("transactions", id as string);
+        dbResponse = await ukv.hget("dtransactions", id as string);
         console.log(JSON.stringify(dbResponse.response));
       } else {
-        dbResponse = await ukv.hgetall("transactions");
+        dbResponse = await ukv.hgetall("dtransactions");
       }
 
       if (dbResponse.ok) {
@@ -56,9 +103,9 @@ export default async function handler(
         if (id) {
           res.status(dbResponse.code).json(fetchedTransactions);
         } else {
-          let filteredTransactions: TransactionIf[] = Object.values(
+          let filteredTransactions: DagobertTransaction[] = Object.values(
             fetchedTransactions
-          ) as TransactionIf[];
+          ) as DagobertTransaction[];
 
           filteredTransactions = filteredTransactions.filter(
             (obj) => obj.status === "FILLED" && !obj.grouped

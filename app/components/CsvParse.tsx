@@ -1,12 +1,20 @@
-"use client";
-
 import React, { useState } from "react";
 import Papa from "papaparse";
 
-type CSVRow = Record<string, string>; // Defines the type for each row in the CSV
+type BnceTrade = {
+  "Date(UTC)": string; //"1/2/2025 7:34",
+  Pair: string; //"POLUSDC",
+  Side: string; //"BUY",
+  Price: string; //"0.484",
+  Executed: string; //"12POL",
+  Amount: string; //"5.808USDC",
+  Fee: string; //"0.00000615BNB"
+};
 
-const Home: React.FC = () => {
-  const [csvData, setCsvData] = useState<CSVRow[]>([]);
+//Record<string, string>; // Defines the type for each row in the CSV
+
+const CsvParse: React.FC = () => {
+  const [csvData, setCsvData] = useState<BnceTrade[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,7 +33,7 @@ const Home: React.FC = () => {
         if (result.errors.length > 0) {
           setError("Error parsing CSV file.");
         } else {
-          setCsvData(result.data as CSVRow[]);
+          setCsvData(result.data as BnceTrade[]);
         }
       },
       error: (error) => {
@@ -35,7 +43,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-gray-100">
+    <div className="min-h-screen p-6 bg-gray-400">
       <h1 className="text-2xl font-bold mb-4">Upload and Read CSV</h1>
       <input
         type="file"
@@ -56,4 +64,4 @@ const Home: React.FC = () => {
   );
 };
 
-export default Home;
+export default CsvParse;

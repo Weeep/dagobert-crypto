@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { TransactionIf } from "./Interfaces";
-import DTransactionCard from "./DTransactionCard";
-import { DagobertTransaction, TransactionGroup } from "@/utils/types";
+import { DagobertTransaction, DagobertTransactionGroup } from "@/utils/types";
+import { formatDate } from "@/utils/helper";
 
 const DTransactionGroupContainer: React.FC = () => {
   const [transactionGroups, setTransactionGroups] = useState<
-    TransactionGroup[]
+    DagobertTransactionGroup[]
   >([]);
   const [profit, setProfit] = useState<number>(0);
 
@@ -15,7 +14,7 @@ const DTransactionGroupContainer: React.FC = () => {
       useEffectFirst = false;
 
       const fetchData = async () => {
-        let transactionGroupsTemp: TransactionGroup[] = [];
+        let transactionGroupsTemp: DagobertTransactionGroup[] = [];
 
         try {
           const dbResponse = await fetch("/api/dbapi/transactionGroups");
@@ -25,7 +24,7 @@ const DTransactionGroupContainer: React.FC = () => {
           } else {
             //setTransactionGroups(
             transactionGroupsTemp =
-              (await dbResponse.json()) as TransactionGroup[];
+              (await dbResponse.json()) as DagobertTransactionGroup[];
             //);
           }
         } catch (error) {
@@ -35,7 +34,7 @@ const DTransactionGroupContainer: React.FC = () => {
         if (transactionGroupsTemp.length !== 0) {
           let profitTemp = 0;
           for (const tg of transactionGroupsTemp) {
-            profitTemp += tg.incomeUsd;
+            profitTemp += tg.amount;
           }
           setProfit(profitTemp);
           setTransactionGroups(transactionGroupsTemp);
@@ -53,12 +52,14 @@ const DTransactionGroupContainer: React.FC = () => {
       </div>
       {transactionGroups.length !== 0 &&
         transactionGroups
-          .sort((a, b) => (a.lastTransDateStr > b.lastTransDateStr ? -1 : 1))
+          .sort((a, b) =>
+            a.lastTransDateEpoch > b.lastTransDateEpoch ? -1 : 1
+          )
           .map((transactionGroup) => (
             <div
               key={transactionGroup.groupId}
               className={`bg-${
-                transactionGroup.incomeUsd <= 0 ? "red" : "green"
+                transactionGroup.amount <= 0 ? "red" : "green"
               }-100
        p-4 my-4 rounded-md shadow-md`}
             >
@@ -73,22 +74,22 @@ const DTransactionGroupContainer: React.FC = () => {
                 {transactionGroup.pair}&nbsp;&nbsp;
                 <span
                   className={`text-${
-                    transactionGroup.incomeUsd >= 0 ? "lime" : "red"
+                    transactionGroup.amount >= 0 ? "lime" : "red"
                   }-500`}
                 >
-                  {transactionGroup.incomeUsd >= 0
-                    ? "+" + transactionGroup.incomeUsd.toFixed(2)
-                    : transactionGroup.incomeUsd.toFixed(2)}
+                  {transactionGroup.amount >= 0
+                    ? "+" + transactionGroup.amount.toFixed(2)
+                    : transactionGroup.amount.toFixed(2)}
                   $
                 </span>
-                &nbsp;&nbsp;{transactionGroup.qty.toFixed(2)}
+                &nbsp;&nbsp;{transactionGroup.executed.toFixed(2)}
               </h2>
               {transactionGroup.groupedTrans
-                .sort((a, b) => (a.dateStr > b.dateStr ? -1 : 1))
+                .sort((a, b) => (a.dateEpoch > b.dateEpoch ? -1 : 1))
                 .map((t) => {
                   return (
                     <p key={t.orderId} className="text-xs text-gray-500 mb-2">
-                      {t.dateStr}:{" "}
+                      {formatDate(t.dateEpoch)}:{" "}
                       <span
                         className={`bg-${
                           t.side === "BUY" ? "green" : "red"
@@ -96,7 +97,7 @@ const DTransactionGroupContainer: React.FC = () => {
                       >
                         {t.side}
                       </span>
-                      {" " + t.qty}
+                      {" " + t.executed}
                       {" on "}
                       <b>${t.price}</b>
                     </p>
@@ -112,7 +113,7 @@ const DTransactionGroupContainer: React.FC = () => {
       transactionGroups.map((transactionGroup) => (
     
     <div
-      className={`bg-${transactionGroup.incomeUsd <= 0 ? "red" : "green"}-100
+      className={`bg-${transactionGroup.amount <= 0 ? "red" : "green"}-100
        p-4 rounded-md shadow-md`}
     >
       <div style={{ display: "none" }}>
@@ -126,12 +127,12 @@ const DTransactionGroupContainer: React.FC = () => {
         {transactionGroup.pair}&nbsp;&nbsp;
         <span
           className={`text-${
-            transactionGroup.incomeUsd >= 0 ? "lime" : "red"
+            transactionGroup.amount >= 0 ? "lime" : "red"
           }-500`}
         >
-          {transactionGroup.incomeUsd >= 0
-            ? "+" + transactionGroup.incomeUsd.toFixed(2)
-            : transactionGroup.incomeUsd.toFixed(2)}
+          {transactionGroup.amount >= 0
+            ? "+" + transactionGroup.amount.toFixed(2)
+            : transactionGroup.amount.toFixed(2)}
           $
         </span>
         &nbsp;&nbsp;{transactionGroup.qty}

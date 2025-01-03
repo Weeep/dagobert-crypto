@@ -1,28 +1,25 @@
 import { TransactionIf } from "@/app/components/Interfaces";
 
 export type DagobertTransaction = {
-  orderId: number;
+  orderId: string;
   pair: string; // SOLUSDC
-  incomeUsd: number; //8.03
-  date: string; //24. 12. 29.
+  amount: number; //incomeUsd 8.03
+  executed: number; //qty 0.041
+  date: Date; //24. 12. 29.
+  dateEpoch: number;
   side: string; // SELL
-  qty: number; // 0.041
   price: number; // 195.94
+  status: string; //FILLED
+  grouped: boolean;
 };
 
-export type TransactionGroup = {
+export type DagobertTransactionGroup = {
   groupId: string | null;
   pair: string;
-  incomeUsd: number;
-  qty: number;
-  lastTransDateStr: string;
-  groupedTrans: {
-    orderId: number;
-    dateStr: string;
-    side: string;
-    price: number;
-    qty: number;
-  }[];
+  amount: number; //incomeUsd
+  executed: number; //qty
+  lastTransDateEpoch: number;
+  groupedTrans: DagobertTransaction[];
 };
 
 export type ApiResponse = {

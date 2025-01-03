@@ -4,9 +4,10 @@ import DTransactionCardContainer from "./DTransactionCardContainer";
 import ProgressInfo from "./ProgressInfo";
 import PairsAndPrices from "./PairsAndPrices";
 import DTransactionGroupContainer from "./DTransactionGroupContainer";
+import { DagobertTransaction } from "@/utils/types";
 
 const PageTransactions = () => {
-  const [transactionData, setTransactionData] = useState<TransactionIf[]>([]);
+  const [dtransactions, setDtransactions] = useState<DagobertTransaction[]>([]);
   const [numOfTransactions, setnumOfTransactions] = useState<number>(0);
 
   const [symbolPrices, setSymbolPrices] = useState<SymbolPriceIf[]>([]); //TODO move symbolPrices to PairsAndPrices and rename it to pair
@@ -37,8 +38,8 @@ const PageTransactions = () => {
           "No transaction in the database, fetch them by pressing Refresh (via binance api)."
         );
       }
-      (data as TransactionIf[]).sort((a, b) => b.updateTime - a.updateTime);
-      setTransactionData(data);
+      (data as DagobertTransaction[]).sort((a, b) => b.dateEpoch - a.dateEpoch);
+      setDtransactions(data);
       setnumOfTransactions(data.length);
     }
   };
@@ -78,7 +79,7 @@ const PageTransactions = () => {
         selectedPairs={selectedPairs}
       />
       <DTransactionCardContainer
-        transactions={transactionData}
+        dtransactions={dtransactions}
         numOfTransactions={numOfTransactions}
         selectedPairs={selectedPairs}
       />

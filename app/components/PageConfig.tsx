@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ProgressInfo from "./ProgressInfo";
+import CsvParse from "./CsvParse";
 
 export default function PageConfig() {
   const [pairs, setPairs] = useState<string[]>([]);
@@ -90,7 +91,7 @@ export default function PageConfig() {
           const dbResponse = await fetch("/api/dbapi/transactions2", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data }),
+            body: JSON.stringify({ type: "binanceApi", data }),
           });
 
           if (!dbResponse.ok) {
@@ -147,7 +148,7 @@ export default function PageConfig() {
     );
   };
 
-  const addDbBinanceUpdate = (title: string) => {
+  const updateTransactionsBinanceApi = (title: string) => {
     return (
       <>
         <h2 className="text-xl font-semibold my-3">{title}</h2>
@@ -160,6 +161,15 @@ export default function PageConfig() {
           </button>
           <ProgressInfo info={ordersUpdateInfo} />
         </div>
+      </>
+    );
+  };
+
+  const updateTransactionsBinanceCsv = (title: string) => {
+    return (
+      <>
+        <h2 className="text-xl font-semibold my-3">{title}</h2>
+        <CsvParse />
       </>
     );
   };
@@ -181,8 +191,13 @@ export default function PageConfig() {
 
       {isDbConnOk ? addFollowedPairs(`${i++}. Followed Pairs`) : ""}
       {isDbConnOk
-        ? addDbBinanceUpdate(
-            `${i++}. Update Orders in Database via Binance API`
+        ? updateTransactionsBinanceApi(
+            `${i++}. Update Transactions via Binance API`
+          )
+        : ""}
+      {isDbConnOk
+        ? updateTransactionsBinanceCsv(
+            `${i++}. Update Transactions via Binance Trade History .csv file`
           )
         : ""}
     </>

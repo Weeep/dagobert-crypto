@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { TransactionIf } from "./Interfaces";
 import DTransactionCard from "./DTransactionCard";
-import { DagobertTransaction, TransactionGroup } from "@/utils/types";
+import { DagobertTransaction, DagobertTransactionGroup } from "@/utils/types";
 
 interface Props {
-  transactions: TransactionIf[];
+  dtransactions: DagobertTransaction[];
   numOfTransactions: number;
   selectedPairs: string[];
 }
 
 const DTransactionCardContainer: React.FC<Props> = ({
-  transactions,
+  dtransactions,
   numOfTransactions,
   selectedPairs,
 }) => {
@@ -37,35 +37,29 @@ const DTransactionCardContainer: React.FC<Props> = ({
   };
 
   const merge = async () => {
-    let transactionGroup: TransactionGroup = {
+    let transactionGroup: DagobertTransactionGroup = {
       groupId: null,
       pair: "",
-      incomeUsd: 0,
-      qty: 0,
-      lastTransDateStr: "",
+      amount: 0,
+      executed: 0,
+      lastTransDateEpoch: 0,
       groupedTrans: [],
     };
 
     for (const dTrans of markedForMerge) {
       transactionGroup.pair = dTrans.pair; //TODO same pair validation, AVAX and SOL cannot be grouped
-      transactionGroup.incomeUsd += dTrans.incomeUsd;
-      transactionGroup.qty =
+      transactionGroup.amount += dTrans.amount;
+      transactionGroup.executed =
         dTrans.side === "BUY"
-          ? transactionGroup.qty + dTrans.qty
-          : transactionGroup.qty - dTrans.qty;
-      transactionGroup.lastTransDateStr =
-        transactionGroup.lastTransDateStr === ""
-          ? dTrans.date
-          : dTrans.date > transactionGroup.lastTransDateStr
-          ? dTrans.date
-          : transactionGroup.lastTransDateStr;
-      transactionGroup.groupedTrans.push({
-        orderId: dTrans.orderId,
-        dateStr: dTrans.date,
-        side: dTrans.side,
-        price: dTrans.price,
-        qty: dTrans.qty,
-      });
+          ? transactionGroup.executed + dTrans.executed
+          : transactionGroup.executed - dTrans.executed;
+      transactionGroup.lastTransDateEpoch =
+        transactionGroup.lastTransDateEpoch === 0
+          ? dTrans.dateEpoch
+          : dTrans.dateEpoch > transactionGroup.lastTransDateEpoch
+          ? dTrans.dateEpoch
+          : transactionGroup.lastTransDateEpoch;
+      transactionGroup.groupedTrans.push(dTrans);
     }
 
     try {
@@ -129,8 +123,8 @@ const DTransactionCardContainer: React.FC<Props> = ({
     ); */
   };
 
-  const filteredData = transactions.filter((t: TransactionIf) => {
-    return selectedPairs.length === 0 || selectedPairs.includes(t.symbol);
+  const filteredData = dtransactions.filter((dt: DagobertTransaction) => {
+    return selectedPairs.length === 0 || selectedPairs.includes(dt.pair);
   });
 
   return (
@@ -160,7 +154,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
           filteredData.map((transaction) => (
             <DTransactionCard
               key={transaction.orderId}
-              transaction={transaction}
+              dtransaction={transaction}
               onClick={handleTransactionMarked}
             />
           ))}

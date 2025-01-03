@@ -1,6 +1,6 @@
 import { TransactionIf } from "@/app/components/Interfaces";
 import { ukv } from "@/utils/dbapiutil";
-import { ApiResponse, TransactionGroup } from "@/utils/types";
+import { ApiResponse, DagobertTransactionGroup } from "@/utils/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { v4 as uuidv4 } from "uuid";
 
@@ -18,7 +18,7 @@ export default async function handler(
         res.status(400).json({ error: "Missing data" });
       }
 
-      let transactionGroups = data as TransactionGroup[]; // TODO !!!
+      let transactionGroups = data as DagobertTransactionGroup[]; // TODO !!!
       if (
         transactionGroups.length > 0 &&
         transactionGroups[0]?.pair &&
@@ -34,7 +34,7 @@ export default async function handler(
 
             const newGroupedValue = { grouped: true };
 
-            await ukv.hset("transactions", {
+            await ukv.hset("dtransactions", {
               [transaction.orderId]: {
                 ...storedTransaction,
                 ...newGroupedValue,
@@ -52,7 +52,6 @@ export default async function handler(
         });
         // TODO check it successfully done?
       } else {
-        console.log("csacsasas");
         res.status(400).json({ error: "Invalid data" });
       }
 
@@ -79,9 +78,10 @@ export default async function handler(
         if (id) {
           res.status(dbResponse.code).json(fetchedTransactionGroups);
         } else {
-          let filteredTransactionGroups: TransactionGroup[] = Object.values(
-            fetchedTransactionGroups
-          ) as TransactionGroup[];
+          let filteredTransactionGroups: DagobertTransactionGroup[] =
+            Object.values(
+              fetchedTransactionGroups
+            ) as DagobertTransactionGroup[];
 
           res.status(dbResponse.code).json(filteredTransactionGroups);
         }
