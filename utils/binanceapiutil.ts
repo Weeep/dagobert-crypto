@@ -1,4 +1,4 @@
-import { ApiResponse } from "./types";
+import { ApiResponse } from "./typesAndEnums";
 
 const apiKey: string = process.env.BAPI_KEY as string;
 const apiSecret: string = process.env.BAPI_SEC as string;

@@ -29,7 +29,34 @@ export type ApiResponse = {
   error: any;
 };
 
+export type BnceTradeHisFromCsv = {
+  "Date(UTC)": string; //"1/2/2025 7:34",
+  Pair: string; //"POLUSDC",
+  Side: string; //"BUY",
+  Price: string; //"0.484",
+  Executed: string; //"12POL",
+  Amount: string; //"5.808USDC",
+  Fee: string; //"0.00000615BNB"
+};
+
 export type TransactionsApiResponse = {
   transactions: TransactionIf[] | null;
   apiResponse: ApiResponse;
 };
+
+export enum KVRoot {
+  pairs = "pairs",
+  dtransactions = "dtransactions",
+  dtransactionGroups = "dtransactionGroups",
+}
+
+export enum DbActionsViaApi {
+  connectiontest = "connectiontest",
+  flushdb = "flushdb",
+  getcache = "getcache",
+  set = "set",
+  hset = "hset",
+  sadd = "sadd",
+  del = "del",
+  srem = "srem",
+}

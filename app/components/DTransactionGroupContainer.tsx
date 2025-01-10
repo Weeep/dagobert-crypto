@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { DagobertTransaction, DagobertTransactionGroup } from "@/utils/types";
+import {
+  DagobertTransaction,
+  DagobertTransactionGroup,
+} from "@/utils/typesAndEnums";
 import { formatDate } from "@/utils/helper";
 
 const DTransactionGroupContainer: React.FC = () => {
@@ -17,7 +20,7 @@ const DTransactionGroupContainer: React.FC = () => {
         let transactionGroupsTemp: DagobertTransactionGroup[] = [];
 
         try {
-          const dbResponse = await fetch("/api/dbapi/transactionGroups");
+          const dbResponse = await fetch("/api/dbapi/dtransactionGroups");
 
           if (!dbResponse.ok) {
             throw dbResponse.status;

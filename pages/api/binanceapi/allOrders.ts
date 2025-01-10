@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import binanceapiutil from "../../../utils/binanceapiutil";
-import { ApiResponse } from "@/utils/types";
+import { ApiResponse } from "@/utils/typesAndEnums";
 
 export default async function allOrders(
   req: NextApiRequest,
@@ -8,7 +8,7 @@ export default async function allOrders(
 ) {
   const apiResponse: ApiResponse = await libAllOrders(req.query);
   if (apiResponse.ok) {
-    res.status(apiResponse.code).json(JSON.stringify(apiResponse.response));
+    res.status(apiResponse.code).json(apiResponse.response); //JSON.stringify(apiResponse.response));
   } else {
     res.status(apiResponse.code).json({ error: apiResponse.error });
   }

@@ -1,12 +1,11 @@
-//import { kv } from "@vercel/kv";
-import { ApiResponse } from "@/utils/types";
-import { ukv as kv } from "../../../utils/dbapiutil";
+import { ApiResponse, DbActionsViaApi, KVRoot } from "@/utils/typesAndEnums";
+import DbApiUtil from "../../../utils/dbapiutil";
 
 import type { NextApiRequest, NextApiResponse } from "next";
 
 interface ResponseIf {
   s: number;
-  j: { message: string; action: string };
+  j: { response: any; action: string };
 }
 
 export default async function admin(req: NextApiRequest, res: NextApiResponse) {
@@ -14,7 +13,7 @@ export default async function admin(req: NextApiRequest, res: NextApiResponse) {
     const badConnection = {
       s: 500,
       j: {
-        message:
+        response:
           "Database connection failed. It can be configuration, nameserver or temporary db issue.",
         action,
       },
@@ -22,62 +21,169 @@ export default async function admin(req: NextApiRequest, res: NextApiResponse) {
 
     let dbResponse: ApiResponse;
 
-    dbResponse = await kv.lpush("listtest", { itemOne: "1", itemTwo: "2" });
+    dbResponse = await DbApiUtil.lpush("listtest", {
+      itemOne: "1",
+      itemTwo: "2",
+    });
     if (!dbResponse.ok) return badConnection;
 
-    //dbResponse = await kv.lpush("listtest", { itemThree: "3", itemFour: "4" });
+    //dbResponse = await DbApiUtil.lpush("listtest", { itemThree: "3", itemFour: "4" });
     //if (!dbResponse.ok) return badConnection;
 
-    //dbResponse = await kv.hset("hashtest", { one: { two: "three" } });
+    //dbResponse = await DbApiUtil.hset("hashtest", { one: { two: "three" } });
     //if (!dbResponse.ok) return badConnection;
 
-    dbResponse = await kv.del("listtest");
+    dbResponse = await DbApiUtil.del("listtest");
     if (!dbResponse.ok) return badConnection;
 
-    //dbResponse = await kv.del("hashtest");
+    //dbResponse = await DbApiUtil.del("hashtest");
     //if (!dbResponse.ok) return badConnection;
 
-    return { s: 200, j: { message: "Database connection OK", action } };
+    return { s: 200, j: { response: "Database connection OK", action } };
   };
 
   const flushDb = async (action: string): Promise<ResponseIf> => {
     if (action === "flushdb") {
-      const r: any = await kv.flushdb();
-      const lastUpdatedTime: any = await kv.get(
+      const r: any = await DbApiUtil.flushdb();
+      const lastUpdatedTime: any = await DbApiUtil.get(
         "updated_time_of_last_processed_transaction"
       );
       return {
         s: 200,
         j: {
-          message: `Database cleaned up? ${r["response"]}. Value of updated_time_of_last_processed_transaction: ${lastUpdatedTime}`,
+          response: `Database cleaned up? ${r["response"]}. Value of updated_time_of_last_processed_transaction: ${lastUpdatedTime}`,
           action,
         },
       };
     } else {
       return {
         s: 400,
-        j: { message: "Error! Invalid action parameter", action },
+        j: { response: "Error! Invalid action parameter", action },
       };
     }
   };
 
-  const { action } = req.query;
+  const getCache = async (action: string): Promise<ResponseIf> => {
+    const cache = await DbApiUtil.getCache();
+    return { s: 200, j: { response: cache.cache, action } };
+  };
 
-  let act = "connectionTest";
-  if (action && typeof action === "string") {
+  const apiResponseToResponseIf = (
+    response: ApiResponse,
+    action: string
+  ): ResponseIf => {
+    return {
+      s: response.code,
+      j: { response: JSON.stringify(response.response), action },
+    };
+  };
+
+  const dbOp = async (
+    action: string,
+    key: KVRoot | string,
+    value: any
+  ): Promise<ResponseIf> => {
+    try {
+      switch (action) {
+        case "set":
+          const setRes: ApiResponse = await DbApiUtil.set(key, value);
+          return apiResponseToResponseIf(setRes, action);
+        case "hset":
+          let valueObj = value;
+          if (typeof value === "string") {
+            valueObj = JSON.parse(value);
+          }
+
+          // TODO should check that valueObj's type is {field: string]: DagobertTransaction;}
+
+          const hsetRes: ApiResponse = await DbApiUtil.hset(
+            key as KVRoot,
+            valueObj
+          );
+          return apiResponseToResponseIf(hsetRes, action);
+        case "sadd":
+          const saddRes: ApiResponse = await DbApiUtil.sadd(
+            key as KVRoot,
+            value
+          );
+          return apiResponseToResponseIf(saddRes, action);
+        case "del":
+          const delRes: ApiResponse = await DbApiUtil.del(key);
+          return apiResponseToResponseIf(delRes, action);
+        case "srem":
+          const sremRes: ApiResponse = await DbApiUtil.srem(
+            key as KVRoot,
+            value
+          );
+          return apiResponseToResponseIf(sremRes, action);
+        default:
+          throw new Error("Invalid dbOp action: " + action);
+      }
+    } catch (error) {
+      return {
+        s: 400,
+        j: { response: JSON.stringify(error), action },
+      };
+    }
+  };
+
+  const isKVRootValue = (value: any): value is KVRoot => {
+    return Object.values(KVRoot).includes(value as KVRoot);
+  };
+
+  const isDbActionsViaApiValue = (value: any): value is DbActionsViaApi => {
+    return Object.values(DbActionsViaApi).includes(value as DbActionsViaApi);
+  };
+
+  //// --- Functions End ////////////////////
+
+  const { action, key, value } = req.query;
+
+  if (
+    action !== DbActionsViaApi.connectiontest &&
+    action !== DbActionsViaApi.flushdb &&
+    action !== DbActionsViaApi.getcache &&
+    action !== DbActionsViaApi.set
+  ) {
+    //TODO
+    if (key === null || key === undefined || !isKVRootValue(key))
+      res.status(400).json({ error: `Invalid key parameter: ${key}` });
+  }
+
+  let act: DbActionsViaApi = DbActionsViaApi.connectiontest;
+  if (action && isDbActionsViaApiValue(action)) {
     act = action;
   }
 
   let s = 400;
-  let j = { message: "Some issue..." };
-  switch (act.toLowerCase()) {
-    case "connectiontest":
+  let j = { response: "Some issue..." };
+  switch (act) {
+    case DbActionsViaApi.connectiontest:
       const connectionTestRes: ResponseIf = await connectionTest(act);
       ({ s, j } = connectionTestRes);
       break;
-    case "flushdb":
+    case DbActionsViaApi.flushdb:
       const flushDbRes: ResponseIf = await flushDb(act);
       ({ s, j } = flushDbRes);
+      break;
+    case DbActionsViaApi.getcache:
+      const getCacheRes: ResponseIf = await getCache(act);
+      ({ s, j } = getCacheRes);
+      break;
+    case DbActionsViaApi.set:
+      ({ s, j } = await dbOp(act.toLowerCase(), key as string, value));
+      break;
+    case DbActionsViaApi.hset:
+      ({ s, j } = await dbOp(act.toLowerCase(), key as KVRoot, value));
+      break;
+    case DbActionsViaApi.sadd:
+      ({ s, j } = await dbOp(act.toLowerCase(), key as KVRoot, value));
+      break;
+    case DbActionsViaApi.del:
+      ({ s, j } = await dbOp(act.toLowerCase(), key as KVRoot, value));
+      break;
+    case DbActionsViaApi.srem:
+      ({ s, j } = await dbOp(act.toLowerCase(), key as KVRoot, value));
       break;
     default:
       res.status(400).json({ error: "Invalid action parameter" });

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import binanceapiutils from "../../../utils/binanceapiutil";
-import { ApiResponse } from "@/utils/types";
+import { ApiResponse } from "@/utils/typesAndEnums";
 
 export default async function klines(
   req: NextApiRequest,

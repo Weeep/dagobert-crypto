@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { TransactionIf } from "./Interfaces";
-import { DagobertTransaction } from "@/utils/types";
+import { DagobertTransaction } from "@/utils/typesAndEnums";
 import { formatDate, getPrice, getTargetPrices } from "@/utils/helper";
 
 interface Props {
@@ -10,62 +10,16 @@ interface Props {
 
 const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
   const [isMarked, setIsMarked] = useState(false);
-  // const [dtransaction, setdtransaction] = useState<DagobertTransaction>({
-  //   orderId: "",
-  //   pair: "",
-  //   amount: 0,
-  //   dateEpoch: 0,
-  //   date: new Date(),
-  //   side: "",
-  //   executed: 0,
-  //   price: 0,
-  //   grouped: false,
-  // });
 
-  const calculatedtransaction = (transaction: TransactionIf) => {
-    /*
-    pair: string; // SOLUSDC
-    spentUsd: number; //8.03
-    date: Date; //24. 12. 29.
-    side: string; // SELL
-    qty: number; // 0.041
-    price: number; // 195.94
-    */
-    // const cqq = stringToRoundedFloat(transaction.cummulativeQuoteQty, 2);
-    // const cv: DagobertTransaction = {
-    //   orderId: transaction.orderId.toString(),
-    //   pair: transaction.symbol,
-    //   amount: transaction.side === "SELL" ? cqq : 0 - cqq,
-    //   dateEpoch: transaction.updateTime,
-    //   date: new Date(transaction.updateTime),
-    //   side: transaction.side,
-    //   executed: stringToRoundedFloat(transaction.executedQty),
-    //   price: stringToRoundedFloat(
-    //     getPrice(transaction.cummulativeQuoteQty, transaction.executedQty)
-    //   ),
-    //   grouped: false,
-    // };
-    //setdtransaction(cv);
-  };
-
-  // let useEffectFirst = true;
-  // useEffect(() => {
-  //   if (useEffectFirst) {
-  //     useEffectFirst = false;
-  //     calculatedtransaction(transaction);
-  //   }
-  // }, []);
-
-  const handleClick = () => {
+  const toggleSelection = () => {
     onClick(dtransaction, !isMarked);
     setIsMarked(!isMarked);
     //setIsVisible(false);
   };
 
-  //
   return (
     <div
-      onClick={handleClick}
+      onClick={toggleSelection}
       className={`bg-${
         isMarked ? "blue" : "slate"
       }-100 p-4 rounded-md shadow-md`}
@@ -82,13 +36,7 @@ const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
       <div className="flex justify-center font-semibold mb-2 text-black">
         {[
           ["Pair", dtransaction.pair],
-          [
-            "Amount",
-            (dtransaction.amount >= 0
-              ? "+" + dtransaction.amount
-              : dtransaction.amount
-            ).toString(),
-          ],
+          ["Price", dtransaction.price.toString()],
           ["Executed", dtransaction.executed.toString()],
         ].map((cardElement: string[], index: number) => {
           return (
@@ -109,7 +57,14 @@ const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
             dtransaction.side,
             dtransaction.side === "BUY" ? "bg-green-100" : "bg-red-100",
           ],
-          ["Price", dtransaction.price.toString()],
+          [
+            "Amount",
+            (dtransaction.amount >= 0
+              ? "+" + dtransaction.amount
+              : dtransaction.amount
+            ).toString(),
+            "",
+          ],
         ].map((cardElement: string[], index: number) => {
           return (
             <div key={index} className="w-1/3 text-center">
@@ -122,16 +77,38 @@ const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
 
       {/* Row 3 */}
       <p className="text-xs text-center text-gray-400">
-        {getTargetPrices(dtransaction.price, [-5, -3, 3, 5, 10]).map((item) => (
-          <span key={dtransaction.orderId + item}>| {item} |</span>
-        ))}
+        {getTargetPrices(dtransaction.price, [-5, -3, 3, 5, 10]).map(
+          (item, index) => (
+            <span key={index}>| {item} |</span>
+          )
+        )}
       </p>
+
+      {/*<div className="text-black">
+        {dtransaction.dateEpoch}|||
+        {getDate(dtransaction.dateEpoch)}
+      </div>*/}
     </div>
   );
 };
 
-//function formatDate(epoch: number): string {
-//
-//}
+function getDate(epoch: number): string {
+  const d = new Date(epoch);
+  return (
+    d.getFullYear() +
+    "-" +
+    d.getMonth() +
+    "-" +
+    d.getDay() +
+    " " +
+    d.getHours() +
+    ":" +
+    d.getMinutes() +
+    ":" +
+    d.getSeconds() +
+    "." +
+    d.getMilliseconds()
+  );
+}
 
 export default DTransactionCard;

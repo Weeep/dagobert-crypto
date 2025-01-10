@@ -6,11 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "export-kv-db": "ts-node scripts/exportKvDb.ts",
+    "import-kv-db": "ts-node scripts/importKvDb.ts"
   },
   "dependencies": {
     "@vercel/kv": "^1.0.1",
     "axios": "^1.6.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
     "next": "14.0.4",
     "papaparse": "^5.4.1",
     "react": "^18",
@@ -19,6 +22,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/dotenv": "^8.2.3",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.15",
     "@types/react": "^18",
@@ -26,6 +30,7 @@
     "autoprefixer": "^10.0.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

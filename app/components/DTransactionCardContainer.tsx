@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { TransactionIf } from "./Interfaces";
 import DTransactionCard from "./DTransactionCard";
-import { DagobertTransaction, DagobertTransactionGroup } from "@/utils/types";
+import {
+  DagobertTransaction,
+  DagobertTransactionGroup,
+} from "@/utils/typesAndEnums";
 
 interface Props {
   dtransactions: DagobertTransaction[];
@@ -63,7 +66,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
     }
 
     try {
-      const dbResponse = await fetch("/api/dbapi/transactionGroups", {
+      const dbResponse = await fetch("/api/dbapi/dtransactionGroups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: [transactionGroup] }),
@@ -151,9 +154,9 @@ const DTransactionCardContainer: React.FC<Props> = ({
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
       >
         {filteredData.length !== 0 &&
-          filteredData.map((transaction) => (
+          filteredData.map((transaction, index) => (
             <DTransactionCard
-              key={transaction.orderId}
+              key={index}
               dtransaction={transaction}
               onClick={handleTransactionMarked}
             />
