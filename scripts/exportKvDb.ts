@@ -3,11 +3,11 @@
 //import { kv } from "@vercel/kv";
 //import dotenv from "dotenv";
 
-const fs = require("fs");
-const { kv } = require("@vercel/kv");
-const dotenv = require("dotenv");
+const fse = require("fs");
+const { kv: kve } = require("@vercel/kv");
+const dotenve = require("dotenv");
 
-dotenv.config({ path: ".env.local" });
+dotenve.config({ path: ".env.local" });
 
 async function exportKvDatabase() {
   const data: Record<string, any> = {};
@@ -15,25 +15,25 @@ async function exportKvDatabase() {
   let cursor = 0;
   let resp: [nextCursor: number, keys: string[]] = [0, []];
   do {
-    resp = await kv.scan(cursor);
+    resp = await kve.scan(cursor);
     cursor = resp[0];
 
     for (const key of resp[1]) {
       try {
         // Get the type of the key
-        const type = await kv.type(key);
+        const type = await kve.type(key);
 
         // Fetch data based on the type
         if (type === "string") {
-          data[key] = await kv.get(key);
+          data[key] = await kve.get(key);
         } else if (type === "hash") {
-          data[key] = await kv.hgetall(key); // Fetch all fields in the hash
+          data[key] = await kve.hgetall(key); // Fetch all fields in the hash
         } else if (type === "list") {
-          data[key] = await kv.lrange(key, 0, -1); // Fetch all elements in the list
+          data[key] = await kve.lrange(key, 0, -1); // Fetch all elements in the list
         } else if (type === "set") {
-          data[key] = await kv.smembers(key); // Fetch all members of the set
+          data[key] = await kve.smembers(key); // Fetch all members of the set
         } else if (type === "zset") {
-          data[key] = await kv.zrange(key, 0, -1, { withScores: true }); // Fetch all members of the sorted set
+          data[key] = await kve.zrange(key, 0, -1, { withScores: true }); // Fetch all members of the sorted set
         } else {
           console.warn(`Unknown type for key "${key}": ${type}`);
         }
@@ -43,7 +43,7 @@ async function exportKvDatabase() {
     }
   } while (cursor !== 0);
 
-  fs.writeFileSync("vercel_kv_export.json", JSON.stringify(data, null, 2));
+  fse.writeFileSync("vercel_kv_export.json", JSON.stringify(data, null, 2));
   console.log("Database exported successfully!");
 }
 
