@@ -1,4 +1,4 @@
-import { TransactionIf } from "@/app/components/Interfaces";
+import { TransactionIf } from "@/app/lib/Interfaces";
 import {
   BnceTradeHisFromCsv,
   DagobertTransaction,

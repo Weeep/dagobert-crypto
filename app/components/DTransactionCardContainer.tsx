@@ -1,23 +1,31 @@
 import React, { useState } from "react";
-import { TransactionIf } from "./Interfaces";
 import DTransactionCard from "./DTransactionCard";
 import {
   DagobertTransaction,
   DagobertTransactionGroup,
 } from "@/utils/typesAndEnums";
+import DtransactionGroups from "../lib/DtransactionGroups";
+import DTransactionGroupContainer from "./DTransactionGroupContainer";
 
 interface Props {
   dtransactions: DagobertTransaction[];
   numOfTransactions: number;
   selectedPairs: string[];
+  setDtransGroupContainer: (dtransGroupContainer: React.ReactNode) => void;
 }
+
+type MarkedDTransaction = {
+  dtransaction: DagobertTransaction;
+  visibilityFunc: (isVisible: boolean) => void;
+};
 
 const DTransactionCardContainer: React.FC<Props> = ({
   dtransactions,
   numOfTransactions,
   selectedPairs,
+  setDtransGroupContainer,
 }) => {
-  const [markedForMerge, setMarkedForMerge] = useState<DagobertTransaction[]>(
+  const [markedForMerge, setMarkedForMerge] = useState<MarkedDTransaction[]>(
     []
   );
   //const [mergedTransactions, setMergedTransactions] = useState<React.ReactNode>(
@@ -25,15 +33,23 @@ const DTransactionCardContainer: React.FC<Props> = ({
   //);
 
   const handleTransactionMarked = (
-    transaction: DagobertTransaction,
-    add: boolean
+    dtransaction: DagobertTransaction,
+    add: boolean,
+    handleVisibility: (isVisible: boolean) => void
   ) => {
-    let newMarkedForMerge: DagobertTransaction[] = [];
+    let newMarkedForMerge: MarkedDTransaction[] = []; // = //markedForMerge; //
     if (add) {
-      newMarkedForMerge = [...markedForMerge, transaction];
+      //newMarkedForMerge.push({
+      //  dtransaction,
+      //  visibilityFunc: handleVisibility,
+      //});
+      newMarkedForMerge = [
+        ...markedForMerge,
+        { dtransaction, visibilityFunc: handleVisibility },
+      ];
     } else {
       newMarkedForMerge = markedForMerge.filter(function (item) {
-        return item !== transaction;
+        return item.dtransaction.orderId !== dtransaction.orderId;
       });
     }
     setMarkedForMerge(newMarkedForMerge);
@@ -49,7 +65,9 @@ const DTransactionCardContainer: React.FC<Props> = ({
       groupedTrans: [],
     };
 
-    for (const dTrans of markedForMerge) {
+    for (const mDTrans of markedForMerge) {
+      const dTrans = mDTrans.dtransaction;
+
       transactionGroup.pair = dTrans.pair; //TODO same pair validation, AVAX and SOL cannot be grouped
       transactionGroup.amount += dTrans.amount;
       transactionGroup.executed =
@@ -63,67 +81,21 @@ const DTransactionCardContainer: React.FC<Props> = ({
           ? dTrans.dateEpoch
           : transactionGroup.lastTransDateEpoch;
       transactionGroup.groupedTrans.push(dTrans);
+
+      mDTrans.visibilityFunc(false);
     }
 
-    try {
-      const dbResponse = await fetch("/api/dbapi/dtransactionGroups", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: [transactionGroup] }),
-      });
-
-      if (!dbResponse.ok) {
-        throw dbResponse.status;
-      } else {
-        //setOrdersUpdateInfo(`Database update done.`);
+    if (transactionGroup.groupedTrans.length > 1) {
+      try {
+        const r = await DtransactionGroups.post([transactionGroup]);
+        setDtransGroupContainer(
+          <DTransactionGroupContainer epoch={Date.now()} />
+        );
+        setMarkedForMerge([]);
+      } catch (error) {
+        console.error("Error storing transactionGroup", error);
       }
-    } catch (error) {
-      console.error(`Error storing transactionGroup`, error);
     }
-
-    /*
-    setMergedTransactions(
-      <div
-        className={`bg-${transactionGroup.incomeUsd <= 0 ? "red" : "green"}-100
-       p-4 rounded-md shadow-md`}
-      >
-        <div style={{ display: "none" }}>
-          <span className="bg-red-100"></span>
-          <span className="bg-green-100"></span>
-          <span className="bg-slate-100"></span>
-          <span className="bg-blue-100"></span>
-          TODO: It looks without these the below aggregation does not work
-        </div>
-        <h2 className="text-xl font-semibold mb-2 text-black">
-          {transactionGroup.pair}&nbsp;&nbsp;
-          <span
-            className={`text-${
-              transactionGroup.incomeUsd >= 0 ? "lime" : "red"
-            }-500`}
-          >
-            {transactionGroup.incomeUsd >= 0
-              ? "+" + transactionGroup.incomeUsd.toFixed(2)
-              : transactionGroup.incomeUsd.toFixed(2)}
-            $
-          </span>
-          &nbsp;&nbsp;{transactionGroup.qty}
-        </h2>
-        {transactionGroup.groupedTrans.map((t) => {
-          return (
-            <p key={t.orderId} className="text-xs text-gray-500 mb-2">
-              {t.orderId}:{" "}
-              <span
-                className={`bg-${t.side === "BUY" ? "green" : "red"}-100 p-1`}
-              >
-                {t.side}
-              </span>{" "}
-              {" on "}
-              <b>${t.price}</b>
-            </p>
-          );
-        })}
-      </div>
-    ); */
   };
 
   const filteredData = dtransactions.filter((dt: DagobertTransaction) => {

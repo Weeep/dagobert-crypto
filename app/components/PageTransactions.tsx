@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
-import { TransactionIf, SymbolPriceIf } from "./Interfaces";
+import { SymbolPriceIf } from "../lib/Interfaces";
 import DTransactionCardContainer from "./DTransactionCardContainer";
-import ProgressInfo from "./ProgressInfo";
 import PairsAndPrices from "./PairsAndPrices";
 import DTransactionGroupContainer from "./DTransactionGroupContainer";
 import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
-import ClientSideDbCache from "./ClientSideDbCache";
+import ClientSideDbCache from "../lib/ClientSideDbCache";
 
 const PageTransactions = () => {
   const [dtransactions, setDtransactions] = useState<DagobertTransaction[]>([]);
   const [numOfTransactions, setnumOfTransactions] = useState<number>(0);
+  const [dTransGroupContainer, setDtransGroupContainer] =
+    useState<React.ReactNode>(
+      <DTransactionGroupContainer epoch={Date.now()} />
+    );
 
   const [symbolPrices, setSymbolPrices] = useState<SymbolPriceIf[]>([]); //TODO move symbolPrices to PairsAndPrices and rename it to pair
   const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
@@ -98,8 +101,10 @@ const PageTransactions = () => {
         dtransactions={dtransactions}
         numOfTransactions={numOfTransactions}
         selectedPairs={selectedPairs}
+        setDtransGroupContainer={setDtransGroupContainer}
       />
-      <DTransactionGroupContainer />
+
+      {dTransGroupContainer}
     </div>
   );
 };

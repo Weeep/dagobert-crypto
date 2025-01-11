@@ -1,4 +1,3 @@
-import { TransactionIf } from "@/app/components/Interfaces";
 import DbApiUtil from "@/utils/dbapiutil";
 import {
   ApiResponse,
@@ -6,64 +5,12 @@ import {
   KVRoot,
 } from "@/utils/typesAndEnums";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { v4 as uuidv4 } from "uuid";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   switch (req.method) {
-    // --- setTransactionGroups
-    case "POST":
-      const { data } = req.body;
-
-      if (!data || data === undefined) {
-        //TODO true even it is undefined
-        res.status(400).json({ error: "Missing data" });
-      }
-
-      let transactionGroups = data as DagobertTransactionGroup[]; // TODO !!!
-      if (
-        transactionGroups.length > 0 &&
-        transactionGroups[0]?.pair &&
-        transactionGroups[0]?.groupedTrans
-      ) {
-        transactionGroups.map(async (transactionGroup) => {
-          for (const dtransaction of transactionGroup.groupedTrans) {
-            const dbResp: ApiResponse = await DbApiUtil.hget(
-              KVRoot.dtransactions,
-              dtransaction.orderId.toString()
-            );
-            const storedTransaction = dbResp.response;
-
-            const newGroupedValue = { grouped: true };
-
-            await DbApiUtil.hset(KVRoot.dtransactions, {
-              [dtransaction.orderId]: {
-                ...storedTransaction,
-                ...newGroupedValue,
-              },
-            });
-          }
-
-          const gid = uuidv4();
-          transactionGroup.groupId = gid;
-          await DbApiUtil.hset(KVRoot.dtransactionGroups, {
-            [gid]: transactionGroup,
-          });
-
-          //await DbApiUtil.hset("transactions", {
-          //  [transaction.orderId]: transaction,
-          //});
-        });
-        // TODO check it successfully done?
-      } else {
-        res.status(400).json({ error: "Invalid data" });
-      }
-
-      res.status(200).json({ success: true });
-      break;
-
     // --- getTransactionGroups
     case "GET":
       const { id } = req.query;

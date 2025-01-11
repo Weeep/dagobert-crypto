@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import ProgressInfo from "./ProgressInfo";
 import CsvParse from "./CsvParse";
-import ClientSideDbCache from "./ClientSideDbCache";
+import ClientSideDbCache from "../lib/ClientSideDbCache";
 import { KVRoot } from "@/utils/typesAndEnums";
-import Dtransactions from "./dtransactions";
+import Dtransactions from "../lib/Dtransactions";
 
 export default function PageConfig() {
   const [pairs, setPairs] = useState<string[]>([]);
@@ -27,12 +27,7 @@ export default function PageConfig() {
 
   const fetchPairs = async () => {
     const pairs = ClientSideDbCache.smembers(KVRoot.pairs); //await fetchh(`/api/dbapi/pairs`);
-    //if (response.ok) {
-    //  const data = await response.json();
-    console.log("ggg " + JSON.stringify(pairs));
     setPairs(pairs);
-    console.log("ggg " + JSON.stringify(pairs));
-    //}
   };
 
   let useEffectFirst = true;

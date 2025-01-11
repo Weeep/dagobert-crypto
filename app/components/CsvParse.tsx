@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Papa from "papaparse";
 import { BnceTradeHisFromCsv } from "@/utils/typesAndEnums";
-import Dtransactions from "./dtransactions";
+import Dtransactions from "../lib/Dtransactions";
 
 //Record<string, string>; // Defines the type for each row in the CSV
 
@@ -31,7 +31,7 @@ const CsvParse: React.FC = () => {
           );
           /*
           try {
-            const dbResponse = await fetch("/api/dbapi/dtransactions", {
+            const dbResponse = await fetcch("/api/dbapi/dtransactions", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

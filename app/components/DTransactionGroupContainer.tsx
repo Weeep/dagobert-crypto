@@ -4,54 +4,51 @@ import {
   DagobertTransactionGroup,
 } from "@/utils/typesAndEnums";
 import { formatDate } from "@/utils/helper";
+import DtransactionGroups from "../lib/DtransactionGroups";
 
-const DTransactionGroupContainer: React.FC = () => {
+interface Props {
+  epoch: number;
+}
+
+const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
   const [transactionGroups, setTransactionGroups] = useState<
     DagobertTransactionGroup[]
   >([]);
   const [profit, setProfit] = useState<number>(0);
 
-  let useEffectFirst = true;
+  //let useEffectFirst = true;
   useEffect(() => {
-    if (useEffectFirst) {
-      useEffectFirst = false;
+    //if (useEffectFirst) {
+    //  useEffectFirst = false;
 
-      const fetchData = async () => {
-        let transactionGroupsTemp: DagobertTransactionGroup[] = [];
-
-        try {
-          const dbResponse = await fetch("/api/dbapi/dtransactionGroups");
-
-          if (!dbResponse.ok) {
-            throw dbResponse.status;
-          } else {
-            //setTransactionGroups(
-            transactionGroupsTemp =
-              (await dbResponse.json()) as DagobertTransactionGroup[];
-            //);
-          }
-        } catch (error) {
-          console.error(`Error storing transactionGroup`, error);
+    const fetchData = async () => {
+      const response = DtransactionGroups.get(null);
+      if (
+        response.ok &&
+        response.response &&
+        response.response.groupedTransactions.length !== 0
+      ) {
+        const transactionGroupsTemp = response.response.groupedTransactions;
+        let profitTemp = 0;
+        for (const tg of transactionGroupsTemp) {
+          profitTemp += tg.amount;
         }
+        setProfit(profitTemp);
+        setTransactionGroups(transactionGroupsTemp);
+      } else {
+        console.error("No transactionGroups by DtransactionGroups.get(null)");
+      }
+    };
 
-        if (transactionGroupsTemp.length !== 0) {
-          let profitTemp = 0;
-          for (const tg of transactionGroupsTemp) {
-            profitTemp += tg.amount;
-          }
-          setProfit(profitTemp);
-          setTransactionGroups(transactionGroupsTemp);
-        }
-      };
-
-      fetchData();
-    }
-  }, []);
+    fetchData(); //await?
+    //}
+  }, [epoch]);
 
   return (
     <>
       <div className="text-2xl font-bold mb-4 mt-4">
-        Grouped Transactions (profit: {profit.toFixed(2)})
+        Grouped Transactions (profit: {profit.toFixed(2)}){" "}
+        <span className="text-xs">{epoch}</span>
       </div>
       {transactionGroups.length !== 0 &&
         transactionGroups

@@ -1,4 +1,4 @@
-import { TransactionIf } from "@/app/components/Interfaces";
+import { TransactionIf } from "@/app/lib/Interfaces";
 import {
   binanceApiOrdersToDTransactions,
   binanceCsvFileToDTransactions,
@@ -43,7 +43,8 @@ class Dtransactions {
         //const d = JSON.parse(data);
         if (this.isBinanceApiData(data)) {
           const apiR = await this.store(
-            binanceApiOrdersToDTransactions(data as TransactionIf[])
+            binanceApiOrdersToDTransactions(data as TransactionIf[]),
+            type.toString().toLowerCase()
           );
           return { ok: true, error: "", response: apiR };
         } else {
@@ -53,7 +54,8 @@ class Dtransactions {
         //const d = JSON.parse(data);
         if (this.isBinanceCsvData(data)) {
           const csvR = await this.store(
-            binanceCsvFileToDTransactions(data as BnceTradeHisFromCsv[])
+            binanceCsvFileToDTransactions(data as BnceTradeHisFromCsv[]),
+            type.toString().toLowerCase()
           );
           return { ok: true, error: "", response: csvR };
         } else {
@@ -113,9 +115,12 @@ class Dtransactions {
   //  res.status(405).json({ error: "Method not allowed" });
   //}
 
-  static async store(dtransactionsPerPair: {
-    [pair: string]: DagobertTransaction[];
-  }): Promise<{
+  static async store(
+    dtransactionsPerPair: {
+      [pair: string]: DagobertTransaction[];
+    },
+    type: string
+  ): Promise<{
     pairInfo: {
       [key: string]: { processed: number; added: number; skipped: number };
     };
@@ -141,10 +146,9 @@ class Dtransactions {
       for (let i = 0; i < dtransactions.length; i++) {
         const dtransaction: DagobertTransaction = dtransactions[i];
 
-        console.log("wwwww " + dtransaction.dateEpoch);
-
         if (
           await this.epochNewerThanStored(
+            type,
             dtransaction.pair,
             dtransaction.dateEpoch
           )
@@ -185,6 +189,7 @@ class Dtransactions {
   }
 
   static async epochNewerThanStored(
+    type: string,
     pair: string,
     epoch: number
   ): Promise<boolean> {
@@ -192,7 +197,25 @@ class Dtransactions {
       "last_transaction_epoch_" + pair
     );
 
-    if (lastTransEpoch === null || epoch >= parseInt(lastTransEpoch)) {
+    let epochUpdateNeeded = !lastTransEpoch;
+
+    if (
+      !epochUpdateNeeded &&
+      type === "binanceapi" &&
+      epoch > parseInt(lastTransEpoch)
+    ) {
+      epochUpdateNeeded = true;
+    }
+
+    if (
+      !epochUpdateNeeded &&
+      type !== "binanceapi" &&
+      epoch >= parseInt(lastTransEpoch)
+    ) {
+      epochUpdateNeeded = true;
+    }
+
+    if (epochUpdateNeeded) {
       await ClientSideDbCache.set(
         "last_transaction_epoch_" + pair,
         epoch.toString()

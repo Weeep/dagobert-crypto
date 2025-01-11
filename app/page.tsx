@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import PageTransactions from "./components/PageTransactions";
 import PageOrderHistory from "./components/PageOrderHistory";
 import PageConfig from "./components/PageConfig";
-import ClientSideDbCache from "./components/ClientSideDbCache";
+import ClientSideDbCache from "./lib/ClientSideDbCache";
 
 const pages = {
   Transactions: PageTransactions,

@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { TransactionIf } from "./Interfaces";
 import { DagobertTransaction } from "@/utils/typesAndEnums";
 import { formatDate, getPrice, getTargetPrices } from "@/utils/helper";
 
 interface Props {
   dtransaction: DagobertTransaction;
-  onClick: (transaction: DagobertTransaction, remove: boolean) => void;
+  onClick: (
+    transaction: DagobertTransaction,
+    remove: boolean,
+    handleVisibility: (isVisible: boolean) => void
+  ) => void;
 }
 
 const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
   const [isMarked, setIsMarked] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
   const toggleSelection = () => {
-    onClick(dtransaction, !isMarked);
+    onClick(dtransaction, !isMarked, setIsVisible);
     setIsMarked(!isMarked);
     //setIsVisible(false);
   };
@@ -22,7 +26,7 @@ const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
       onClick={toggleSelection}
       className={`bg-${
         isMarked ? "blue" : "slate"
-      }-100 p-4 rounded-md shadow-md`}
+      }-100 p-4 rounded-md shadow-md ${isVisible ? "" : "hidden"}`}
     >
       <div style={{ display: "none" }}>
         <span className="bg-red-100"></span>

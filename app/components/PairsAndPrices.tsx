@@ -1,5 +1,5 @@
 import { /*React, {*/ useState } from "react";
-import { SymbolPriceIf } from "./Interfaces";
+import { SymbolPriceIf } from "../lib/Interfaces";
 import Image from "next/image";
 
 interface Props {

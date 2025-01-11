@@ -47,7 +47,7 @@ class ClientSideDbCache {
     value: { [field: string]: any }
   ): Promise<boolean> {
     const input = { method: "hset", key, value };
-    return this.handleOperation(() => this.dbAction(input), input);
+    return await this.handleOperation(() => this.dbAction(input), input);
   }
 
   public static async sadd(key: KVRoot, value: any): Promise<boolean> {
@@ -102,19 +102,7 @@ class ClientSideDbCache {
       //console.log("dbAction called: " + query);
 
       const response = await fetch(query);
-      if (params.method.trim() === "hset") {
-        console.log(
-          "dbAction called, result: " +
-            this.iii++ +
-            "\n" +
-            JSON.stringify(params.value) +
-            "\n" +
-            JSON.stringify(await response.json())
-        );
 
-        const ddd = await fetch("/api/dbapi/dtransactions");
-        console.log(Object.values(await ddd.json()).length);
-      }
       return response.ok;
     } catch (error) {
       console.error("error happened", error); //TODO
