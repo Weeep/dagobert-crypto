@@ -110,10 +110,10 @@ class Dtransactions {
       //res.status(cacheResponse.code).json({ error: cacheResponse.error });
     }
   }
-  // --- default
-  //default:
-  //  res.status(405).json({ error: "Method not allowed" });
-  //}
+
+  static getAll(): any {
+    return ClientSideDbCache.hgetall(KVRoot.dtransactions);
+  }
 
   static async store(
     dtransactionsPerPair: {

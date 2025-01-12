@@ -39,7 +39,7 @@ class ClientSideDbCache {
 
   public static async set(key: string, value: string): Promise<boolean> {
     const input = { method: "set", key, value };
-    return this.handleOperation(() => this.dbAction(input), input);
+    return await this.handleOperation(() => this.dbAction(input), input);
   }
 
   public static async hset(
@@ -52,7 +52,7 @@ class ClientSideDbCache {
 
   public static async sadd(key: KVRoot, value: any): Promise<boolean> {
     const input = { method: "sadd", key, value };
-    return this.handleOperation(() => this.dbAction(input), input);
+    return await this.handleOperation(() => this.dbAction(input), input);
   }
 
   // GET
@@ -90,6 +90,11 @@ class ClientSideDbCache {
 
   private static async dbAction(params: dbParams): Promise<boolean> {
     try {
+      let value = params.value.trim();
+      if (typeof value !== "string") {
+        value = JSON.stringify(value);
+      }
+
       const query =
         "/api/dbapi/admin" +
         "?action=" +
@@ -97,7 +102,7 @@ class ClientSideDbCache {
         "&key=" +
         encodeURIComponent(params.key.trim()) +
         "&value=" +
-        encodeURIComponent(JSON.stringify(params.value).trim());
+        encodeURIComponent(value);
 
       //console.log("dbAction called: " + query);
 

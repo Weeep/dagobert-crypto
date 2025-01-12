@@ -8,7 +8,7 @@ export default async function allOrders(
 ) {
   const apiResponse: ApiResponse = await libAllOrders(req.query);
   if (apiResponse.ok) {
-    res.status(apiResponse.code).json(JSON.stringify(apiResponse.response));
+    res.status(apiResponse.code).json(apiResponse.response);
   } else {
     res.status(apiResponse.code).json({ error: apiResponse.error });
   }

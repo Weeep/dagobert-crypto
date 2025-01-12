@@ -141,6 +141,7 @@ class DbApiUtil {
   }
 
   public static async srem(key: KVRoot, item: any): Promise<ApiResponse> {
+    console.log("pppppppp " + key + " " + item);
     return this.handleOperation(() => kv.srem(key, item));
   }
 

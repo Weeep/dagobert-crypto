@@ -111,9 +111,18 @@ export default async function admin(req: NextApiRequest, res: NextApiResponse) {
           const delRes: ApiResponse = await DbApiUtil.del(key);
           return apiResponseToResponseIf(delRes, action);
         case "srem":
+          console.log("rrrrr " + key + ": " + value);
+          console.log(
+            "rrrr1 " + JSON.stringify(await DbApiUtil.smembers(key as KVRoot))
+          );
+
           const sremRes: ApiResponse = await DbApiUtil.srem(
             key as KVRoot,
             value
+          );
+          console.log("rrrrr " + JSON.stringify(sremRes));
+          console.log(
+            "rrrr2 " + JSON.stringify(await DbApiUtil.smembers(key as KVRoot))
           );
           return apiResponseToResponseIf(sremRes, action);
         default:

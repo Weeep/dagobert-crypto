@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import PageTransactions from "./components/PageTransactions";
 import PageOrderHistory from "./components/PageOrderHistory";
-import PageConfig from "./components/PageConfig";
+import PageConfig from "./components/pageConfig/PageConfig";
 import ClientSideDbCache from "./lib/ClientSideDbCache";
 
 const pages = {
@@ -50,7 +50,7 @@ export default function Home() {
     return (
       <div>
         <header className="flex justify-between items-center p-4 border-b border-gray-700">
-          <h1 className="text-4xl font-bold">Dagobert</h1>
+          <h1 className="text-4xl font-bold">{"Dagobert"}</h1>
           <nav>
             {Object.keys(pages).map((page) => (
               <button

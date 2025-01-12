@@ -5,6 +5,7 @@ import PairsAndPrices from "./PairsAndPrices";
 import DTransactionGroupContainer from "./DTransactionGroupContainer";
 import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
+import { redCross } from "@/utils/helper";
 
 const PageTransactions = () => {
   const [dtransactions, setDtransactions] = useState<DagobertTransaction[]>([]);
@@ -26,7 +27,8 @@ const PageTransactions = () => {
       useEffectFirst = false;
       fetchTransactionData();
       fetchPrices();
-      const intervalId = setInterval(fetchPrices, 15000);
+      //const intervalId = setInterval(fetchPrices, 15000);
+      //}
     }
   }, []);
 
@@ -55,17 +57,17 @@ const PageTransactions = () => {
     }
   };
 
-  const fetchPrices = async () => {
+  const fetchPrices = async (): Promise<boolean> => {
     try {
       const pairs = ClientSideDbCache.smembers(KVRoot.pairs); //await fetchh(`/api/dbapi/pairs`);
       if (!pairs) {
         setPairInfo("No any pair defined. Go to Config and add some.");
-        return;
+        return false;
       }
       //if (pairsResponse.ok) {
       //const pairs = await pairsResponse.json();
 
-      if ((pairs as string[]).length === 0) return;
+      if ((pairs as string[]).length === 0) return false;
 
       const response = await fetch(
         `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(pairs)}`
@@ -78,11 +80,18 @@ const PageTransactions = () => {
       }
 
       //(data2 as SymbolPriceIf[]).sort((a, b) => b.updateTime - a.updateTime);
-      setSymbolPrices(JSON.parse(prices) as SymbolPriceIf[]);
+      setSymbolPrices(prices as SymbolPriceIf[]);
       //}
     } catch (error) {
-      console.error(`Error fetching data:`, error);
+      setPairInfo(
+        `${redCross} Error fetching prices: ${JSON.stringify(error)}`
+      );
+      console.error(`Error fetching prices:`, error);
+      return false;
     }
+
+    //setInterval(fetchPrices, 15000);
+    return true;
   };
 
   return (

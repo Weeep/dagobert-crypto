@@ -6,6 +6,9 @@ import {
 import { parse } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 
+export const greenPipe = "\u2705"; // ✅ Green check mark
+export const redCross = "\u274C"; // ❌ Red cross
+
 export const binanceCsvFileToDTransactions = (
   csvTransactions: BnceTradeHisFromCsv[]
 ): { [pair: string]: DagobertTransaction[] } => {

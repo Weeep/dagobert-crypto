@@ -10,6 +10,9 @@
     "import-kv-db": "ts-node scripts/importKvDb.ts"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/react-fontawesome": "^0.2.2",
     "@vercel/kv": "^1.0.1",
     "axios": "^1.6.5",
     "date-fns": "^4.1.0",

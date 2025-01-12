@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Papa from "papaparse";
 import { BnceTradeHisFromCsv } from "@/utils/typesAndEnums";
-import Dtransactions from "../lib/Dtransactions";
+import Dtransactions from "@/app/lib/Dtransactions";
 
 //Record<string, string>; // Defines the type for each row in the CSV
 
