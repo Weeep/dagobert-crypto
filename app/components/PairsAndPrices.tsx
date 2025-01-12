@@ -1,6 +1,12 @@
 import { /*React, {*/ useState } from "react";
 import { SymbolPriceIf } from "../lib/Interfaces";
 import Image from "next/image";
+import { downPointingTriangle, rightPointingTriangle } from "@/utils/helper";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faChevronDown,
+  faChevronRight,
+} from "@fortawesome/free-solid-svg-icons";
 
 interface Props {
   pairsAndPrices: SymbolPriceIf[];
@@ -13,7 +19,7 @@ const PairsAndPrices: React.FC<Props> = ({
   selectedPairs,
   setSelectedPairs,
 }) => {
-  //const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const convertArrayToObject = (
     array: SymbolPriceIf[]
@@ -40,8 +46,19 @@ const PairsAndPrices: React.FC<Props> = ({
   return (
     <>
       {/* p-8">*/}
-      <h1 className="text-2xl font-bold mb-4 mt-4">Pairs</h1>
-      <div className="flex flex-wrap gap-4">
+      <h1
+        className="text-2xl font-bold mb-4 mt-4"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <FontAwesomeIcon
+          icon={faChevronRight}
+          className={`transform transition-transform duration-300 ${
+            isOpen ? "rotate-90" : "rotate-0"
+          }`}
+        />{" "}
+        Pairs
+      </h1>
+      <div className={`${!isOpen ? "hidden" : ""} flex flex-wrap gap-4`}>
         {Object.keys(symbolPricesObj).map((symbol: string) => (
           <label key={symbol} className="flex items-center">
             <input

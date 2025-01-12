@@ -8,6 +8,8 @@ import { v4 as uuidv4 } from "uuid";
 
 export const greenPipe = "\u2705"; // ✅ Green check mark
 export const redCross = "\u274C"; // ❌ Red cross
+export const rightPointingTriangle = "\u25B6";
+export const downPointingTriangle = "\u25BC";
 
 export const binanceCsvFileToDTransactions = (
   csvTransactions: BnceTradeHisFromCsv[]
