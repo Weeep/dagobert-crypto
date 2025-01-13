@@ -90,8 +90,10 @@ class ClientSideDbCache {
 
   private static async dbAction(params: dbParams): Promise<boolean> {
     try {
-      let value = params.value.trim();
-      if (typeof value !== "string") {
+      let value = params.value;
+      if (typeof value === "string") {
+        value = value.trim();
+      } else {
         value = JSON.stringify(value);
       }
 

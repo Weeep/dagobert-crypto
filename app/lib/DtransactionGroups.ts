@@ -21,27 +21,32 @@ class DtransactionGroups {
       transactionGroups[0]?.groupedTrans
     ) {
       for (const transactionGroup of transactionGroups) {
-        for (const dtransaction of transactionGroup.groupedTrans) {
-          const storedTransaction = ClientSideDbCache.hget(
-            KVRoot.dtransactions,
-            dtransaction.orderId.toString()
-          );
-
-          const newGroupedValue = { grouped: true };
-
-          await ClientSideDbCache.hset(KVRoot.dtransactions, {
-            [dtransaction.orderId]: {
-              ...storedTransaction,
-              ...newGroupedValue,
-            },
-          });
-        }
-
         const gid = uuidv4();
         transactionGroup.groupId = gid;
-        await ClientSideDbCache.hset(KVRoot.dtransactionGroups, {
-          [gid]: transactionGroup,
-        });
+        const success: boolean = await ClientSideDbCache.hset(
+          KVRoot.dtransactionGroups,
+          {
+            [gid]: transactionGroup,
+          }
+        );
+
+        if (success) {
+          for (const dtransaction of transactionGroup.groupedTrans) {
+            const storedTransaction = ClientSideDbCache.hget(
+              KVRoot.dtransactions,
+              dtransaction.orderId.toString()
+            );
+
+            const newGroupedValue = { grouped: true };
+
+            await ClientSideDbCache.hset(KVRoot.dtransactions, {
+              [dtransaction.orderId]: {
+                ...storedTransaction,
+                ...newGroupedValue,
+              },
+            });
+          }
+        }
       }
     } else {
       return {

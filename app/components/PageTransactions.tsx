@@ -6,6 +6,7 @@ import DTransactionGroupContainer from "./DTransactionGroupContainer";
 import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
 import { redCross } from "@/utils/helper";
+import Dtransactions from "../lib/Dtransactions";
 
 const PageTransactions = () => {
   const [dtransactions, setDtransactions] = useState<DagobertTransaction[]>([]);
@@ -79,9 +80,31 @@ const PageTransactions = () => {
         throw response.status + "-" + JSON.stringify(prices);
       }
 
-      //(data2 as SymbolPriceIf[]).sort((a, b) => b.updateTime - a.updateTime);
+      /// Num of Trans calculation
+      let numOfTransactions: { [key: string]: number } = {};
+      const dtranss: DagobertTransaction[] = Object.values(
+        Dtransactions.getAll()
+      );
+
+      for (const dtrans of dtranss) {
+        if (!dtrans.grouped) {
+          if (!(dtrans.pair in numOfTransactions)) {
+            numOfTransactions[dtrans.pair] = 1;
+          } else {
+            numOfTransactions[dtrans.pair] += 1;
+          }
+        }
+      }
+
+      for (const price of prices as SymbolPriceIf[]) {
+        price.numOfTransactions =
+          price.symbol in numOfTransactions
+            ? numOfTransactions[price.symbol]
+            : 0;
+      }
+      ///
+
       setSymbolPrices(prices as SymbolPriceIf[]);
-      //}
     } catch (error) {
       setPairInfo(
         `${redCross} Error fetching prices: ${JSON.stringify(error)}`

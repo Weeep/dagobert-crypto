@@ -23,10 +23,16 @@ const PairsAndPrices: React.FC<Props> = ({
 
   const convertArrayToObject = (
     array: SymbolPriceIf[]
-  ): { [key: string]: number } => {
+  ): { [key: string]: { price: number; numOfTransactions: number } } => {
     return array.reduce(
-      (obj: { [key: string]: number }, item: SymbolPriceIf) => {
-        obj[item.symbol] = parseFloat(item.price as unknown as string);
+      (
+        obj: { [key: string]: { price: number; numOfTransactions: number } },
+        item: SymbolPriceIf
+      ) => {
+        obj[item.symbol] = {
+          price: parseFloat(item.price as unknown as string),
+          numOfTransactions: item.numOfTransactions,
+        };
         return obj;
       },
       {}
@@ -59,33 +65,42 @@ const PairsAndPrices: React.FC<Props> = ({
         Pairs
       </h1>
       <div className={`${!isOpen ? "hidden" : ""} flex flex-wrap gap-4`}>
-        {Object.keys(symbolPricesObj).map((symbol: string) => (
-          <label key={symbol} className="flex items-center">
-            <input
-              type="checkbox"
-              checked={selectedPairs.includes(symbol)}
-              onChange={() => handleCheckboxChange(symbol)}
-              className="form-checkbox h-5 w-5 text-indigo-600"
-            />
-            <div className="ml-2">
-              <div className="flex space-x-2">
-                <div>{symbol}</div>
-                <a
-                  href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${symbol}`}
-                  target="_blank"
-                >
-                  <Image
-                    src="/images/white-short-logo.png"
-                    alt="tradingview-logo"
-                    width={24}
-                    height={24}
-                  />
-                </a>
+        {Object.keys(symbolPricesObj)
+          .sort((a, b) => (a > b ? 1 : -1))
+          .map((symbol: string) => (
+            <label key={symbol} className="flex items-center">
+              <input
+                type="checkbox"
+                checked={selectedPairs.includes(symbol)}
+                onChange={() => handleCheckboxChange(symbol)}
+                className="form-checkbox h-5 w-5 text-indigo-600"
+              />
+              <div className="ml-2">
+                <div className="flex space-x-2">
+                  <div>{symbol}</div>
+                  <a
+                    href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${symbol}`}
+                    target="_blank"
+                  >
+                    <Image
+                      src="/images/white-short-logo.png"
+                      alt="tradingview-logo"
+                      width={24}
+                      height={24}
+                    />
+                  </a>
+                </div>
+                <div className="flex justify-between">
+                  <div className="text-xs">
+                    ${symbolPricesObj[symbol].price}
+                  </div>
+                  <div className="text-xs">
+                    {symbolPricesObj[symbol].numOfTransactions}
+                  </div>
+                </div>
               </div>
-              <small>${symbolPricesObj[symbol]}</small>
-            </div>
-          </label>
-        ))}
+            </label>
+          ))}
       </div>
     </>
   );

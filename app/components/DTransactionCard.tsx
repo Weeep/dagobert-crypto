@@ -14,6 +14,7 @@ interface Props {
 const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
   const [isMarked, setIsMarked] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+  const [number, setNumber] = useState(0);
 
   const toggleSelection = () => {
     onClick(dtransaction, !isMarked, setIsVisible);
@@ -21,6 +22,9 @@ const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
     //setIsVisible(false);
   };
 
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setNumber(Number(event.target.value));
+  };
   return (
     <div
       onClick={toggleSelection}
@@ -80,13 +84,24 @@ const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
       </div>
 
       {/* Row 3 */}
-      <p className="text-xs text-center text-gray-400">
-        {getTargetPrices(dtransaction.price, [-5, -3, 3, 5, 10]).map(
-          (item, index) => (
-            <span key={index}>| {item} |</span>
-          )
-        )}
-      </p>
+      <div className="flex text-xs items-center justify-between px-3 text-gray-400">
+        <div>
+          {getTargetPrices(dtransaction.price, [-5, -3, 3, 5, 10]).map(
+            (item, index) => (
+              <span key={index}>| {item} |</span>
+            )
+          )}
+
+          <span>| {getTargetPrices(dtransaction.price, [number])[0]}</span>
+        </div>
+        <input
+          type="number"
+          value={number}
+          onChange={handleChange}
+          onClick={(event) => event.stopPropagation()}
+          className="w-12 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
 
       {/*<div className="text-black">
         {dtransaction.dateEpoch}|||

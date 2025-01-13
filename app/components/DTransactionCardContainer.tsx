@@ -55,7 +55,9 @@ const DTransactionCardContainer: React.FC<Props> = ({
     setMarkedForMerge(newMarkedForMerge);
   };
 
-  const merge = async () => {
+  const mergeCalculation = (
+    handleVisibility: boolean = false
+  ): DagobertTransactionGroup => {
     let transactionGroup: DagobertTransactionGroup = {
       groupId: null,
       pair: "",
@@ -82,8 +84,16 @@ const DTransactionCardContainer: React.FC<Props> = ({
           : transactionGroup.lastTransDateEpoch;
       transactionGroup.groupedTrans.push(dTrans);
 
-      mDTrans.visibilityFunc(false);
+      if (handleVisibility) {
+        mDTrans.visibilityFunc(false);
+      }
     }
+
+    return transactionGroup;
+  };
+
+  const merge = async () => {
+    let transactionGroup: DagobertTransactionGroup = mergeCalculation(true);
 
     if (transactionGroup.groupedTrans.length > 1) {
       try {
@@ -102,6 +112,21 @@ const DTransactionCardContainer: React.FC<Props> = ({
     return selectedPairs.length === 0 || selectedPairs.includes(dt.pair);
   });
 
+  const mergePreview = () => {
+    const transactionGroup = mergeCalculation();
+    let r = <></>;
+    if (transactionGroup.groupedTrans.length > 1) {
+      r = (
+        <>
+          {transactionGroup.amount.toFixed(2)}
+          {"$ "}
+          {transactionGroup.executed.toFixed(3)} {transactionGroup.pair}
+        </>
+      );
+    }
+    return r;
+  };
+
   return (
     <>
       {/* p-8">*/}
@@ -114,7 +139,8 @@ const DTransactionCardContainer: React.FC<Props> = ({
             onClick={merge}
             className="fixed bottom-0 left-20 right-20 m-10 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800"
           >
-            Merge
+            <div>Merge</div>
+            {mergePreview()}
           </button>
           {/*<div>{mergedTransactions}</div>*/}
         </div>

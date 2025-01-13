@@ -111,8 +111,10 @@ class Dtransactions {
     }
   }
 
-  static getAll(): any {
-    return ClientSideDbCache.hgetall(KVRoot.dtransactions);
+  static getAll(): { [key: string]: DagobertTransaction } {
+    return ClientSideDbCache.hgetall(KVRoot.dtransactions) as {
+      [key: string]: DagobertTransaction;
+    };
   }
 
   static async store(

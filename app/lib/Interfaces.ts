@@ -23,4 +23,5 @@ export interface TransactionIf {
 export interface SymbolPriceIf {
   symbol: string;
   price: number;
+  numOfTransactions: number;
 }
