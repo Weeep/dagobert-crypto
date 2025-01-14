@@ -34,12 +34,12 @@ export default async function handler(
         if (id) {
           res.status(dbResponse.code).json(fetchedTransactionGroups);
         } else {
-          let filteredTransactionGroups: DagobertTransactionGroup[] =
-            Object.values(
-              fetchedTransactionGroups
-            ) as DagobertTransactionGroup[];
+          // let filteredTransactionGroups: DagobertTransactionGroup[] =
+          //   Object.values(
+          //     fetchedTransactionGroups
+          //   ) as DagobertTransactionGroup[];
 
-          res.status(dbResponse.code).json(filteredTransactionGroups);
+          res.status(dbResponse.code).json(fetchedTransactionGroups);
         }
       } else {
         res.status(dbResponse.code).json({ error: dbResponse.error });

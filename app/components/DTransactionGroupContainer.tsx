@@ -3,7 +3,7 @@ import {
   DagobertTransaction,
   DagobertTransactionGroup,
 } from "@/utils/typesAndEnums";
-import { formatDate } from "@/utils/helper";
+import { formatDate, redCross } from "@/utils/helper";
 import DtransactionGroups from "../lib/DtransactionGroups";
 
 interface Props {
@@ -16,33 +16,32 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
   >([]);
   const [profit, setProfit] = useState<number>(0);
 
-  //let useEffectFirst = true;
+  let useEffectFirst = true;
   useEffect(() => {
-    //if (useEffectFirst) {
-    //  useEffectFirst = false;
-
-    const fetchData = async () => {
-      const response = DtransactionGroups.get(null);
-      if (
-        response.ok &&
-        response.response &&
-        response.response.groupedTransactions.length !== 0
-      ) {
-        const transactionGroupsTemp = response.response.groupedTransactions;
-        let profitTemp = 0;
-        for (const tg of transactionGroupsTemp) {
-          profitTemp += tg.amount;
-        }
-        setProfit(profitTemp);
-        setTransactionGroups(transactionGroupsTemp);
-      } else {
-        console.error("No transactionGroups by DtransactionGroups.get(null)");
-      }
-    };
-
-    fetchData(); //await?
-    //}
+    if (useEffectFirst) {
+      useEffectFirst = false;
+      initData();
+    }
   }, [epoch]);
+
+  const initData = () => {
+    const transactionGroupsTemp = DtransactionGroups.getAll();
+    if (transactionGroupsTemp && transactionGroupsTemp.length !== 0) {
+      let profitTemp = 0;
+      for (const tg of transactionGroupsTemp) {
+        profitTemp += tg.amount;
+      }
+      setProfit(profitTemp);
+      setTransactionGroups(transactionGroupsTemp);
+    } else {
+      console.error("No transactionGroups by DtransactionGroups.getAll()");
+    }
+  };
+
+  const deleteGroup = async (groupId: string) => {
+    await DtransactionGroups.del(groupId);
+    initData();
+  };
 
   return (
     <>
@@ -61,8 +60,16 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
               className={`bg-${
                 transactionGroup.amount <= 0 ? "red" : "green"
               }-100
-       p-4 my-4 rounded-md shadow-md`}
+       p-4 my-4 rounded-md shadow-md relative`}
             >
+              <button
+                className="absolute right-2 top-2 text-xs"
+                onClick={() => {
+                  deleteGroup(transactionGroup.groupId as string);
+                }}
+              >
+                {redCross}
+              </button>
               <div style={{ display: "none" }}>
                 <span className="bg-red-100"></span>
                 <span className="bg-green-100"></span>

@@ -110,19 +110,13 @@ export default async function admin(req: NextApiRequest, res: NextApiResponse) {
         case "del":
           const delRes: ApiResponse = await DbApiUtil.del(key);
           return apiResponseToResponseIf(delRes, action);
+        case "hdel":
+          const hdelRes: ApiResponse = await DbApiUtil.hdel(key, value);
+          return apiResponseToResponseIf(hdelRes, action);
         case "srem":
-          console.log("rrrrr " + key + ": " + value);
-          console.log(
-            "rrrr1 " + JSON.stringify(await DbApiUtil.smembers(key as KVRoot))
-          );
-
           const sremRes: ApiResponse = await DbApiUtil.srem(
             key as KVRoot,
             value
-          );
-          console.log("rrrrr " + JSON.stringify(sremRes));
-          console.log(
-            "rrrr2 " + JSON.stringify(await DbApiUtil.smembers(key as KVRoot))
           );
           return apiResponseToResponseIf(sremRes, action);
         default:
@@ -152,7 +146,7 @@ export default async function admin(req: NextApiRequest, res: NextApiResponse) {
     action !== DbActionsViaApi.connectiontest &&
     action !== DbActionsViaApi.flushdb &&
     action !== DbActionsViaApi.getcache &&
-    action !== DbActionsViaApi.set
+    action !== DbActionsViaApi.set //TODO: && 'del' but 'del' not used yet
   ) {
     //TODO
     if (key === null || key === undefined || !isKVRootValue(key))
@@ -189,6 +183,9 @@ export default async function admin(req: NextApiRequest, res: NextApiResponse) {
       ({ s, j } = await dbOp(act.toLowerCase(), key as KVRoot, value));
       break;
     case DbActionsViaApi.del:
+      ({ s, j } = await dbOp(act.toLowerCase(), key as KVRoot, value));
+      break;
+    case DbActionsViaApi.hdel:
       ({ s, j } = await dbOp(act.toLowerCase(), key as KVRoot, value));
       break;
     case DbActionsViaApi.srem:

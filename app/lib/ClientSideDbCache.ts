@@ -1,5 +1,7 @@
 import {
   BnceTradeHisFromCsv,
+  DagobertTransaction,
+  DagobertTransactionGroup,
   DbActionsViaApi,
   KVRoot,
 } from "@/utils/typesAndEnums";
@@ -61,8 +63,18 @@ class ClientSideDbCache {
     return this.cache[key] ?? null;
   }
 
-  public static hget(key: KVRoot, field: string): { [field: string]: any } {
-    return (this.cache[key][field] as { [field: string]: any }) ?? null;
+  public static hget(
+    key: KVRoot,
+    field: string
+  ): DagobertTransaction | DagobertTransactionGroup | null {
+    switch (key) {
+      case KVRoot.dtransactions:
+        return (this.cache[key][field] as DagobertTransaction) ?? null;
+      case KVRoot.dtransactionGroups:
+        return (this.cache[key][field] as DagobertTransactionGroup) ?? null;
+      default:
+        return null; // Only dtrans and dtransgroup supported
+    }
   }
 
   public static hgetall(key: KVRoot): any {
@@ -77,12 +89,17 @@ class ClientSideDbCache {
 
   public static async del(key: string): Promise<boolean> {
     const input = { method: "del", key, value: "" };
-    return this.handleOperation(() => this.dbAction(input), input);
+    return await this.handleOperation(() => this.dbAction(input), input);
   }
 
   public static async srem(key: KVRoot, value: any): Promise<boolean> {
     const input = { method: "srem", key, value };
-    return this.handleOperation(() => this.dbAction(input), input);
+    return await this.handleOperation(() => this.dbAction(input), input);
+  }
+
+  public static async hdel(key: KVRoot, value: string) {
+    const input = { method: "hdel", key, value };
+    return await this.handleOperation(() => this.dbAction(input), input);
   }
 
   // Private funcs
@@ -156,6 +173,9 @@ class ClientSideDbCache {
             this.cache = this.cache.filter(
               (cachedItem: any) => cachedItem !== this.cache[key]
             );
+            break;
+          case "hdel":
+            delete this.cache[key][value];
             break;
           case "srem":
             if (this.cache[key]) {

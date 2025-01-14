@@ -9,6 +9,9 @@ import DTransactionGroupContainer from "./DTransactionGroupContainer";
 
 interface Props {
   dtransactions: DagobertTransaction[];
+  pairsAndPrices: {
+    [key: string]: { price: number; numOfTransactions: number };
+  };
   numOfTransactions: number;
   selectedPairs: string[];
   setDtransGroupContainer: (dtransGroupContainer: React.ReactNode) => void;
@@ -21,6 +24,7 @@ type MarkedDTransaction = {
 
 const DTransactionCardContainer: React.FC<Props> = ({
   dtransactions,
+  pairsAndPrices,
   numOfTransactions,
   selectedPairs,
   setDtransGroupContainer,
@@ -127,6 +131,14 @@ const DTransactionCardContainer: React.FC<Props> = ({
     return r;
   };
 
+  const getCurPrice = (pair: string): number => {
+    if (pair in pairsAndPrices) {
+      return pairsAndPrices[pair].price;
+    } else {
+      return 100; // TODO, he nincs 100 sehol, pedig exceptiont dobott ha nem csekkolom
+    }
+  };
+
   return (
     <>
       {/* p-8">*/}
@@ -156,6 +168,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
             <DTransactionCard
               key={index}
               dtransaction={transaction}
+              currentPrice={getCurPrice(transaction.pair)}
               onClick={handleTransactionMarked}
             />
           ))}

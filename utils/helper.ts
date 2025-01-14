@@ -1,4 +1,4 @@
-import { TransactionIf } from "@/app/lib/Interfaces";
+import { SymbolPriceIf, TransactionIf } from "@/app/lib/Interfaces";
 import {
   BnceTradeHisFromCsv,
   DagobertTransaction,
@@ -71,6 +71,24 @@ export const binanceApiOrdersToDTransactions = (
   });
 
   return dtransactionsPerPair;
+};
+
+export const convertArrayToObject = (
+  array: SymbolPriceIf[]
+): { [key: string]: { price: number; numOfTransactions: number } } => {
+  return array.reduce(
+    (
+      obj: { [key: string]: { price: number; numOfTransactions: number } },
+      item: SymbolPriceIf
+    ) => {
+      obj[item.symbol] = {
+        price: parseFloat(item.price as unknown as string),
+        numOfTransactions: item.numOfTransactions,
+      };
+      return obj;
+    },
+    {}
+  );
 };
 
 export const formatDate = (epoch: number): string => {

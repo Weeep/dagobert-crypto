@@ -70,45 +70,11 @@ class Dtransactions {
     }
   }
 
-  // TODO is this used?
-  static get(id: string): DagobertTransaction[] {
-    // --- getTransactions
-    //case "GET":
-    //const { id } = req.query;
-
-    let cacheResponse: any;
-
-    if (id) {
-      cacheResponse = ClientSideDbCache.hget(
-        KVRoot.dtransactions,
-        id as string
-      );
-    } else {
-      cacheResponse = ClientSideDbCache.hgetall(KVRoot.dtransactions);
-    }
-
-    if (cacheResponse.ok) {
-      const fetchedTransactions = cacheResponse.response
-        ? cacheResponse.response
-        : [];
-
-      if (id) {
-        return fetchedTransactions as DagobertTransaction[]; //res.status(dbResponse.code).json(fetchedTransactions);
-      } else {
-        let filteredTransactions: DagobertTransaction[] = Object.values(
-          fetchedTransactions
-        ) as DagobertTransaction[];
-
-        filteredTransactions = filteredTransactions.filter(
-          (obj) => obj.status === "FILLED" && !obj.grouped
-        );
-
-        return filteredTransactions; //res.status(dbResponse.code).json(filteredTransactions); //fetchedTransactions);
-      }
-    } else {
-      return []; //TODO
-      //res.status(cacheResponse.code).json({ error: cacheResponse.error });
-    }
+  static get(id: string): DagobertTransaction {
+    return ClientSideDbCache.hget(
+      KVRoot.dtransactions,
+      id as string
+    ) as DagobertTransaction;
   }
 
   static getAll(): { [key: string]: DagobertTransaction } {

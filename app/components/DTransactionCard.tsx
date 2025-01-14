@@ -4,6 +4,7 @@ import { formatDate, getPrice, getTargetPrices } from "@/utils/helper";
 
 interface Props {
   dtransaction: DagobertTransaction;
+  currentPrice: number;
   onClick: (
     transaction: DagobertTransaction,
     remove: boolean,
@@ -11,7 +12,11 @@ interface Props {
   ) => void;
 }
 
-const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
+const DTransactionCard: React.FC<Props> = ({
+  dtransaction,
+  currentPrice,
+  onClick,
+}) => {
   const [isMarked, setIsMarked] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [number, setNumber] = useState(0);
@@ -84,6 +89,18 @@ const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
       </div>
 
       {/* Row 3 */}
+      <div className=" text-xs text-center px-3 text-black mb-2">
+        {dtransaction.side === "BUY"
+          ? `Current price: ${currentPrice} || ` +
+            `Profit: ${(
+              currentPrice * dtransaction.executed +
+              dtransaction.amount
+            ).toFixed(2)}$ ` +
+            `(${(100 * (currentPrice / dtransaction.price - 1)).toFixed(2)}%)`
+          : ""}
+      </div>
+
+      {/* Row 4 */}
       <div className="flex text-xs items-center justify-between px-3 text-gray-400">
         <div>
           {getTargetPrices(dtransaction.price, [-5, -3, 3, 5, 10]).map(
@@ -102,11 +119,6 @@ const DTransactionCard: React.FC<Props> = ({ dtransaction, onClick }) => {
           className="w-12 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
-
-      {/*<div className="text-black">
-        {dtransaction.dateEpoch}|||
-        {getDate(dtransaction.dateEpoch)}
-      </div>*/}
     </div>
   );
 };

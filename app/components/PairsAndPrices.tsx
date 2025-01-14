@@ -1,7 +1,11 @@
 import { /*React, {*/ useState } from "react";
 import { SymbolPriceIf } from "../lib/Interfaces";
 import Image from "next/image";
-import { downPointingTriangle, rightPointingTriangle } from "@/utils/helper";
+import {
+  convertArrayToObject,
+  downPointingTriangle,
+  rightPointingTriangle,
+} from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronDown,
@@ -20,24 +24,6 @@ const PairsAndPrices: React.FC<Props> = ({
   setSelectedPairs,
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
-
-  const convertArrayToObject = (
-    array: SymbolPriceIf[]
-  ): { [key: string]: { price: number; numOfTransactions: number } } => {
-    return array.reduce(
-      (
-        obj: { [key: string]: { price: number; numOfTransactions: number } },
-        item: SymbolPriceIf
-      ) => {
-        obj[item.symbol] = {
-          price: parseFloat(item.price as unknown as string),
-          numOfTransactions: item.numOfTransactions,
-        };
-        return obj;
-      },
-      {}
-    );
-  };
 
   const symbolPricesObj = convertArrayToObject(pairsAndPrices);
 

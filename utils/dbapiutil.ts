@@ -140,8 +140,11 @@ class DbApiUtil {
     return this.handleOperation(() => kv.del(key));
   }
 
+  public static async hdel(key: string, fields: string): Promise<ApiResponse> {
+    return this.handleOperation(() => kv.hdel(key, fields));
+  }
+
   public static async srem(key: KVRoot, item: any): Promise<ApiResponse> {
-    console.log("pppppppp " + key + " " + item);
     return this.handleOperation(() => kv.srem(key, item));
   }
 

@@ -59,4 +59,5 @@ export enum DbActionsViaApi {
   sadd = "sadd",
   del = "del",
   srem = "srem",
+  hdel = "hdel",
 }

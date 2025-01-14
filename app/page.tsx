@@ -6,7 +6,8 @@ import PageOrderHistory from "./components/PageOrderHistory";
 import PageConfig from "./components/pageConfig/PageConfig";
 import ClientSideDbCache from "./lib/ClientSideDbCache";
 import Dtransactions from "./lib/Dtransactions";
-import { KVRoot } from "@/utils/typesAndEnums";
+import { DagobertTransactionGroup, KVRoot } from "@/utils/typesAndEnums";
+import DtransactionGroups from "./lib/DtransactionGroups";
 
 const pages = {
   Transactions: PageTransactions,
@@ -31,20 +32,6 @@ export default function Home() {
     try {
       const success = await ClientSideDbCache.initializeCache();
       setCacheInitialized(success);
-
-      //////
-      // const newGroupedValue = { grouped: false };
-      // for (const dt of Object.values(Dtransactions.getAll())) {
-      //   if (dt.pair === "ETHUSDT") {
-      //     await ClientSideDbCache.hset(KVRoot.dtransactions, {
-      //       [dt.orderId]: {
-      //         ...dt,
-      //         ...newGroupedValue,
-      //       },
-      //     });
-      //   }
-      // }
-      //////
     } catch (error) {
       setCacheInitialized(false);
       console.error("error", error);
