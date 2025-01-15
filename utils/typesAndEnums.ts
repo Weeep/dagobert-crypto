@@ -11,6 +11,7 @@ export type DagobertTransaction = {
   price: number; // 195.94
   status: string; //FILLED
   grouped: boolean;
+  note: string;
 };
 
 export type DagobertTransactionGroup = {

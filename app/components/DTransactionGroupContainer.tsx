@@ -47,7 +47,7 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
     <>
       <div className="text-2xl font-bold mb-4 mt-4">
         Grouped Transactions (profit: {profit.toFixed(2)}){" "}
-        <span className="text-xs">{epoch}</span>
+        <span className="hidden text-xs">{epoch}</span>
       </div>
       {transactionGroups.length !== 0 &&
         transactionGroups

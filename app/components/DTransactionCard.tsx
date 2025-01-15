@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { DagobertTransaction } from "@/utils/typesAndEnums";
+import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
 import { formatDate, getPrice, getTargetPrices } from "@/utils/helper";
+import ClientSideDbCache from "../lib/ClientSideDbCache";
 
 interface Props {
   dtransaction: DagobertTransaction;
@@ -21,6 +22,33 @@ const DTransactionCard: React.FC<Props> = ({
   const [isVisible, setIsVisible] = useState(true);
   const [number, setNumber] = useState(0);
 
+  const [note, setNote] = useState<string>(dtransaction.note);
+  const [inputValue, setInputValue] = useState("");
+  const [editNote, setEditNote] = useState<boolean>(false);
+
+  const handleEnterDown = async () => {
+    //e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (inputValue.trim()) {
+      const newNote = { note: inputValue.trim() };
+
+      await ClientSideDbCache.hset(KVRoot.dtransactions, {
+        [dtransaction.orderId]: {
+          ...dtransaction,
+          ...newNote,
+        },
+      });
+
+      setNote(inputValue.trim());
+      setEditNote(false);
+      setInputValue("");
+    }
+  };
+
+  const handleClickOnNote = () => {
+    setEditNote(true);
+    setInputValue(note);
+  };
+
   const toggleSelection = () => {
     onClick(dtransaction, !isMarked, setIsVisible);
     setIsMarked(!isMarked);
@@ -30,6 +58,13 @@ const DTransactionCard: React.FC<Props> = ({
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNumber(Number(event.target.value));
   };
+
+  const getProfit = (): number => {
+    return parseFloat(
+      (currentPrice * dtransaction.executed + dtransaction.amount).toFixed(2)
+    );
+  };
+
   return (
     <div
       onClick={toggleSelection}
@@ -42,7 +77,7 @@ const DTransactionCard: React.FC<Props> = ({
         <span className="bg-green-100"></span>
         <span className="bg-slate-100"></span>
         <span className="bg-blue-100"></span>
-        TODO: It looks without these the below aggregation does not work
+        TODO: It looks without these the below coloring does not work
       </div>
 
       {/* Row 1 */}
@@ -89,15 +124,20 @@ const DTransactionCard: React.FC<Props> = ({
       </div>
 
       {/* Row 3 */}
-      <div className=" text-xs text-center px-3 text-black mb-2">
-        {dtransaction.side === "BUY"
-          ? `Current price: ${currentPrice} || ` +
-            `Profit: ${(
-              currentPrice * dtransaction.executed +
-              dtransaction.amount
-            ).toFixed(2)}$ ` +
-            `(${(100 * (currentPrice / dtransaction.price - 1)).toFixed(2)}%)`
-          : ""}
+      <div className="text-xs text-center px-3 text-black mb-2">
+        {dtransaction.side === "BUY" && (
+          <>
+            Current price: <b>{currentPrice}</b> || Profit:{" "}
+            <span
+              className={`text-${
+                getProfit() > 0 ? "lime-600" : "red-500"
+              } font-bold`}
+            >
+              {getProfit()}$ (
+              {(100 * (currentPrice / dtransaction.price - 1)).toFixed(2)}%)
+            </span>
+          </>
+        )}
       </div>
 
       {/* Row 4 */}
@@ -118,6 +158,29 @@ const DTransactionCard: React.FC<Props> = ({
           onClick={(event) => event.stopPropagation()}
           className="w-12 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+      </div>
+
+      {/* Row 5 */}
+      <div className="mt-2 text-xs">
+        {note !== "" && !editNote && (
+          <div
+            onClick={handleClickOnNote}
+            className="text-gray-700 px-2 py-1 cursor-pointer"
+          >
+            {note}
+          </div>
+        )}
+        {(note === "" || note === undefined || editNote) && (
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(e) => e.key === "Enter" && handleEnterDown()}
+            placeholder="Add a note"
+            className="text-xs text-black px-2 py-1 border rounded w-full"
+          />
+        )}
       </div>
     </div>
   );

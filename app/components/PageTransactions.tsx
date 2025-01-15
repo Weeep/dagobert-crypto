@@ -123,8 +123,8 @@ const PageTransactions = () => {
 
       <PairsAndPrices
         pairsAndPrices={symbolPrices}
-        setSelectedPairs={setSelectedPairs}
         selectedPairs={selectedPairs}
+        setSelectedPairs={setSelectedPairs}
       />
 
       <div>{pairInfo}</div>
