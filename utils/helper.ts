@@ -32,6 +32,7 @@ export const binanceCsvFileToDTransactions = (
       price: stringToRoundedFloat(csvTrans.Price),
       status: "FILLED", // csv file contains FILLED only! (?)
       grouped: false,
+      note: "",
     };
 
     dtransactionsPerPair[csvTrans.Pair] =
@@ -63,6 +64,7 @@ export const binanceApiOrdersToDTransactions = (
       ),
       status: apiTransaction.status,
       grouped: false,
+      note: "",
     };
 
     dtransactionsPerPair[apiTransaction.symbol] =
