@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import styles from "./CircleInvasion.module.css";
 
 interface Circle {
   id: number;
@@ -20,21 +19,22 @@ interface HighscoreEntry {
 const CircleInvasion = () => {
   const [circles, setCircles] = useState<Circle[]>([]);
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(3000);
   const [highscores, setHighscores] = useState<HighscoreEntry[]>([]);
 
-  const gameAreaWidth = 800;
-  const gameAreaHeight = 600;
   const spawnInterval = 500; // milliseconds
   const growthRate = 1; // pixels per frame
 
   useEffect(() => {
     const interval = setInterval(() => {
+      const gameAreaWidth = window.innerWidth * 0.9;
+      const gameAreaHeight = window.innerHeight * 0.9;
+
       const newCircle: Circle = {
         id: Date.now(),
-        x: Math.random() * (gameAreaWidth - 200),
-        y: Math.random() * (gameAreaHeight - 200),
-        color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+        x: Math.random() * gameAreaWidth * 0.9,
+        y: Math.random() * gameAreaHeight * 0.9,
+        color: `red`, //`hsl(${Math.random() * 360}, 100%, 50%)`,
         borderColor: `hsl(${Math.random() * 360}, 100%, 20%)`,
         maxSize: 100,
         currentSize: 1,
@@ -107,38 +107,40 @@ const CircleInvasion = () => {
   };
 
   return (
-    <div
-      className={styles.gameArea}
-      style={{ width: gameAreaWidth, height: gameAreaHeight }}
-    >
-      {circles.map((circle) => (
-        <div
-          key={circle.id}
-          className={styles.circle}
-          style={{
-            left: circle.x,
-            top: circle.y,
-            width: circle.currentSize,
-            height: circle.currentSize,
-            backgroundColor: circle.color,
-            borderColor: circle.borderColor,
-            transform: `translate(-50%, -50%)`,
-          }}
-          onClick={() => handleCircleClick(circle.id)}
-        ></div>
-      ))}
-      <div className={styles.infoPanel}>
-        <p>Score: {score}</p>
-        <p>Lives: {lives}</p>
-        <div className={styles.highscorePanel}>
-          <h3>Highscores:</h3>
-          <ol>
-            {highscores.map((entry, index) => (
-              <li key={index}>
-                {entry.nickname}: {entry.score}
-              </li>
-            ))}
-          </ol>
+    <div className="w-screen h-screen flex justify-center items-center bg-gray-100 relative">
+      <div className="w-[90%] h-[90%] relative border border-dashed border-red-500">
+        {circles.map((circle) => (
+          <div
+            key={circle.id}
+            className="absolute rounded-full cursor-pointer"
+            style={{
+              left: circle.x,
+              top: circle.y,
+              width: circle.currentSize,
+              height: circle.currentSize,
+              backgroundColor: circle.color,
+              borderColor: circle.borderColor,
+              borderWidth: 2,
+              borderStyle: "solid",
+              transform: `translate(-50%, -50%)`,
+              zIndex: 50,
+            }}
+            onClick={() => handleCircleClick(circle.id)}
+          ></div>
+        ))}
+        <div className="absolute top-2 left-2 bg-white/80 p-3 rounded-md text-gray-700">
+          <p>Score: {score}</p>
+          <p>Lives: {lives}</p>
+          <div className="mt-3">
+            <h3>Highscores:</h3>
+            <ol className="list-decimal ml-5">
+              {highscores.map((entry, index) => (
+                <li key={index}>
+                  {entry.nickname}: {entry.score}
+                </li>
+              ))}
+            </ol>
+          </div>
         </div>
       </div>
     </div>

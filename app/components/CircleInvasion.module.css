@@ -1,10 +1,18 @@
-.gameArea {
-  position: relative;
-  margin: auto;
+.fullscreenGameArea {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  overflow: hidden;
   position: relative;
+}
+
+.innerGameArea {
+  width: 90%;
+  height: 90%;
+  position: relative;
+  border: 2px dotted red;
 }
 
 .circle {
@@ -26,5 +34,12 @@
   background-color: rgba(255, 255, 255, 0.8);
   padding: 10px;
   border-radius: 5px;
-  color: black;
+}
+
+.highscorePanel {
+  margin-top: 10px;
+}
+
+.highscorePanel ol {
+  padding-left: 20px;
 }
