@@ -1,14 +1,14 @@
 import { ApiResponse, DbActionsViaApi, KVRoot } from "@/utils/typesAndEnums";
 import DbApiUtil from "../../../utils/dbapiutil";
-
 import type { NextApiRequest, NextApiResponse } from "next";
+import { withAuth } from "@/utils/auth";
 
 interface ResponseIf {
   s: number;
   j: { response: any; action: string };
 }
 
-export default async function admin(req: NextApiRequest, res: NextApiResponse) {
+async function admin(req: NextApiRequest, res: NextApiResponse) {
   const connectionTest = async (action: string): Promise<ResponseIf> => {
     const badConnection = {
       s: 500,
@@ -197,3 +197,5 @@ export default async function admin(req: NextApiRequest, res: NextApiResponse) {
 
   res.status(s).json(j);
 }
+
+export default withAuth(admin);

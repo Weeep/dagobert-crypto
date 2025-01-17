@@ -1,3 +1,4 @@
+import { withAuth } from "@/utils/auth";
 import DbApiUtil from "@/utils/dbapiutil";
 import {
   ApiResponse,
@@ -6,10 +7,7 @@ import {
 } from "@/utils/typesAndEnums";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
     case "GET":
       const { id } = req.query;
@@ -50,3 +48,5 @@ export default async function handler(
       res.status(405).json({ error: "Method not allowed" });
   }
 }
+
+export default withAuth(handler);

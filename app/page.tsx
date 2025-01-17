@@ -1,13 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import PageTransactions from "./components/PageTransactions";
 import PageOrderHistory from "./components/PageOrderHistory";
 import PageConfig from "./components/pageConfig/PageConfig";
 import ClientSideDbCache from "./lib/ClientSideDbCache";
-import Dtransactions from "./lib/Dtransactions";
-import { DagobertTransactionGroup, KVRoot } from "@/utils/typesAndEnums";
-import DtransactionGroups from "./lib/DtransactionGroups";
+import { useRouter } from "next/navigation";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 
 const pages = {
   Transactions: PageTransactions,
@@ -24,11 +24,15 @@ export default function Home() {
   const [activePage, setActivePage] =
     useState<keyof typeof pages>("Transactions");
   const [cacheInitialized, setCacheInitialized] = useState<boolean>(false);
-  const [info, setInfo] = useState<string>("Initalizing cache...");
+  const [info, setInfo] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+  const router = useRouter();
 
   const ActivePageComponent = pages[activePage];
 
   const initializeCache = async () => {
+    setInfo("Initalizing cache...");
     try {
       const success = await ClientSideDbCache.initializeCache();
       setCacheInitialized(success);
@@ -41,19 +45,50 @@ export default function Home() {
     }
   };
 
-  let useEffectFirst = true;
+  //let useEffectFirst = true;
   useEffect(() => {
-    if (useEffectFirst) {
-      useEffectFirst = false;
-      initializeCache();
-    }
-  }, []);
+    //if (useEffectFirst) {
+    //useEffectFirst = false;
+
+    fetch("/api/auth/protected")
+      .then((res) => {
+        if (res.ok) {
+          setAuthorized(true);
+        } else {
+          router.push("/login");
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+        initializeCache();
+      });
+
+    //}
+  }, [router]);
+
+  if (loading) {
+    return <div className="p-8 text-xl">Loading...</div>;
+  }
+
+  if (!authorized) {
+    router.push("/login");
+  }
+
+  const logout = () => {
+    fetch("/api/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: null,
+    })
+      .then((res) => {})
+      .finally(() => router.push("/login"));
+  };
 
   const addPageContent = () => {
     return (
       <div>
         <header className="flex justify-between items-center p-4 border-b border-gray-700">
-          <h1 className="text-4xl font-bold">{"Dagobert"}</h1>
+          <h1 className="text-4xl font-bold">Dagobert</h1>
           <nav>
             {Object.keys(pages).map((page) => (
               <button
@@ -68,6 +103,12 @@ export default function Home() {
                 {page}
               </button>
             ))}
+            <button
+              onClick={logout}
+              className="w-12 ml-4 my-1 px-4 py-2 rounded-full bg-blue-500 hover:bg-cyan-600"
+            >
+              <FontAwesomeIcon icon={faRightFromBracket} />
+            </button>
           </nav>
         </header>
         <main className="p-8">
@@ -81,10 +122,11 @@ export default function Home() {
 
   return (
     <>
-      {/*<Suspense fallback={<div>Loading...</div>}></Suspense>*/}
-      <div className="text-xl">{!cacheInitialized && `Info: ${info}`}</div>
-      {cacheInitialized && addPageContent()}
-      {/*<div>{JSON.stringify(ClientSideDbCache.getCache())}</div>*/}
+      {!loading && authorized && cacheInitialized ? (
+        addPageContent()
+      ) : (
+        <div className="p-8 text-xl">{info}</div>
+      )}
     </>
   );
 }

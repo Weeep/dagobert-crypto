@@ -10,6 +10,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronDown,
   faChevronRight,
+  faRefresh,
 } from "@fortawesome/free-solid-svg-icons";
 
 interface Props {
@@ -35,6 +36,8 @@ const PairsAndPrices: React.FC<Props> = ({
     }
   };
 
+  const updatePairsAndPrices = () => {};
+
   return (
     <>
       {/* p-8">*/}
@@ -48,7 +51,8 @@ const PairsAndPrices: React.FC<Props> = ({
             isOpen ? "rotate-90" : "rotate-0"
           }`}
         />{" "}
-        Pairs
+        Pairs{" "}
+        {/*<FontAwesomeIcon icon={faRefresh} onClick={updatePairsAndPrices()} />*/}
       </h1>
       <div className={`${!isOpen ? "hidden" : ""} flex flex-wrap gap-4`}>
         {Object.keys(symbolPricesObj)

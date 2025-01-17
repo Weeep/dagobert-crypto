@@ -44,7 +44,10 @@ const DTransactionCard: React.FC<Props> = ({
     }
   };
 
-  const handleClickOnNote = () => {
+  const handleClickOnNote = (
+    event: React.MouseEvent<HTMLDivElement, MouseEvent>
+  ) => {
+    event.stopPropagation();
     setEditNote(true);
     setInputValue(note);
   };
@@ -164,7 +167,7 @@ const DTransactionCard: React.FC<Props> = ({
       <div className="mt-2 text-xs">
         {note !== "" && !editNote && (
           <div
-            onClick={handleClickOnNote}
+            onClick={(event) => handleClickOnNote(event)}
             className="text-gray-700 px-2 py-1 cursor-pointer"
           >
             {note}

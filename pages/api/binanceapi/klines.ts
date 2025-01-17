@@ -1,11 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import binanceapiutils from "../../../utils/binanceapiutil";
 import { ApiResponse } from "@/utils/typesAndEnums";
+import { withAuth } from "@/utils/auth";
 
-export default async function klines(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function klines(req: NextApiRequest, res: NextApiResponse) {
   const apiResponse: ApiResponse = await libKlines(req.query);
   if (apiResponse.ok) {
     res.status(apiResponse.code).json(JSON.stringify(apiResponse.response));
@@ -39,3 +37,5 @@ export async function libKlines({
 
   return binanceapiutils("klines", { symbol, interval }, false, false);
 }
+
+export default withAuth(klines);

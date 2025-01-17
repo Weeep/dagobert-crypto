@@ -1,11 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import binanceapiutils from "../../../utils/binanceapiutil";
 import { ApiResponse } from "@/utils/typesAndEnums";
+import { withAuth } from "@/utils/auth";
 
-export default async function allOrders(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const apiResponse: ApiResponse = await libAllOrders(req.query);
   if (apiResponse.ok) {
     res.status(apiResponse.code).json(apiResponse.response);
@@ -26,3 +24,5 @@ export async function libAllOrders({ symbols = "" }): Promise<ApiResponse> {
 
   return binanceapiutils("ticker/price", { symbols }, false, false);
 }
+
+export default withAuth(handler);

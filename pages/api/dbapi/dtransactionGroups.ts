@@ -5,11 +5,9 @@ import {
   KVRoot,
 } from "@/utils/typesAndEnums";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { withAuth } from "@/utils/auth";
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   switch (req.method) {
     // --- getTransactionGroups
     case "GET":
@@ -51,3 +49,5 @@ export default async function handler(
       res.status(405).json({ error: "Method not allowed" });
   }
 }
+
+export default withAuth(handler);

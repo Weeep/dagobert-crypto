@@ -115,11 +115,12 @@ class Dtransactions {
         const dtransaction: DagobertTransaction = dtransactions[i];
 
         if (
-          await this.epochNewerThanStored(
+          (await this.epochNewerThanStored(
             type,
             dtransaction.pair,
             dtransaction.dateEpoch
-          )
+          )) &&
+          dtransaction.status === "FILLED"
         ) {
           await ClientSideDbCache.hset(KVRoot.dtransactions, {
             [dtransaction.orderId]: dtransaction,
