@@ -20,12 +20,12 @@ export default async function handler(
       return res.status(400).json({ error: "Missing email or password" });
     }
 
-    //const storedPassword = await kv.hget("users", email);
-    const storedPassword = "almafa123";
+    const storedPassword = await kv.hget("users", email);
 
     if (storedPassword && storedPassword === password) {
       const token = generateToken(email);
 
+      /*
       res.setHeader(
         "Set-Cookie",
         serialize("token", token, {
@@ -36,6 +36,7 @@ export default async function handler(
           path: "/",
         })
       );
+      */
 
       return res.status(200).json({ success: true });
     }
