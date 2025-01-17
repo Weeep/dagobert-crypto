@@ -25,7 +25,6 @@ export default async function handler(
     if (storedPassword && storedPassword === password) {
       const token = generateToken(email);
 
-      /*
       res.setHeader(
         "Set-Cookie",
         serialize("token", token, {
@@ -36,7 +35,6 @@ export default async function handler(
           path: "/",
         })
       );
-      */
 
       return res.status(200).json({ success: true });
     }
