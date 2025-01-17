@@ -20,18 +20,24 @@ export default async function handler(
   const storedPassword = await kv.hget("users", email);
 
   if (storedPassword && storedPassword === password) {
-    const token = generateToken(email);
+    try {
+      const token = generateToken(email);
 
-    res.setHeader(
-      "Set-Cookie",
-      serialize("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 3600,
-        path: "/",
-      })
-    );
+      res.setHeader(
+        "Set-Cookie",
+        serialize("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          maxAge: 3600,
+          path: "/",
+        })
+      );
+    } catch (error) {
+      return res
+        .status(402)
+        .json({ error: `Error: ${(error as Error).message}` });
+    }
 
     return res.status(200).json({ success: true });
   }
