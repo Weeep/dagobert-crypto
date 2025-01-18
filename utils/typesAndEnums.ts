@@ -12,6 +12,7 @@ export type DagobertTransaction = {
   status: string; //FILLED
   grouped: boolean;
   note: string;
+  otherSideOrderId: string;
 };
 
 export type DagobertTransactionGroup = {

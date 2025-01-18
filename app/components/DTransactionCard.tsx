@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
-import { formatDate, getPrice, getTargetPrices } from "@/utils/helper";
+import {
+  decreaseLastDigitByTwo,
+  formatDate,
+  getPrice,
+  getTargetPrices,
+} from "@/utils/helper";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
+import { NewOrderSL, OrderType } from "binance-api-node";
 
 interface Props {
   dtransaction: DagobertTransaction;
@@ -66,6 +72,47 @@ const DTransactionCard: React.FC<Props> = ({
     return parseFloat(
       (currentPrice * dtransaction.executed + dtransaction.amount).toFixed(2)
     );
+  };
+
+  const postNewSlOrder = async (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    event.stopPropagation();
+
+    const price = getTargetPrices(dtransaction.price, [number])[0];
+
+    const newSlOrder: NewOrderSL = {
+      symbol: dtransaction.pair,
+      side: "SELL",
+      type: "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT,
+      quantity: dtransaction.executed.toString(),
+      price: decreaseLastDigitByTwo(price).toString(),
+      stopPrice: price.toString(),
+    };
+
+    const response = await fetch("/api/binanceapi/allOrders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newSlOrder),
+    });
+
+    if (response.ok) {
+      const newNote = { note: `Sell set to ${price} (${number}%)` };
+      const newOtherSideOrderId = {
+        otherSideOrderId: (await response.json())?.orderId ?? "",
+      };
+      await ClientSideDbCache.hset(KVRoot.dtransactions, {
+        [dtransaction.orderId]: {
+          ...dtransaction,
+          ...newNote,
+          ...newOtherSideOrderId,
+        },
+      });
+
+      setNote(newNote.note);
+    } else {
+      setNote("failed to create sl order: " + JSON.stringify(response));
+    }
   };
 
   return (
@@ -152,7 +199,13 @@ const DTransactionCard: React.FC<Props> = ({
             )
           )}
 
-          <span>| {getTargetPrices(dtransaction.price, [number])[0]}</span>
+          <span>| </span>
+          <button
+            onClick={(event) => postNewSlOrder(event)}
+            className="text-blue-600"
+          >
+            {getTargetPrices(dtransaction.price, [number])[0]}
+          </button>
         </div>
         <input
           type="number"

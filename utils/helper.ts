@@ -33,6 +33,7 @@ export const binanceCsvFileToDTransactions = (
       status: "FILLED", // csv file contains FILLED only! (?)
       grouped: false,
       note: "",
+      otherSideOrderId: "",
     };
 
     dtransactionsPerPair[csvTrans.Pair] =
@@ -65,6 +66,7 @@ export const binanceApiOrdersToDTransactions = (
       status: apiTransaction.status,
       grouped: false,
       note: "",
+      otherSideOrderId: "",
     };
 
     dtransactionsPerPair[apiTransaction.symbol] =
@@ -139,4 +141,27 @@ export function getPrice(cummulativeQuoteQty: string, executedQty: string) {
     ? (cummulativeQuoteQty as unknown as number) /
         (executedQty as unknown as number)
     : 0;
+}
+
+export function decreaseLastDigitByTwo(num: number): number {
+  // Convert the number to a string
+  const numStr = num.toString();
+
+  // Find the position of the last digit
+  const decimalIndex = numStr.indexOf(".");
+  let resultStr;
+
+  if (decimalIndex === -1) {
+    // No decimal point: integer number
+    const lastDigit = parseInt(numStr[numStr.length - 1], 10);
+    resultStr = numStr.slice(0, -1) + (lastDigit - 2).toString();
+  } else {
+    // Decimal number
+    const lastDigitIndex = numStr.length - 1;
+    const lastDigit = parseInt(numStr[lastDigitIndex], 10);
+    resultStr = numStr.slice(0, lastDigitIndex) + (lastDigit - 2).toString();
+  }
+
+  // Convert the result back to a number
+  return parseFloat(resultStr);
 }

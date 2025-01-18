@@ -10,11 +10,13 @@
     "import-kv-db": "ts-node scripts/importKvDb.ts"
   },
   "dependencies": {
+    "@binance/connector": "^3.6.1",
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@vercel/kv": "^1.0.1",
     "axios": "^1.6.5",
+    "binance-api-node": "^0.12.9",
     "cookie": "^1.0.2",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",

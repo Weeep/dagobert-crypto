@@ -132,7 +132,7 @@ export const updateOrdersViaBinanceApi = async (
     infoFunc(`Fetching ${pair} orders via Binance API`);
 
     const binanceResponse = await fetch(
-      `/api/binanceapi/allOrders?symbol=${pair}`
+      `/api/binanceapi/allOrders?action=AllOrders&symbol=${pair}`
     );
 
     const data = await binanceResponse.json();

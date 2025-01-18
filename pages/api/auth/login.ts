@@ -35,7 +35,7 @@ export default async function handler(
       );
     } catch (error) {
       return res
-        .status(402)
+        .status(500)
         .json({ error: `Error: ${(error as Error).message}` });
     }
 
