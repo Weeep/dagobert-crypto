@@ -4,9 +4,27 @@ import Dtransactions from "@/app/lib/Dtransactions";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRefresh, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 
-const FollowedPairs: React.FC = () => {
+interface Props {
+  updateOrdersViaBinanceApiFunc: (
+    pair: string,
+    infoFunc: (info: string) => void
+  ) => void;
+  // numOfNewTransactionsUseStateFunc: (numOfNewTransactions: {
+  //   [pair: string]: number;
+  // }) => void;
+  numOfNewTransactions: {
+    [pair: string]: number;
+  };
+  fetchPairs: () => void;
+}
+
+const FollowedPairs: React.FC<Props> = ({
+  updateOrdersViaBinanceApiFunc,
+  numOfNewTransactions,
+  fetchPairs,
+}) => {
   const [pairs, setPairs] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState<string>("");
 
@@ -16,18 +34,9 @@ const FollowedPairs: React.FC = () => {
     "ICPUSDC, POLUSDT, POLUSDC";
   const [info, setInfo] = useState<string>(defaultInfoMessage);
 
-  const fetchPairs = async () => {
-    const p = ClientSideDbCache.smembers(KVRoot.pairs);
-    setPairs(p);
-  };
-
-  let useEffectFirst = true;
   useEffect(() => {
-    if (useEffectFirst) {
-      useEffectFirst = false;
-      fetchPairs();
-    }
-  }, []);
+    setPairs(Object.keys(numOfNewTransactions));
+  }, [numOfNewTransactions]);
 
   const handleAdd = async () => {
     const formattedInputValue = inputValue.trim().toUpperCase();
@@ -73,7 +82,7 @@ const FollowedPairs: React.FC = () => {
   };
 
   const handleRefresh = (pair: string): void => {
-    updateOrdersViaBinanceApi(pair, setInfo);
+    updateOrdersViaBinanceApiFunc(pair, setInfo);
   };
 
   return (
@@ -82,9 +91,16 @@ const FollowedPairs: React.FC = () => {
         {pairs &&
           pairs.map((pair, index) => (
             <div
-              key={index}
-              className="w-32 bg-gray-300 text-gray-800 flex justify-between items-center space-x-1 rounded-full p-2 mr-2 mb-2"
+              key={pair + "_" + index}
+              className="relative w-32 bg-gray-300 text-gray-800 flex justify-between items-center space-x-1 rounded-full p-2 mr-2 mb-2"
             >
+              <div
+                className={`${
+                  numOfNewTransactions[pair] === 0 ? "hidden" : ""
+                } absolute top-0 left-0 bg-red-500 text-white rounded-full text-xs text-center w-4 h-4`}
+              >
+                {numOfNewTransactions[pair]}
+              </div>
               <div className="text-xs">{pair}</div>
               <button onClick={() => handleRefresh(pair)}>
                 <FontAwesomeIcon icon={faRefresh} />
@@ -122,34 +138,6 @@ const FollowedPairs: React.FC = () => {
       </div>
     </>
   );
-};
-
-export const updateOrdersViaBinanceApi = async (
-  pair: string,
-  infoFunc: (info: string) => void
-) => {
-  try {
-    infoFunc(`Fetching ${pair} orders via Binance API`);
-
-    const binanceResponse = await fetch(
-      `/api/binanceapi/allOrders?action=AllOrders&symbol=${pair}`
-    );
-
-    const data = await binanceResponse.json();
-    if (binanceResponse.status !== 200 || data?.code) {
-      throw binanceResponse.status + "-" + JSON.stringify(data);
-    }
-
-    infoFunc(`${data.length} ${pair} orders fetched, update database...`);
-
-    infoFunc(
-      JSON.stringify(
-        (await Dtransactions.post("binanceapi", data)).response?.pairInfo
-      )
-    );
-  } catch (error) {
-    console.error(`Error fetching data from Binance, symbol: ${pair}`, error);
-  }
 };
 
 export default FollowedPairs;

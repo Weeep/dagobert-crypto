@@ -75,14 +75,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     case Actions.OpenOrders:
       return await openOrders(res, {});
     case Actions.CancelOrder:
-      //TODO
-      break;
+      return await cancelOrder(res, req.body as CancelOrderOptions);
     case Actions.NewSlOrder:
       return await newStopLimitOrder(res, req.body as NewOrderSL);
-      break;
     case Actions.AllOrders:
       return await allOrders(req, res);
-      break;
   }
 }
 
@@ -97,21 +94,55 @@ async function openOrders(
   try {
     const response: QueryOrderResult[] = await client.openOrders(options);
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res
-      .status(500)
-      .json(`Error happened: ${error.message} | ${error?.response?.data}`);
+  } catch (err: any) {
+    return res.status(500).json({
+      error: `Error happened: ${err.message} | ${err?.response?.data}`,
+    });
+  }
+}
+
+async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
+  try {
+    if (
+      //!options.orderId || <- What? :O Why no such? It is mandatory!
+      !options.symbol
+    ) {
+      return res.status(400).json({
+        error: "One of the manadatory parameters missing (symbol, orderId)",
+      });
+    }
+
+    const response: CancelOrderResult = await client.cancelOrder(options);
+    return res.status(200).json(response);
+  } catch (err: any) {
+    return res.status(500).json({
+      error: `Error happened: ${err.message} | ${err?.response?.data}`,
+    });
   }
 }
 
 async function newStopLimitOrder(res: NextApiResponse, newOrderSL: NewOrderSL) {
   try {
+    if (
+      !newOrderSL.type ||
+      !newOrderSL.quantity ||
+      !newOrderSL.price ||
+      !newOrderSL.stopPrice ||
+      !newOrderSL.symbol ||
+      !newOrderSL.side
+    ) {
+      return res.status(400).json({
+        error:
+          "One of the manadatory parameters missing (type, quantity, price, stopPrice, symbol, side)",
+      });
+    }
+
     const response = await client.order(newOrderSL); //.orderTest(newOrderSL);
     return res.status(200).json(response); //response is empty, maybe a bug in order?
-  } catch (error: any) {
-    return res
-      .status(500)
-      .json(`Error happened: ${error.message} | ${error?.response?.data}`);
+  } catch (err: any) {
+    return res.status(500).json({
+      error: `Error happened: ${err.message} | ${err?.response?.data}`,
+    });
   }
 }
 
@@ -125,24 +156,6 @@ async function allOrders(req: NextApiRequest, res: NextApiResponse) {
     return res.status(apiResponse.code).json(apiResponse.response);
   } else {
     return res.status(apiResponse.code).json({ error: apiResponse.error });
-  }
-}
-
-async function cancelOrder() {
-  try {
-    const symbol = "BTCUSDT"; // Trading pair
-    const orderId = 12345678; // Replace with the actual orderId
-
-    const response: CancelOrderResult = await client.cancelOrder({
-      symbol,
-      orderId,
-    });
-    console.log("Order canceled successfully:", response.status);
-  } catch (error: any) {
-    console.error(
-      "Error canceling order:",
-      error.response?.data || error.message
-    );
   }
 }
 

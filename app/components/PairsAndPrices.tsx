@@ -1,38 +1,119 @@
-import { /*React, {*/ useState } from "react";
+import { /*React, {*/ useEffect, useState } from "react";
 import { SymbolPriceIf } from "../lib/Interfaces";
 import Image from "next/image";
-import {
-  convertArrayToObject,
-  downPointingTriangle,
-  rightPointingTriangle,
-} from "@/utils/helper";
+import { convertArrayToObject, redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faChevronDown,
-  faChevronRight,
-  faRefresh,
-} from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
+import Dtransactions from "../lib/Dtransactions";
+import ClientSideDbCache from "../lib/ClientSideDbCache";
+import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 
 interface Props {
-  pairsAndPrices: SymbolPriceIf[];
+  pairsPricesCallback: (pairsPrices: {
+    [key: string]: {
+      price: number;
+      numOfTransactions: number;
+    };
+  }) => void;
+
   selectedPairs: string[];
-  setSelectedPairs: (selectedPairs: string[]) => void;
+  selectedPairsCallback: (selectedPairs: string[]) => void;
 }
 
 const PairsAndPrices: React.FC<Props> = ({
-  pairsAndPrices,
+  pairsPricesCallback,
   selectedPairs,
-  setSelectedPairs,
+  selectedPairsCallback,
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
+  const [pairInfo, setPairInfo] = useState<string>("");
+  const [pairsPrices, setPairsPrices] = useState<{
+    [key: string]: {
+      price: number;
+      numOfTransactions: number;
+    };
+  }>({});
 
-  const symbolPricesObj = convertArrayToObject(pairsAndPrices);
+  //const pairPrices = convertArrayToObject(pairsAndPrices);
+
+  useEffect(() => {
+    fetchPrices();
+    //const intervalId = setInterval(fetchPrices, 15000);
+    //}
+  }, []);
+
+  const fetchPrices = async (): Promise<boolean> => {
+    setIsFetching(true);
+    try {
+      const pairs = ClientSideDbCache.smembers(KVRoot.pairs); //await fetchh(`/api/dbapi/pairs`);
+      if (!pairs) {
+        setPairInfo("No any pair defined. Go to Config and add some.");
+        return false;
+      }
+      //if (pairsResponse.ok) {
+      //const pairs = await pairsResponse.json();
+
+      if ((pairs as string[]).length === 0) return false;
+
+      const response = await fetch(
+        `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(pairs)}`
+        // ["ADAUSDT","ARBUSDT","AVAXUSDT","BNBUSDT","BTCUSDT","DOTUSDT","ETHUSDT","ICPUSDT","MATICUSDT","SHIBUSDT","SOLUSDT","TRXUSDT","XRPUSDT"]
+      );
+
+      const prices = await response.json();
+      if (response.status !== 200 || prices?.code) {
+        throw response.status + "-" + JSON.stringify(prices);
+      }
+
+      /// Num of Trans calculation
+      let numOfTransactions: { [key: string]: number } = {};
+      const dtranss: DagobertTransaction[] = Object.values(
+        Dtransactions.getAll()
+      );
+
+      for (const dtrans of dtranss) {
+        if (!dtrans.grouped) {
+          if (!(dtrans.pair in numOfTransactions)) {
+            numOfTransactions[dtrans.pair] = 1;
+          } else {
+            numOfTransactions[dtrans.pair] += 1;
+          }
+        }
+      }
+
+      for (const price of prices as SymbolPriceIf[]) {
+        price.numOfTransactions =
+          price.symbol in numOfTransactions
+            ? numOfTransactions[price.symbol]
+            : 0;
+      }
+      ///
+
+      const ppobj = convertArrayToObject(prices as SymbolPriceIf[]);
+
+      setPairsPrices(ppobj);
+      pairsPricesCallback(ppobj);
+    } catch (error) {
+      setPairInfo(
+        `${redCross} Error fetching prices: ${JSON.stringify(error)}`
+      );
+      console.error(`Error fetching prices:`, error);
+      return false;
+    } finally {
+      setIsFetching(false);
+    }
+
+    //setInterval(fetchPrices, 15000);
+    return true;
+  };
 
   const handleCheckboxChange = (symbol: string) => {
     if (selectedPairs.includes(symbol)) {
-      setSelectedPairs(selectedPairs.filter((s) => s !== symbol));
+      selectedPairsCallback(selectedPairs.filter((s) => s !== symbol));
     } else {
-      setSelectedPairs([...selectedPairs, symbol]);
+      selectedPairsCallback([...selectedPairs, symbol]);
     }
   };
 
@@ -40,22 +121,28 @@ const PairsAndPrices: React.FC<Props> = ({
 
   return (
     <>
-      {/* p-8">*/}
-      <h1
-        className="text-2xl font-bold mb-4 mt-4"
-        onClick={() => setIsOpen(!isOpen)}
-      >
+      <div className="flex flex-row gap-2 items-center text-2xl font-bold mb-4 mt-4">
+        <h1 onClick={() => setIsOpen(!isOpen)}>
+          <FontAwesomeIcon
+            icon={faChevronRight}
+            className={`transform transition-transform duration-300 ${
+              isOpen ? "rotate-90" : "rotate-0"
+            }`}
+          />{" "}
+          Pairs
+          {/*<FontAwesomeIcon icon={faRefresh} onClick={updatePairsAndPrices()} />*/}
+        </h1>
         <FontAwesomeIcon
-          icon={faChevronRight}
-          className={`transform transition-transform duration-300 ${
-            isOpen ? "rotate-90" : "rotate-0"
+          icon={faRefresh}
+          onClick={fetchPrices}
+          className={`cursor-pointer ${
+            isFetching ? "animate-spin text-blue-500" : ""
           }`}
-        />{" "}
-        Pairs{" "}
-        {/*<FontAwesomeIcon icon={faRefresh} onClick={updatePairsAndPrices()} />*/}
-      </h1>
+        />
+      </div>
+      {pairInfo && <div>{pairInfo}</div>}
       <div className={`${!isOpen ? "hidden" : ""} flex flex-wrap gap-4`}>
-        {Object.keys(symbolPricesObj)
+        {Object.keys(pairsPrices)
           .sort((a, b) => (a > b ? 1 : -1))
           .map((symbol: string) => (
             <label key={symbol} className="flex items-center">
@@ -81,11 +168,9 @@ const PairsAndPrices: React.FC<Props> = ({
                   </a>
                 </div>
                 <div className="flex justify-between">
+                  <div className="text-xs">${pairsPrices[symbol].price}</div>
                   <div className="text-xs">
-                    ${symbolPricesObj[symbol].price}
-                  </div>
-                  <div className="text-xs">
-                    {symbolPricesObj[symbol].numOfTransactions}
+                    {pairsPrices[symbol].numOfTransactions}
                   </div>
                 </div>
               </div>

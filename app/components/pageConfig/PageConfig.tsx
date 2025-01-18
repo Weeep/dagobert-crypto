@@ -5,11 +5,14 @@ import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
 import Dtransactions from "@/app/lib/Dtransactions";
 import { greenPipe, redCross } from "@/utils/helper";
-import FollowedPairs, { updateOrdersViaBinanceApi } from "./FollowedPairs";
+import FollowedPairs from "./FollowedPairs";
 
 export default function PageConfig() {
   const [dbConnStatusStr, setDbConnStatusStr] = useState<string>("Checking...");
   const [isDbConnOk, setDbConn] = useState<boolean>(true);
+  const [numOfNewTransactions, setNumOfNewTransactions] = useState<{
+    [pair: string]: number;
+  }>({});
   const [ordersUpdateInfo, setOrdersUpdateInfo] = useState<string>(
     "Press Update to start"
   );
@@ -22,14 +25,27 @@ export default function PageConfig() {
     setDbConnStatusStr(data.response);
   };
 
-  let useEffectFirst = true;
+  //let useEffectFirst = true;
   useEffect(() => {
-    if (useEffectFirst) {
-      useEffectFirst = false;
-      databaseConnectionCheck();
-      //fetchPairs();
-    }
+    //if (useEffectFirst) {
+    //  useEffectFirst = false;
+    databaseConnectionCheck();
+
+    fetchPairs();
+    //}
   }, []);
+
+  const fetchPairs = () => {
+    const ps = ClientSideDbCache.smembers(KVRoot.pairs) as string[];
+    const initNums: {
+      [pair: string]: number;
+    } = {};
+    for (const p of ps) {
+      initNums[p] = 0;
+    }
+
+    setNumOfNewTransactions(initNums);
+  };
 
   const updateBtnClicked = async () => {
     const pairs = ClientSideDbCache.smembers(KVRoot.pairs);
@@ -38,16 +54,57 @@ export default function PageConfig() {
     }
   };
 
+  const updateOrdersViaBinanceApi = async (
+    pair: string,
+    infoFunc: (info: string) => void
+  ) => {
+    try {
+      infoFunc(`Fetching ${pair} orders via Binance API`);
+
+      const binanceResponse = await fetch(
+        `/api/binanceapi/allOrders?action=AllOrders&symbol=${pair}`
+      );
+
+      const data = await binanceResponse.json();
+      if (binanceResponse.status !== 200 || data?.code) {
+        throw binanceResponse.status + "-" + JSON.stringify(data);
+      }
+
+      infoFunc(`${data.length} ${pair} orders fetched, update database...`);
+
+      const pi = (await Dtransactions.post("binanceapi", data)).response
+        ?.pairInfo;
+
+      if (pi && pi[pair] && pi[pair].added) {
+        setNumOfNewTransactions((prev) => {
+          prev[pair] = pi[pair].added;
+          return prev;
+        });
+        infoFunc(JSON.stringify(pi));
+      } else {
+        infoFunc(
+          JSON.stringify({ [pair]: { processed: 0, added: 0, skipped: 0 } })
+        );
+      }
+    } catch (error) {
+      console.error(`Error fetching data from Binance, symbol: ${pair}`, error);
+    }
+  };
+
   const addFollowedPairs = (title: string) => {
     return (
       <>
         <h2 className="text-xl font-semibold my-3">{title}</h2>
-        <FollowedPairs />
+        <FollowedPairs
+          updateOrdersViaBinanceApiFunc={updateOrdersViaBinanceApi}
+          numOfNewTransactions={numOfNewTransactions}
+          fetchPairs={fetchPairs}
+        />
       </>
     );
   };
 
-  const updateTransactionsBinanceApi = (title: string) => {
+  const reactElementUpdateViaBnceApi = (title: string): React.ReactElement => {
     return (
       <>
         <h2 className="text-xl font-semibold my-3">{title}</h2>
@@ -64,7 +121,7 @@ export default function PageConfig() {
     );
   };
 
-  const updateTransactionsBinanceCsv = (title: string) => {
+  const reactElementUpdateViaBnceCsv = (title: string): React.ReactElement => {
     return (
       <>
         <h2 className="text-xl font-semibold my-3">{title}</h2>
@@ -90,12 +147,12 @@ export default function PageConfig() {
 
       {isDbConnOk ? addFollowedPairs(`${i++}. Followed Pairs`) : ""}
       {isDbConnOk
-        ? updateTransactionsBinanceApi(
+        ? reactElementUpdateViaBnceApi(
             `${i++}. Update Transactions via Binance API`
           )
         : ""}
       {isDbConnOk
-        ? updateTransactionsBinanceCsv(
+        ? reactElementUpdateViaBnceCsv(
             `${i++}. Update Transactions via Binance Trade History .csv file`
           )
         : ""}

@@ -15,22 +15,17 @@ const PageTransactions = () => {
     useState<React.ReactNode>(
       <DTransactionGroupContainer epoch={Date.now()} />
     );
-
-  const [symbolPrices, setSymbolPrices] = useState<SymbolPriceIf[]>([]); //TODO move symbolPrices to PairsAndPrices and rename it to pair
+  const [pairPricesObj, setPairPrices] = useState<{
+    [key: string]: {
+      price: number;
+      numOfTransactions: number;
+    };
+  }>({}); //TODO move symbolPrices to PairsAndPrices and rename it to pair
   const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
-
   const [progressInfo, setProgressInfo] = useState<string>("");
-  const [pairInfo, setPairInfo] = useState<string>("");
 
-  let useEffectFirst = true;
   useEffect(() => {
-    if (useEffectFirst) {
-      useEffectFirst = false;
-      fetchTransactionData();
-      fetchPrices();
-      //const intervalId = setInterval(fetchPrices, 15000);
-      //}
-    }
+    fetchTransactionData();
   }, []);
 
   const fetchTransactionData = async () => {
@@ -58,80 +53,19 @@ const PageTransactions = () => {
     }
   };
 
-  const fetchPrices = async (): Promise<boolean> => {
-    try {
-      const pairs = ClientSideDbCache.smembers(KVRoot.pairs); //await fetchh(`/api/dbapi/pairs`);
-      if (!pairs) {
-        setPairInfo("No any pair defined. Go to Config and add some.");
-        return false;
-      }
-      //if (pairsResponse.ok) {
-      //const pairs = await pairsResponse.json();
-
-      if ((pairs as string[]).length === 0) return false;
-
-      const response = await fetch(
-        `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(pairs)}`
-        // ["ADAUSDT","ARBUSDT","AVAXUSDT","BNBUSDT","BTCUSDT","DOTUSDT","ETHUSDT","ICPUSDT","MATICUSDT","SHIBUSDT","SOLUSDT","TRXUSDT","XRPUSDT"]
-      );
-
-      const prices = await response.json();
-      if (response.status !== 200 || prices?.code) {
-        throw response.status + "-" + JSON.stringify(prices);
-      }
-
-      /// Num of Trans calculation
-      let numOfTransactions: { [key: string]: number } = {};
-      const dtranss: DagobertTransaction[] = Object.values(
-        Dtransactions.getAll()
-      );
-
-      for (const dtrans of dtranss) {
-        if (!dtrans.grouped) {
-          if (!(dtrans.pair in numOfTransactions)) {
-            numOfTransactions[dtrans.pair] = 1;
-          } else {
-            numOfTransactions[dtrans.pair] += 1;
-          }
-        }
-      }
-
-      for (const price of prices as SymbolPriceIf[]) {
-        price.numOfTransactions =
-          price.symbol in numOfTransactions
-            ? numOfTransactions[price.symbol]
-            : 0;
-      }
-      ///
-
-      setSymbolPrices(prices as SymbolPriceIf[]);
-    } catch (error) {
-      setPairInfo(
-        `${redCross} Error fetching prices: ${JSON.stringify(error)}`
-      );
-      console.error(`Error fetching prices:`, error);
-      return false;
-    }
-
-    //setInterval(fetchPrices, 15000);
-    return true;
-  };
-
   return (
     <div className="mx-auto">
       <div>{progressInfo}</div>
 
       <PairsAndPrices
-        pairsAndPrices={symbolPrices}
+        pairsPricesCallback={setPairPrices}
         selectedPairs={selectedPairs}
-        setSelectedPairs={setSelectedPairs}
+        selectedPairsCallback={setSelectedPairs}
       />
-
-      <div>{pairInfo}</div>
 
       <DTransactionCardContainer
         dtransactions={dtransactions}
-        pairsAndPrices={convertArrayToObject(symbolPrices)}
+        pairsAndPrices={pairPricesObj}
         numOfTransactions={numOfTransactions}
         selectedPairs={selectedPairs}
         setDtransGroupContainer={setDtransGroupContainer}
