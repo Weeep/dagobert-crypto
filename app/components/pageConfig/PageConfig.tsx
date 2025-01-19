@@ -37,14 +37,17 @@ export default function PageConfig() {
 
   const fetchPairs = () => {
     const ps = ClientSideDbCache.smembers(KVRoot.pairs) as string[];
-    const initNums: {
-      [pair: string]: number;
-    } = {};
-    for (const p of ps) {
-      initNums[p] = 0;
+    if (ps) {
+      const initNums: {
+        [pair: string]: number;
+      } = {};
+      for (const p of ps) {
+        initNums[p] = 0;
+      }
+      setNumOfNewTransactions(initNums);
+    } else {
+      setOrdersUpdateInfo("No a single pair added.");
     }
-
-    setNumOfNewTransactions(initNums);
   };
 
   const updateBtnClicked = async () => {

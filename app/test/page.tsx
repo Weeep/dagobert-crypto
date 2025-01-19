@@ -6,9 +6,15 @@ import { useState } from "react";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useDrag } from "@use-gesture/react";
+import PageConfig from "../components/pageConfig/PageConfig";
+import PageOrderHistory from "../components/PageOrderHistory";
+import CircleInvasion from "../components/CircleInvasion";
 
-const menuItems = ["Home", "About", "Services", "Contact"];
-
+const menuItems = [
+  { name: "Config", component: <PageConfig /> },
+  { name: "Charts", component: <PageOrderHistory /> },
+  { name: "CircleInvasion", component: <CircleInvasion /> },
+];
 export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -31,6 +37,7 @@ export default function Home() {
     <div className="flex flex-col items-center justify-center h-screen overflow-hidden">
       <div
         {...bind()}
+        style={{ touchAction: "none" }}
         className="relative flex items-center justify-center w-4/5 h-1/2 overflow-hidden border border-gray-300 rounded-lg"
       >
         <AnimatePresence initial={false} custom={currentIndex}>
@@ -43,7 +50,7 @@ export default function Home() {
             transition={{ duration: 0.5 }}
             className="absolute flex items-center justify-center w-full h-full text-2xl font-bold bg-gray-200 rounded-lg shadow-md"
           >
-            {menuItems[currentIndex]}
+            {menuItems[currentIndex].component}{" "}
           </motion.div>
         </AnimatePresence>
       </div>
