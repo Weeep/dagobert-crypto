@@ -1,59 +1,66 @@
 "use client";
 
-import React, { useState } from "react";
-import Papa from "papaparse";
+import { useState } from "react";
+//import { motion, AnimatePresence } from "framer-motion";
+//import { useDrag } from "react-use-gesture";
 
-type CSVRow = Record<string, string>; // Defines the type for each row in the CSV
+import { motion, AnimatePresence } from "framer-motion";
+import { useDrag } from "@use-gesture/react";
 
-const Home: React.FC = () => {
-  const [csvData, setCsvData] = useState<CSVRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
+const menuItems = ["Home", "About", "Services", "Contact"];
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      setError("No file selected");
-      return;
-    }
+export default function Home() {
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-    setError(null); // Clear any previous errors
-
-    Papa.parse(file, {
-      header: true, // Use the first row as keys for the objects
-      skipEmptyLines: true,
-      complete: (result) => {
-        if (result.errors.length > 0) {
-          setError("Error parsing CSV file.");
-        } else {
-          setCsvData(result.data as CSVRow[]);
-        }
-      },
-      error: (error) => {
-        setError("Error reading file: " + error.message);
-      },
-    });
+  const swipeLeft = () => {
+    setCurrentIndex((prev) => (prev + 1) % menuItems.length);
   };
 
+  const swipeRight = () => {
+    setCurrentIndex((prev) => (prev - 1 + menuItems.length) % menuItems.length);
+  };
+
+  const bind = useDrag(({ velocity: [vx], direction: [xDir] }) => {
+    if (vx > 0.2) {
+      if (xDir > 0) swipeRight();
+      else swipeLeft();
+    }
+  });
+
   return (
-    <div className="min-h-screen p-6 bg-gray-100">
-      <h1 className="text-2xl font-bold mb-4">Upload and Read CSV</h1>
-      <input
-        type="file"
-        accept=".csv"
-        onChange={handleFileUpload}
-        className="mb-4 p-2 border border-gray-400 rounded"
-      />
-      {error && <p className="text-red-500">{error}</p>}
-      {csvData.length > 0 && (
-        <div>
-          <h2 className="text-xl font-semibold mb-2">Parsed Data:</h2>
-          <pre className="bg-black p-4 rounded shadow">
-            {JSON.stringify(csvData, null, 2)}
-          </pre>
-        </div>
-      )}
+    <div className="flex flex-col items-center justify-center h-screen overflow-hidden">
+      <div
+        {...bind()}
+        className="relative flex items-center justify-center w-4/5 h-1/2 overflow-hidden border border-gray-300 rounded-lg"
+      >
+        <AnimatePresence initial={false} custom={currentIndex}>
+          <motion.div
+            key={currentIndex}
+            custom={currentIndex}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            transition={{ duration: 0.5 }}
+            className="absolute flex items-center justify-center w-full h-full text-2xl font-bold bg-gray-200 rounded-lg shadow-md"
+          >
+            {menuItems[currentIndex]}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+      <div className="mt-5">
+        <button
+          onClick={swipeRight}
+          className="px-4 py-2 mx-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+        >
+          Previous
+        </button>
+        <button
+          onClick={swipeLeft}
+          className="px-4 py-2 mx-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
-};
-
-export default Home;
+}
