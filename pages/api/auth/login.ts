@@ -29,7 +29,7 @@ export default async function handler(
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "strict",
-          maxAge: 3600,
+          maxAge: 36000,
           path: "/",
         })
       );
