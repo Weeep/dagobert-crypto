@@ -34,7 +34,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
   const [markedForMerge, setMarkedForMerge] = useState<MarkedDTransaction[]>(
     []
   );
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(true);
 
   const handleTransactionMarked = (
     dtransaction: DagobertTransaction,

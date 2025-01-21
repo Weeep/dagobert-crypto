@@ -5,7 +5,7 @@ import { parse } from "cookie";
 const secretKey: string = process.env.SECRET_KEY as string;
 
 export function generateToken(email: string): string {
-  return jwt.sign({ email }, secretKey, { expiresIn: "1h" });
+  return jwt.sign({ email }, secretKey, { expiresIn: "10h" });
 }
 
 export function verifyToken(token: string): string | null {

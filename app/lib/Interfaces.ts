@@ -20,8 +20,8 @@ export interface TransactionIf {
   grouped: boolean;
 }
 
-export interface SymbolPriceIf {
-  symbol: string;
+export interface PairPriceIf {
+  pair: string;
   price: number;
   numOfTransactions: number;
 }

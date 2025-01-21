@@ -1,5 +1,5 @@
 import { /*React, {*/ useEffect, useState } from "react";
-import { SymbolPriceIf } from "../lib/Interfaces";
+import { PairPriceIf } from "../lib/Interfaces";
 import Image from "next/image";
 import { convertArrayToObject, redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -62,10 +62,21 @@ const PairsAndPrices: React.FC<Props> = ({
         // ["ADAUSDT","ARBUSDT","AVAXUSDT","BNBUSDT","BTCUSDT","DOTUSDT","ETHUSDT","ICPUSDT","MATICUSDT","SHIBUSDT","SOLUSDT","TRXUSDT","XRPUSDT"]
       );
 
-      const prices = await response.json();
-      if (response.status !== 200 || prices?.code) {
-        throw response.status + "-" + JSON.stringify(prices);
+      const rjson = await response.json();
+      if (response.status !== 200 || rjson?.code || !Array.isArray(rjson)) {
+        throw response.status + "-" + JSON.stringify(rjson);
       }
+
+      const prices = rjson.map(
+        (price: { symbol: string; price: string }): PairPriceIf => {
+          const pp: PairPriceIf = {
+            pair: price.symbol,
+            price: parseFloat(price.price),
+            numOfTransactions: 0,
+          };
+          return pp;
+        }
+      );
 
       /// Num of Trans calculation
       let numOfTransactions: { [key: string]: number } = {};
@@ -83,15 +94,14 @@ const PairsAndPrices: React.FC<Props> = ({
         }
       }
 
-      for (const price of prices as SymbolPriceIf[]) {
+      for (const price of prices as PairPriceIf[]) {
+        //as { symbol: string; price: string }[]) {
         price.numOfTransactions =
-          price.symbol in numOfTransactions
-            ? numOfTransactions[price.symbol]
-            : 0;
+          price.pair in numOfTransactions ? numOfTransactions[price.pair] : 0;
       }
       ///
 
-      const ppobj = convertArrayToObject(prices as SymbolPriceIf[]);
+      const ppobj = convertArrayToObject(prices as PairPriceIf[]);
 
       setPairsPrices(ppobj);
       pairsPricesCallback(ppobj);
@@ -109,11 +119,11 @@ const PairsAndPrices: React.FC<Props> = ({
     return true;
   };
 
-  const handleCheckboxChange = (symbol: string) => {
-    if (selectedPairs.includes(symbol)) {
-      selectedPairsCallback(selectedPairs.filter((s) => s !== symbol));
+  const handleCheckboxChange = (pair: string) => {
+    if (selectedPairs.includes(pair)) {
+      selectedPairsCallback(selectedPairs.filter((s) => s !== pair));
     } else {
-      selectedPairsCallback([...selectedPairs, symbol]);
+      selectedPairsCallback([...selectedPairs, pair]);
     }
   };
 
@@ -144,19 +154,19 @@ const PairsAndPrices: React.FC<Props> = ({
       <div className={`${!isOpen ? "hidden" : ""} flex flex-wrap gap-4`}>
         {Object.keys(pairsPrices)
           .sort((a, b) => (a > b ? 1 : -1))
-          .map((symbol: string) => (
-            <label key={symbol} className="flex items-center">
+          .map((pair: string) => (
+            <label key={pair} className="flex items-center">
               <input
                 type="checkbox"
-                checked={selectedPairs.includes(symbol)}
-                onChange={() => handleCheckboxChange(symbol)}
+                checked={selectedPairs.includes(pair)}
+                onChange={() => handleCheckboxChange(pair)}
                 className="form-checkbox h-5 w-5 text-indigo-600"
               />
               <div className="ml-2">
                 <div className="flex space-x-2">
-                  <div>{symbol}</div>
+                  <div>{pair}</div>
                   <a
-                    href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${symbol}`}
+                    href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${pair}`}
                     target="_blank"
                   >
                     <Image
@@ -168,9 +178,9 @@ const PairsAndPrices: React.FC<Props> = ({
                   </a>
                 </div>
                 <div className="flex justify-between">
-                  <div className="text-xs">${pairsPrices[symbol].price}</div>
+                  <div className="text-xs">${pairsPrices[pair].price}</div>
                   <div className="text-xs">
-                    {pairsPrices[symbol].numOfTransactions}
+                    {pairsPrices[pair].numOfTransactions}
                   </div>
                 </div>
               </div>

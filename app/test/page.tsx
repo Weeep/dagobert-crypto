@@ -7,12 +7,12 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDrag } from "@use-gesture/react";
 import PageConfig from "../components/pageConfig/PageConfig";
-import PageOrderHistory from "../components/PageOrderHistory";
+import Charts from "../components/Charts";
 import CircleInvasion from "../components/CircleInvasion";
 
 const menuItems = [
   { name: "Config", component: <PageConfig /> },
-  { name: "Charts", component: <PageOrderHistory /> },
+  { name: "Charts", component: <Charts /> },
   { name: "CircleInvasion", component: <CircleInvasion /> },
 ];
 export default function Home() {

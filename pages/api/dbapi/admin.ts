@@ -27,17 +27,8 @@ async function admin(req: NextApiRequest, res: NextApiResponse) {
     });
     if (!dbResponse.ok) return badConnection;
 
-    //dbResponse = await DbApiUtil.lpush("listtest", { itemThree: "3", itemFour: "4" });
-    //if (!dbResponse.ok) return badConnection;
-
-    //dbResponse = await DbApiUtil.hset("hashtest", { one: { two: "three" } });
-    //if (!dbResponse.ok) return badConnection;
-
     dbResponse = await DbApiUtil.del("listtest");
     if (!dbResponse.ok) return badConnection;
-
-    //dbResponse = await DbApiUtil.del("hashtest");
-    //if (!dbResponse.ok) return badConnection;
 
     return { s: 200, j: { response: "Database connection OK", action } };
   };

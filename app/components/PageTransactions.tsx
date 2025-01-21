@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
-import { SymbolPriceIf } from "../lib/Interfaces";
 import DTransactionCardContainer from "./DTransactionCardContainer";
 import PairsAndPrices from "./PairsAndPrices";
 import DTransactionGroupContainer from "./DTransactionGroupContainer";
 import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
-import { convertArrayToObject, redCross } from "@/utils/helper";
-import Dtransactions from "../lib/Dtransactions";
 
 const PageTransactions = () => {
   const [dtransactions, setDtransactions] = useState<DagobertTransaction[]>([]);

@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <div className="flex justify-center items-center w-screen h-screen">
       <div>
-        <h1 className="text-center text-3xl p-2">Login</h1>
+        <h1 className="text-center text-4xl p-2">Welcome</h1>
         <form
           className="flex flex-col text-center gap-3"
           onSubmit={handleSubmit}

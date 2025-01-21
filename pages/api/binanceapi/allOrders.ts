@@ -56,7 +56,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     case "POST":
       action = Actions.NewSlOrder;
       break;
-    case "CANCEL":
+    case "DELETE":
       action = Actions.CancelOrder;
       break;
   }
@@ -113,10 +113,13 @@ async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
     }
 
     const response: CancelOrderResult = await client.cancelOrder(options);
+
     return res.status(200).json(response);
   } catch (err: any) {
     return res.status(500).json({
-      error: `Error happened: ${err.message} | ${err?.response?.data}`,
+      error: err.message,
+      errorCode: err.code,
+      response: err?.response?.data,
     });
   }
 }

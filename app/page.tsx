@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PageTransactions from "./components/PageTransactions";
-import PageOrderHistory from "./components/PageOrderHistory";
+import Charts from "./components/Charts";
 import PageConfig from "./components/pageConfig/PageConfig";
 import ClientSideDbCache from "./lib/ClientSideDbCache";
 import { useRouter } from "next/navigation";
@@ -11,7 +11,7 @@ import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 
 const pages = {
   Transactions: PageTransactions,
-  "Order History": PageOrderHistory,
+  Charts: Charts,
   Config: PageConfig,
 };
 

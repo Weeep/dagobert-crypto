@@ -52,7 +52,7 @@ class DbApiUtil {
       }
     } while (cursor !== 0);
 
-    console.log("Cache initialized at " + new Date().getTime() + "!"); //, this.cache["dtransactions"]);
+    //console.log("Cache initialized at " + new Date().getTime() + "!"); //, this.cache["dtransactions"]);
     return { message: "Cache initialized!", cache };
   }
 
