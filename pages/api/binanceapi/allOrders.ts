@@ -14,6 +14,7 @@ import Binance, {
 
 const apiKey: string = process.env.BAPI_KEY as string;
 const apiSecret: string = process.env.BAPI_SEC as string;
+const httpBase: string = process.env.BAPI_HTTPBASE as string;
 
 enum Actions {
   Trades = "Trades",
@@ -23,7 +24,7 @@ enum Actions {
   AllOrders = "AllOrders", // TODO legacy, Trades should be used
 }
 
-const client = Binance({ apiKey, apiSecret });
+const client = Binance({ apiKey, apiSecret, httpBase });
 
 function getTrades(options: {
   symbol: string;
@@ -158,7 +159,9 @@ async function allOrders(req: NextApiRequest, res: NextApiResponse) {
   if (apiResponse.ok) {
     return res.status(apiResponse.code).json(apiResponse.response);
   } else {
-    return res.status(apiResponse.code).json({ error: apiResponse.error });
+    return res
+      .status(apiResponse.code)
+      .json({ error: JSON.stringify(apiResponse) });
   }
 }
 

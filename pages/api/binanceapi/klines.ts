@@ -2,11 +2,20 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import binanceapiutils from "../../../utils/binanceapiutil";
 import { ApiResponse } from "@/utils/typesAndEnums";
 import { withAuth } from "@/utils/auth";
+import Binance from "binance-api-node";
+
+const apiKey: string = process.env.BAPI_KEY as string;
+const apiSecret: string = process.env.BAPI_SEC as string;
 
 async function klines(req: NextApiRequest, res: NextApiResponse) {
+  //const client = Binance({ apiKey, apiSecret });
+  //const ai = await client.allBookTickers(); //.prices({ symbol: "SOLUSDC" }); //.accountInfo();
+
+  //return res.status(200).json(ai);
+
   const apiResponse: ApiResponse = await libKlines(req.query);
   if (apiResponse.ok) {
-    res.status(apiResponse.code).json(JSON.stringify(apiResponse.response));
+    res.status(apiResponse.code).json(apiResponse.response);
   } else {
     res.status(apiResponse.code).json({ error: apiResponse.error });
   }
@@ -15,6 +24,7 @@ async function klines(req: NextApiRequest, res: NextApiResponse) {
 export async function libKlines({
   symbol = "",
   interval = "",
+  limit = "50",
 }): Promise<ApiResponse> {
   let resultCode: number = 500;
   let resultBody: string = "";
@@ -35,7 +45,7 @@ export async function libKlines({
     };
   }
 
-  return binanceapiutils("klines", { symbol, interval }, false, false);
+  return binanceapiutils("klines", { symbol, interval, limit }, false, false);
 }
 
 export default withAuth(klines);

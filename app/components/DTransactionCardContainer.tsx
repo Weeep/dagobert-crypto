@@ -140,7 +140,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
   };
 
   const drawActionPanel = (): React.ReactElement => {
-    if (markedForMerge.length === 0) return <></>;
+    if (markedForMerge.length <= 1) return <></>;
 
     const trashButton: React.ReactElement =
       markedForMerge.length > 0 ? <button>Trash</button> : <></>;
