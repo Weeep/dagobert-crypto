@@ -105,7 +105,7 @@ async function openOrders(
 async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
   try {
     if (
-      //!options.orderId || <- What? :O Why no such? It is mandatory!
+      //!options.orderId || <- TODO What? :O Why no such? It is mandatory!
       !options.symbol
     ) {
       return res.status(400).json({

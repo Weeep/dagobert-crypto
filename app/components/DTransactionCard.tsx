@@ -122,34 +122,38 @@ const DTransactionCard: React.FC<Props> = ({
   ) => {
     event.stopPropagation();
 
-    const response = await fetch("/api/binanceapi/allOrders", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(options),
-    });
-
-    const rjson = await response.json();
-
-    if (response.ok || rjson.errorCode === -2011) {
-      //"Unknown order sent" - TODO??
-      const newNote = { note: "" };
-      const newOtherSideOrderId = { otherSideOrderId: "" };
-      await ClientSideDbCache.hset(KVRoot.dtransactions, {
-        [dtransaction.orderId]: {
-          ...dtransaction,
-          ...newNote,
-          ...newOtherSideOrderId,
-        },
+    try {
+      const response = await fetch("/api/binanceapi/allOrders", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(options),
       });
-      setIsOtherSideOrder(false);
-      setNote(newNote.note);
-    } else {
-      setNote(
-        "failed to cancel sl order. Options: " +
-          JSON.stringify(options) +
-          " Repsonse: " +
-          JSON.stringify(await response.json())
-      );
+
+      const rjson = await response.json();
+
+      if (response.ok || rjson.errorCode === -2011) {
+        //"Unknown order sent" - TODO??
+        const newNote = { note: "" };
+        const newOtherSideOrderId = { otherSideOrderId: "" };
+        await ClientSideDbCache.hset(KVRoot.dtransactions, {
+          [dtransaction.orderId]: {
+            ...dtransaction,
+            ...newNote,
+            ...newOtherSideOrderId,
+          },
+        });
+        setIsOtherSideOrder(false);
+        setNote(newNote.note);
+      } else {
+        setNote(
+          "failed to cancel sl order. Options: " +
+            JSON.stringify(options) +
+            " Repsonse: " +
+            JSON.stringify(await response.json())
+        );
+      }
+    } catch (error) {
+      setNote(JSON.stringify(error));
     }
   };
 
