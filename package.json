@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@types/cookie": "^1.0.0",
+    "@types/d3": "^7.4.3",
     "@types/dotenv": "^8.2.3",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20",
