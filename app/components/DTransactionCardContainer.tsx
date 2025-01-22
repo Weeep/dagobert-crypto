@@ -173,7 +173,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
     <div className="relative">
       {/* p-8">*/}
       <h1
-        className="text-2xl font-bold mb-4 mt-4"
+        className="cursor-pointer text-2xl font-bold mb-4 mt-4"
         onClick={() => setIsOpen(!isOpen)}
       >
         <FontAwesomeIcon

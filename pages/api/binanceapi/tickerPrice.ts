@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import binanceapiutils from "../../../utils/binanceapiutil";
+import binanceapiutil from "../../../utils/binanceapiutil";
 import { ApiResponse } from "@/utils/typesAndEnums";
 import { withAuth } from "@/utils/auth";
 
@@ -8,7 +8,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (apiResponse.ok) {
     res.status(apiResponse.code).json(apiResponse.response);
   } else {
-    res.status(apiResponse.code).json({ error: apiResponse.error });
+    res.status(apiResponse.code).json(apiResponse.error);
   }
 }
 
@@ -22,7 +22,7 @@ export async function libAllOrders({ symbols = "" }): Promise<ApiResponse> {
     } as ApiResponse;
   }
 
-  return binanceapiutils("ticker/price", { symbols }, false, false);
+  return binanceapiutil("ticker/price", { symbols }, false, false);
 }
 
 export default withAuth(handler);

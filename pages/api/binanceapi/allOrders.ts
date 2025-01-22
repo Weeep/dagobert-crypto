@@ -117,11 +117,15 @@ async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
 
     return res.status(200).json(response);
   } catch (err: any) {
-    return res.status(500).json({
+    //if(err instanceof TypeError) {
+    //  err.
+    //}
+    console.error("ERROR", err);
+    return res.status(500).json({ message: err?.message, error: err }); /*{
       error: err.message,
       errorCode: err.code,
       response: err?.response?.data,
-    });
+    });*/
   }
 }
 

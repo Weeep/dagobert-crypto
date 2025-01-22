@@ -90,7 +90,7 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
   return (
     <>
       <div
-        className="text-2xl font-bold mb-4 mt-4"
+        className="cursor-pointer text-2xl font-bold mb-4 mt-4"
         onClick={() => setIsOpen(!isOpen)}
       >
         <FontAwesomeIcon
@@ -102,14 +102,20 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
         Grouped Transactions (profit: {profitTotal.toFixed(2)}){" "}
         <span className="hidden text-xs">{epoch}</span>
       </div>
-      <div className={`${!isOpen ? "hidden" : ""}`}>
+      <div className={`ml-8 ${!isOpen ? "hidden" : ""}`}>
         {dtgips.length !== 0 &&
           dtgips.map((dtgip) => (
             <div key={dtgip.pair + "_" + dtgip.lastEpoch}>
               <div
-                className="text-xl"
+                className="text-xl cursor-pointer mb-2"
                 onClick={() => pairGroupClicked(dtgip.pair)}
               >
+                <FontAwesomeIcon
+                  icon={faChevronRight}
+                  className={`transform transition-transform duration-300 ${
+                    isPairOpen[dtgip.pair].isOpen ? "rotate-90" : "rotate-0"
+                  }`}
+                />{" "}
                 {dtgip.pair} (profit: {dtgip.profitPair.toFixed(2)})
               </div>
               <div

@@ -2,6 +2,7 @@ import { ApiResponse } from "./typesAndEnums";
 
 const apiKey: string = process.env.BAPI_KEY as string;
 const apiSecret: string = process.env.BAPI_SEC as string;
+const httpBase: string = process.env.BAPI_HTTPBASE as string;
 
 //let resultCode: number;
 //let resultBody: string;
@@ -24,7 +25,7 @@ export default async function binanceapiutil(
   let msCounter = 0;
   while (tryToFetch && msCounter <= 10) {
     //let binanceUrl = `https://api.binance.com/api/v3/${apiEndpoint}`;
-    let binanceUrl = `http://16.16.86.128/api/v3/${apiEndpoint}`;
+    let binanceUrl = `${httpBase}/api/v3/${apiEndpoint}`;
 
     if (createTimestamp) {
       params.timestamp = Math.floor(Date.now() + 5000 - msCounter * 1000);
@@ -65,7 +66,7 @@ export default async function binanceapiutil(
       ok = false;
       code = e.response?.status || 500;
       response = null;
-      error = JSON.stringify(e); //e.message;
+      error = e; //e.message;
     }
   }
 

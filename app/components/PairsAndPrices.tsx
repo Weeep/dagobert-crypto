@@ -131,7 +131,7 @@ const PairsAndPrices: React.FC<Props> = ({
 
   return (
     <>
-      <div className="flex flex-row gap-2 items-center text-2xl font-bold mb-4 mt-4">
+      <div className="cursor-pointer flex flex-row gap-2 items-center text-2xl font-bold mb-4 mt-4">
         <h1 onClick={() => setIsOpen(!isOpen)}>
           <FontAwesomeIcon
             icon={faChevronRight}
