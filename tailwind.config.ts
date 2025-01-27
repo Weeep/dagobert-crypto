@@ -12,6 +12,12 @@ const config: Config = {
           600: "#06b6d4",
           700: "#0e7490",
         },
+        lime: {
+          66: "#65a30d", // does not work from here, global.css used instead
+        },
+        purple: {
+          44: "#a78bfa", // does not work from here, global.css used instead
+        },
       },
     },
   },

@@ -25,6 +25,7 @@ export type DagobertTransactionGroup = {
   tradeType: TradeType;
   lastTransDateEpoch: number;
   groupedTrans: DagobertTransaction[];
+  note: string;
 };
 
 export type ApiResponse = {

@@ -71,6 +71,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
       executed: 0,
       lastTransDateEpoch: 0,
       groupedTrans: [],
+      note: "",
     };
 
     for (const mDTrans of markedForMerge) {

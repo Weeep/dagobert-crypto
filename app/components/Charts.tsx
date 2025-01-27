@@ -1,6 +1,7 @@
 import React from "react";
 import { format, getDaysInMonth } from "date-fns";
 import DtransactionGroups from "../lib/DtransactionGroups";
+import { DagobertTransactionGroup } from "@/utils/typesAndEnums";
 
 type Transaction = {
   groupId: string;
@@ -88,13 +89,21 @@ const Charts: React.FC = () => {
   // Process transactions into daily profits
   const groupedData = data.reduce((acc, transaction) => {
     const date = format(new Date(transaction.lastTransDateEpoch), "yyyy-MM-dd");
-    acc[date] = (acc[date] || 0) + transaction.amount;
+    if (!acc[date]) {
+      acc[date] = { profit: 0, transactionsInfo: [] };
+    }
+    acc[date].profit += transaction.amount;
+    acc[date].transactionsInfo.push([
+      transaction.pair,
+      transaction.amount.toFixed(2) + "$",
+    ]);
+
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, { profit: number; transactionsInfo: [pair: string, amount: string][] }>);
 
   // Organize data by year and month
   const yearMonthData = Object.entries(groupedData).reduce(
-    (acc, [date, profit]) => {
+    (acc, [date, { profit, transactionsInfo }]) => {
       const [year, month, day] = date.split("-");
       const yearKey = `${year}`;
       const monthKey = `${month}`;
@@ -105,7 +114,10 @@ const Charts: React.FC = () => {
 
       acc[yearKey].total += profit;
       acc[yearKey].months[monthKey].total += profit;
-      acc[yearKey].months[monthKey].days[Number(day)] = profit;
+      acc[yearKey].months[monthKey].days[Number(day)] = {
+        profit,
+        transactionsInfo,
+      };
 
       return acc;
     },
@@ -113,7 +125,18 @@ const Charts: React.FC = () => {
       string,
       {
         total: number;
-        months: Record<string, { total: number; days: Record<number, number> }>;
+        months: Record<
+          string,
+          {
+            total: number;
+            days: {
+              [day: number]: {
+                profit: number;
+                transactionsInfo: [pair: string, amount: string][];
+              };
+            };
+          }
+        >;
       }
     >
   );
@@ -145,23 +168,29 @@ const Charts: React.FC = () => {
                   <div className="flex items-end gap-1">
                     {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(
                       (day) => {
-                        const profit = days[day] || 0;
+                        const dayInfo = days[day] || 0;
                         return (
                           <div key={day} className="flex flex-col items-center">
-                            <div
-                              className={
-                                profit >= 0 ? "bg-green-500" : "bg-red-500"
-                              }
-                              style={{
-                                height: `${
-                                  Math.abs(profit) * pixelPerProfit
-                                }px`,
-                                width: "10px",
-                              }}
-                              title={`Day: ${day}, Profit: $${profit.toFixed(
-                                2
-                              )}`}
-                            ></div>
+                            {dayInfo.profit && (
+                              <div
+                                className={
+                                  dayInfo.profit >= 0
+                                    ? "bg-green-500"
+                                    : "bg-red-500"
+                                }
+                                style={{
+                                  height: `${
+                                    Math.abs(dayInfo.profit) * pixelPerProfit
+                                  }px`,
+                                  width: "10px",
+                                }}
+                                title={`Day: ${day}, Profit: $${dayInfo.profit.toFixed(
+                                  2
+                                )} | ${JSON.stringify(
+                                  dayInfo.transactionsInfo
+                                )}`}
+                              ></div>
+                            )}
                             <span className="text-xs mt-1">{day}</span>
                           </div>
                         );

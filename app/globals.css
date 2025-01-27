@@ -25,3 +25,13 @@
     )
     rgb(var(--background-start-rgb));
 }
+
+.bg-lime-600,
+.hover\:bg-lime-600:hover {
+  background-color: #65a30d !important;
+}
+
+.bg-purple-400,
+.hover\:bg-purple-400:hover {
+  background-color: #a78bfa !important;
+}
