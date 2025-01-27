@@ -2,10 +2,17 @@ import { useEffect, useState } from "react";
 import ProgressInfo from "../ProgressInfo";
 import CsvParse from "./CsvParse";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
-import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
+import {
+  Color,
+  DagobertTransaction,
+  KVRoot,
+  TradeType,
+} from "@/utils/typesAndEnums";
 import Dtransactions from "@/app/lib/Dtransactions";
-import { greenPipe, redCross } from "@/utils/helper";
+import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
 import FollowedPairs from "./FollowedPairs";
+import { QueryOrderResult } from "binance-api-node";
+import { TransactionIf } from "@/app/lib/Interfaces";
 
 export default function PageConfig() {
   const [dbConnStatusStr, setDbConnStatusStr] = useState<string>("Checking...");
@@ -50,33 +57,50 @@ export default function PageConfig() {
     }
   };
 
-  const updateBtnClicked = async () => {
+  const updateSpotBtnClicked = async () => {
     const pairs = ClientSideDbCache.smembers(KVRoot.pairs);
     for (const pair of pairs) {
-      updateOrdersViaBinanceApi(pair, setOrdersUpdateInfo);
+      updateOrdersViaBinanceApi(
+        pair,
+        "/api/binanceapi/spot?action=AllOrders",
+        TradeType.Spot,
+        setOrdersUpdateInfo
+      );
+    }
+  };
+
+  const updateMarginBtnClicked = async () => {
+    const pairs = ClientSideDbCache.smembers(KVRoot.pairs);
+    for (const pair of pairs) {
+      updateOrdersViaBinanceApi(
+        pair,
+        "/api/binanceapi/margin?dummy=dummy", //TODO dummy
+        TradeType.Margin,
+        setOrdersUpdateInfo
+      );
     }
   };
 
   const updateOrdersViaBinanceApi = async (
     pair: string,
+    apiEndpoint: string,
+    tradeType: TradeType,
     infoFunc: (info: string) => void
   ) => {
     try {
       infoFunc(`Fetching ${pair} orders via Binance API`);
 
-      const binanceResponse = await fetch(
-        `/api/binanceapi/allOrders?action=AllOrders&symbol=${pair}`
-      );
+      const binanceResponse = await fetch(`${apiEndpoint}&symbol=${pair}`);
 
       const data = await binanceResponse.json();
-      if (binanceResponse.status !== 200 || data?.code) {
+      if (binanceResponse.status !== 200 || !isTransactionIfArray(data)) {
         throw binanceResponse.status + "-" + JSON.stringify(data);
       }
 
       infoFunc(`${data.length} ${pair} orders fetched, update database...`);
 
-      const pi = (await Dtransactions.post("binanceapi", data)).response
-        ?.pairInfo;
+      const pi = (await Dtransactions.post(data as TransactionIf[], tradeType))
+        .response?.pairInfo;
 
       if (pi && pi[pair] && pi[pair].added) {
         setNumOfNewTransactions((prev) => {
@@ -113,13 +137,19 @@ export default function PageConfig() {
         <h2 className="text-xl font-semibold my-3">{title}</h2>
         <div className="flex space-x-2 items-center">
           <button
-            className="ml-8 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800"
-            onClick={updateBtnClicked}
+            className={`ml-8 bg-blue-500 hover:bg-${Color.SpotColor} active:bg-${Color.SpotColor} text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue`}
+            onClick={updateSpotBtnClicked}
           >
-            Update
+            Update Spot
           </button>
-          <ProgressInfo info={ordersUpdateInfo} />
+          <button
+            className={`ml-8 bg-blue-500 hover:bg-${Color.MarginColor} active:bg-${Color.MarginColor} text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue`}
+            onClick={updateMarginBtnClicked}
+          >
+            Update Margin
+          </button>
         </div>
+        <ProgressInfo info={ordersUpdateInfo} />
       </>
     );
   };

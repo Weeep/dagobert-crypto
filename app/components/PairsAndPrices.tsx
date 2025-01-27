@@ -63,7 +63,7 @@ const PairsAndPrices: React.FC<Props> = ({
       );
 
       const rjson = await response.json();
-      if (response.status !== 200 || rjson?.code || !Array.isArray(rjson)) {
+      if (response.status !== 200 || !Array.isArray(rjson)) {
         throw response.status + "-" + JSON.stringify(rjson);
       }
 
@@ -80,9 +80,7 @@ const PairsAndPrices: React.FC<Props> = ({
 
       /// Num of Trans calculation
       let numOfTransactions: { [key: string]: number } = {};
-      const dtranss: DagobertTransaction[] = Object.values(
-        Dtransactions.getAll()
-      );
+      const dtranss: DagobertTransaction[] = Dtransactions.getAll();
 
       for (const dtrans of dtranss) {
         if (!dtrans.grouped) {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
+import { KVRoot, TradeType } from "@/utils/typesAndEnums";
 import Dtransactions from "@/app/lib/Dtransactions";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { redCross } from "@/utils/helper";
@@ -9,6 +9,8 @@ import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 interface Props {
   updateOrdersViaBinanceApiFunc: (
     pair: string,
+    apiEndpoint: string,
+    tradeType: TradeType,
     infoFunc: (info: string) => void
   ) => void;
   // numOfNewTransactionsUseStateFunc: (numOfNewTransactions: {
@@ -54,11 +56,11 @@ const FollowedPairs: React.FC<Props> = ({
   };
 
   const handleFromTransactions = async () => {
-    const data = Dtransactions.getAll();
     let pairs: { [key: string]: number } = {};
+    const dtransactions = Dtransactions.getAll();
 
-    if (data) {
-      const dtransactions = Object.values(data) as DagobertTransaction[];
+    if (dtransactions) {
+      //const dtransactions = Object.values(data) as DagobertTransaction[];
       for (const dtrans of dtransactions) {
         pairs[dtrans.pair] = 0;
         setInfo(dtrans.pair + " fetched from transactions.");
@@ -82,7 +84,12 @@ const FollowedPairs: React.FC<Props> = ({
   };
 
   const handleRefresh = (pair: string): void => {
-    updateOrdersViaBinanceApiFunc(pair, setInfo);
+    updateOrdersViaBinanceApiFunc(
+      pair,
+      "/api/binanceapi/spot?action=AllOrders",
+      TradeType.Spot,
+      setInfo
+    );
   };
 
   return (

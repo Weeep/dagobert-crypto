@@ -2,6 +2,7 @@ import { TransactionIf } from "@/app/lib/Interfaces";
 
 export type DagobertTransaction = {
   orderId: string;
+  binanceApiId: number;
   pair: string; // SOLUSDC
   amount: number; //incomeUsd 8.03
   executed: number; //qty 0.041
@@ -13,6 +14,7 @@ export type DagobertTransaction = {
   grouped: boolean;
   note: string;
   otherSideOrderId: string;
+  tradeType: TradeType;
 };
 
 export type DagobertTransactionGroup = {
@@ -20,6 +22,7 @@ export type DagobertTransactionGroup = {
   pair: string;
   amount: number; //incomeUsd
   executed: number; //qty
+  tradeType: TradeType;
   lastTransDateEpoch: number;
   groupedTrans: DagobertTransaction[];
 };
@@ -62,4 +65,14 @@ export enum DbActionsViaApi {
   del = "del",
   srem = "srem",
   hdel = "hdel",
+}
+
+export enum TradeType {
+  Spot = "spot",
+  Margin = "margin",
+}
+
+export enum Color {
+  SpotColor = "lime-600",
+  MarginColor = "purple-400",
 }

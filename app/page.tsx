@@ -8,6 +8,7 @@ import ClientSideDbCache from "./lib/ClientSideDbCache";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { Color } from "@/utils/typesAndEnums";
 
 const pages = {
   Transactions: PageTransactions,
@@ -125,7 +126,13 @@ export default function Home() {
       {!loading && authorized && cacheInitialized ? (
         addPageContent()
       ) : (
-        <div className="p-8 text-xl">{info}</div>
+        <>
+          <div className="flex space-x-2">
+            <div className={`w-2 h-2 bg-${Color.SpotColor}`}></div>
+            <div className={`w-2 h-2 bg-${Color.MarginColor}`}></div>
+          </div>
+          <div className="p-8 text-xl">{info}</div>
+        </>
       )}
     </>
   );

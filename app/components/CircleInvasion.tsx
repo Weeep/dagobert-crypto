@@ -19,7 +19,7 @@ interface HighscoreEntry {
 const CircleInvasion = () => {
   const [circles, setCircles] = useState<Circle[]>([]);
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3000);
+  const [lives, setLives] = useState(10);
   const [highscores, setHighscores] = useState<HighscoreEntry[]>([]);
 
   const spawnInterval = 500; // milliseconds

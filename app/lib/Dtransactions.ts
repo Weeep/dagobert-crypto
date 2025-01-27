@@ -2,18 +2,21 @@ import { TransactionIf } from "@/app/lib/Interfaces";
 import {
   binanceApiOrdersToDTransactions,
   binanceCsvFileToDTransactions,
+  isBnceTradeHisFromCsvArray,
+  isTransactionIfArray,
 } from "@/utils/helper";
 import {
   BnceTradeHisFromCsv,
   DagobertTransaction,
   KVRoot,
+  TradeType,
 } from "@/utils/typesAndEnums";
 import ClientSideDbCache from "./ClientSideDbCache";
 
 class Dtransactions {
   static async post(
-    type: string,
-    data: any[]
+    data: TransactionIf[] | BnceTradeHisFromCsv[],
+    tradeType: TradeType
   ): Promise<{
     ok: boolean;
     error: any;
@@ -28,46 +31,49 @@ class Dtransactions {
       addedTransactions: any[];
     } | null;
   }> {
-    //switch (method) {
-    // --- setTransactions
-    //case "POST":
-    //const { type, data } = req.body;
-
-    //if (!type || !data) {
-    //  return []; //res.status(400).json({ error: "Missing data" });
-    // }
-
-    //let r = { s: 0, j: {} };
-    switch (type.toString().toLowerCase()) {
-      case "binanceapi":
-        //const d = JSON.parse(data);
-        if (this.isBinanceApiData(data)) {
-          const apiR = await this.store(
-            binanceApiOrdersToDTransactions(data as TransactionIf[]),
-            type.toString().toLowerCase()
-          );
-          return { ok: true, error: "", response: apiR };
-        } else {
-          return { ok: false, error: "Invalid input data", response: null };
-        }
-      case "binancecsv":
-        //const d = JSON.parse(data);
-        if (this.isBinanceCsvData(data)) {
-          const csvR = await this.store(
-            binanceCsvFileToDTransactions(data as BnceTradeHisFromCsv[]),
-            type.toString().toLowerCase()
-          );
-          return { ok: true, error: "", response: csvR };
-        } else {
-          return { ok: false, error: "Invalid input data", response: null };
-        }
-      default:
-        return {
-          ok: false,
-          error: "Invalid 'type' parameter: " + type,
-          response: null,
-        };
+    if (isTransactionIfArray(data)) {
+      const apiR = await this.store(
+        binanceApiOrdersToDTransactions(data as TransactionIf[], tradeType),
+        tradeType,
+        "binanceapi" //TODO
+      );
+      return { ok: true, error: "", response: apiR };
+    } else if (isBnceTradeHisFromCsvArray(data)) {
+      const csvR = await this.store(
+        binanceCsvFileToDTransactions(data as BnceTradeHisFromCsv[], tradeType),
+        tradeType,
+        "binancecsv" //TODO
+      );
+      return { ok: true, error: "", response: csvR };
+    } else {
+      return { ok: false, error: "Invalid input data", response: null };
     }
+
+    // switch (type.toString().toLowerCase()) {
+    //   case "binanceapi":
+    //     //const d = JSON.parse(data);
+    //     if (this.isBinanceApiData(data)) {
+    //     } else {
+    //       return { ok: false, error: "Invalid input data", response: null };
+    //     }
+    //   case "binancecsv":
+    //     //const d = JSON.parse(data);
+    //     if (this.isBinanceCsvData(data)) {
+    //       const csvR = await this.store(
+    //         binanceCsvFileToDTransactions(data as BnceTradeHisFromCsv[]),
+    //         type.toString().toLowerCase()
+    //       );
+    //       return { ok: true, error: "", response: csvR };
+    //     } else {
+    //       return { ok: false, error: "Invalid input data", response: null };
+    //     }
+    //   default:
+    //     return {
+    //       ok: false,
+    //       error: "Invalid 'type' parameter: " + type,
+    //       response: null,
+    //     };
+    // }
   }
 
   static get(id: string): DagobertTransaction {
@@ -77,16 +83,17 @@ class Dtransactions {
     ) as DagobertTransaction;
   }
 
-  static getAll(): { [key: string]: DagobertTransaction } {
-    return ClientSideDbCache.hgetall(KVRoot.dtransactions) as {
-      [key: string]: DagobertTransaction;
-    };
+  static getAll(): DagobertTransaction[] {
+    return Object.values(
+      ClientSideDbCache.hgetall(KVRoot.dtransactions) //TODO handle null as in DTGroups
+    ) as DagobertTransaction[];
   }
 
-  static async store(
+  private static async store(
     dtransactionsPerPair: {
       [pair: string]: DagobertTransaction[];
     },
+    tradeType: TradeType,
     type: string
   ): Promise<{
     pairInfo: {
@@ -118,6 +125,7 @@ class Dtransactions {
           (await this.epochNewerThanStored(
             type,
             dtransaction.pair,
+            tradeType,
             dtransaction.dateEpoch
           )) &&
           dtransaction.status === "FILLED"
@@ -139,32 +147,15 @@ class Dtransactions {
     return info;
   }
 
-  static isBinanceCsvData(data: any) {
-    return (
-      data.length > 0 &&
-      "Pair" in data[0] &&
-      "Side" in data[0] &&
-      "Date(UTC)" in data[0]
-    );
-  }
-
-  static isBinanceApiData(data: any) {
-    return (
-      data.length > 0 &&
-      "symbol" in data[0] &&
-      "orderId" in data[0] &&
-      "updateTime" in data[0]
-    );
-  }
-
-  static async epochNewerThanStored(
+  private static async epochNewerThanStored(
     type: string,
     pair: string,
+    tradeType: TradeType,
     epoch: number
   ): Promise<boolean> {
-    const lastTransEpoch = ClientSideDbCache.get(
-      "last_transaction_epoch_" + pair
-    );
+    const lte = "last_transaction_epoch_" + tradeType + "_" + pair;
+
+    const lastTransEpoch = ClientSideDbCache.get(lte);
 
     let epochUpdateNeeded = !lastTransEpoch;
 
@@ -185,10 +176,7 @@ class Dtransactions {
     }
 
     if (epochUpdateNeeded) {
-      await ClientSideDbCache.set(
-        "last_transaction_epoch_" + pair,
-        epoch.toString()
-      );
+      await ClientSideDbCache.set(lte, epoch.toString());
       return true;
     } else {
       return false;

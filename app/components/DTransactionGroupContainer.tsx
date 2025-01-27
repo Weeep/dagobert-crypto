@@ -136,6 +136,8 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
                       {redCross}
                     </button>
                     <div style={{ display: "none" }}>
+                      <span className="text-lime-600"></span>
+                      <span className="text-red-500"></span>
                       <span className="bg-red-100"></span>
                       <span className="bg-green-100"></span>
                       <span className="bg-slate-100"></span>
@@ -148,7 +150,7 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
                       <span
                         className={`text-${
                           dtg.amount >= 0 ? "lime" : "red"
-                        }-500`}
+                        }-600`}
                       >
                         {dtg.amount >= 0
                           ? "+" + dtg.amount.toFixed(2)
@@ -156,6 +158,7 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
                         $
                       </span>
                       &nbsp;&nbsp;{dtg.executed.toFixed(2)}
+                      &nbsp;&nbsp;{dtg.tradeType}
                     </h2>
                     {dtg.groupedTrans
                       .sort((a, b) => (a.dateEpoch > b.dateEpoch ? -1 : 1))

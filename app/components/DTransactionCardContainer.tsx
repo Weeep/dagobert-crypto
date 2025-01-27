@@ -3,6 +3,7 @@ import DTransactionCard from "./DTransactionCard";
 import {
   DagobertTransaction,
   DagobertTransactionGroup,
+  TradeType,
 } from "@/utils/typesAndEnums";
 import DtransactionGroups from "../lib/DtransactionGroups";
 import DTransactionGroupContainer from "./DTransactionGroupContainer";
@@ -65,6 +66,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
     let transactionGroup: DagobertTransactionGroup = {
       groupId: null,
       pair: "",
+      tradeType: TradeType.Spot,
       amount: 0,
       executed: 0,
       lastTransDateEpoch: 0,
@@ -74,7 +76,8 @@ const DTransactionCardContainer: React.FC<Props> = ({
     for (const mDTrans of markedForMerge) {
       const dTrans = mDTrans.dtransaction;
 
-      transactionGroup.pair = dTrans.pair; //TODO same pair validation, AVAX and SOL cannot be grouped
+      transactionGroup.pair = dTrans.pair; //TODO same pair WARNING validation needed, AVAX and SOL cannot be grouped
+      transactionGroup.tradeType = dTrans.tradeType; //TODO same tradeType ERROR validation needed
       transactionGroup.amount += dTrans.amount;
       transactionGroup.executed =
         dTrans.side === "BUY"

@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import binanceapiutil from "../../../utils/binanceapiutil";
-import { ApiResponse } from "@/utils/typesAndEnums";
+import { binanceClient } from "../../../utils/binanceapiutil";
 import { withAuth } from "@/utils/auth";
-import Binance, {
+import {
   CancelOrderOptions,
   CancelOrderResult,
   MyTrade,
@@ -12,40 +11,11 @@ import Binance, {
   QueryOrderResult,
 } from "binance-api-node";
 
-const apiKey: string = process.env.BAPI_KEY as string;
-const apiSecret: string = process.env.BAPI_SEC as string;
-const httpBase: string = process.env.BAPI_HTTPBASE as string;
-
-enum Actions {
-  Trades = "Trades",
+enum SpotActions {
   OpenOrders = "OpenOrders",
   CancelOrder = "CancelOrder",
   NewSlOrder = "NewSlOrder",
-  AllOrders = "AllOrders", // TODO legacy, Trades should be used
-}
-
-const client = Binance({ apiKey, apiSecret, httpBase });
-
-function getTrades(options: {
-  symbol: string;
-  orderId?: number;
-  startTime?: number;
-  endTime?: number;
-  fromId?: number;
-  limit?: number;
-  recvWindow?: number;
-  useServerTime?: boolean;
-}): Promise<MyTrade[]> {
-  //QueryOrderResult[]> {
-  try {
-    //const symbol = "AVAXUSDT";
-
-    return client.myTrades(options); //.openOrders(options);
-  } catch (error: any) {
-    return Promise.reject(
-      error.response?.data || error.message || "Error fetching open orders"
-    );
-  }
+  AllOrders = "AllOrders",
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -55,10 +25,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       action = req.query?.action;
       break;
     case "POST":
-      action = Actions.NewSlOrder;
+      action = SpotActions.NewSlOrder;
       break;
     case "DELETE":
-      action = Actions.CancelOrder;
+      action = SpotActions.CancelOrder;
       break;
   }
 
@@ -69,17 +39,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   switch (action) {
-    case Actions.Trades:
-      return res
-        .status(400)
-        .json({ error: "Action 'Trades' not supported yet." });
-    case Actions.OpenOrders:
+    case SpotActions.OpenOrders:
       return await openOrders(res, {});
-    case Actions.CancelOrder:
+    case SpotActions.CancelOrder:
       return await cancelOrder(res, req.body as CancelOrderOptions);
-    case Actions.NewSlOrder:
+    case SpotActions.NewSlOrder:
       return await newStopLimitOrder(res, req.body as NewOrderSL);
-    case Actions.AllOrders:
+    case SpotActions.AllOrders:
       return await allOrders(req, res);
   }
 }
@@ -93,7 +59,10 @@ async function openOrders(
   }
 ) {
   try {
-    const response: QueryOrderResult[] = await client.openOrders(options);
+    const response: QueryOrderResult[] = await binanceClient.openOrders({
+      ...options,
+      useServerTime: true,
+    });
     return res.status(200).json(response);
   } catch (err: any) {
     return res.status(500).json({
@@ -113,7 +82,10 @@ async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
       });
     }
 
-    const response: CancelOrderResult = await client.cancelOrder(options);
+    const response: CancelOrderResult = await binanceClient.cancelOrder({
+      ...options,
+      useServerTime: true,
+    });
 
     return res.status(200).json(response);
   } catch (err: any) {
@@ -145,7 +117,10 @@ async function newStopLimitOrder(res: NextApiResponse, newOrderSL: NewOrderSL) {
       });
     }
 
-    const response = await client.order(newOrderSL); //.orderTest(newOrderSL);
+    const response = await binanceClient.order({
+      ...newOrderSL,
+      useServerTime: true,
+    }); //.orderTest(newOrderSL);
     return res.status(200).json(response); //response is empty, maybe a bug in order?
   } catch (err: any) {
     return res.status(500).json({
@@ -154,41 +129,24 @@ async function newStopLimitOrder(res: NextApiResponse, newOrderSL: NewOrderSL) {
   }
 }
 
-const isValidAction = (value: any): value is Actions => {
-  return Object.values(Actions).includes(value as Actions);
-};
-
 async function allOrders(req: NextApiRequest, res: NextApiResponse) {
-  const apiResponse: ApiResponse = await libAllOrders(req.query);
-  if (apiResponse.ok) {
-    return res.status(apiResponse.code).json(apiResponse.response);
+  if (!req.query.symbol) {
+    return res.status(400).json("symbol is mandatory parameter.");
+  }
+
+  const queryOrderResult: QueryOrderResult[] = await binanceClient.allOrders({
+    symbol: req.query.symbol as string,
+    useServerTime: true,
+  });
+  if (queryOrderResult) {
+    return res.status(200).json(queryOrderResult);
   } else {
-    return res
-      .status(apiResponse.code)
-      .json({ error: JSON.stringify(apiResponse) });
+    return res.status(500).json("Error: no response from allOrders endpoint");
   }
 }
 
-export async function libAllOrders({
-  symbol = "",
-  startTime = "0",
-}): Promise<ApiResponse> {
-  let resultCode: number = 500;
-  let resultBody: string = "";
-
-  if (!symbol || symbol === "" || typeof symbol !== "string") {
-    //resultCode = 400;
-    //resultBody = '{error: "Invalid symbol parameter"}';
-    return {
-      ok: false,
-      code: 400,
-      response: null,
-      error: "Invalid symbol parameter",
-    };
-    //////return { resultCode, resultBody };
-  }
-
-  return binanceapiutil("allOrders", { symbol, startTime });
-}
+const isValidAction = (value: any): value is SpotActions => {
+  return Object.values(SpotActions).includes(value as SpotActions);
+};
 
 export default withAuth(handler);

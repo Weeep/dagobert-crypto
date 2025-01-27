@@ -2,6 +2,7 @@ import { PairPriceIf, TransactionIf } from "@/app/lib/Interfaces";
 import {
   BnceTradeHisFromCsv,
   DagobertTransaction,
+  TradeType,
 } from "@/utils/typesAndEnums";
 import { parse } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -11,8 +12,66 @@ export const redCross = "\u274C"; // ❌ Red cross
 export const rightPointingTriangle = "\u25B6";
 export const downPointingTriangle = "\u25BC";
 
+export const isTransactionIf = (data: any): boolean => {
+  return (
+    data &&
+    typeof data === "object" &&
+    "symbol" in data &&
+    "orderId" in data &&
+    "executedQty" in data &&
+    "cummulativeQuoteQty" in data &&
+    "status" in data &&
+    "type" in data &&
+    "side" in data &&
+    "updateTime" in data
+  );
+};
+
+export const isTransactionIfArray = (data: any): boolean => {
+  if (!data || !Array.isArray(data)) {
+    return false;
+  }
+
+  for (const d of data) {
+    if (!isTransactionIf(d)) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+export const isBnceTradeHisFromCsv = (data: any): boolean => {
+  return (
+    data &&
+    typeof data === "object" &&
+    "Date(UTC)" in data &&
+    "Pair" in data &&
+    "Side" in data &&
+    "Price" in data &&
+    "Executed" in data &&
+    "Amount" in data &&
+    "Fee" in data
+  );
+};
+
+export const isBnceTradeHisFromCsvArray = (data: any): boolean => {
+  if (!data || !Array.isArray(data)) {
+    return false;
+  }
+
+  for (const d of data) {
+    if (!isBnceTradeHisFromCsv(d)) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export const binanceCsvFileToDTransactions = (
-  csvTransactions: BnceTradeHisFromCsv[]
+  csvTransactions: BnceTradeHisFromCsv[],
+  tradeType: TradeType
 ): { [pair: string]: DagobertTransaction[] } => {
   let dtransactionsPerPair: { [pair: string]: DagobertTransaction[] } = {};
   csvTransactions.map((csvTrans) => {
@@ -23,6 +82,7 @@ export const binanceCsvFileToDTransactions = (
 
     const dtransaction: DagobertTransaction = {
       orderId: uuidv4(),
+      binanceApiId: -1,
       pair: csvTrans.Pair,
       amount: csvTrans.Side === "SELL" ? amount : 0 - amount,
       dateEpoch: parsedDateEpoch,
@@ -34,6 +94,7 @@ export const binanceCsvFileToDTransactions = (
       grouped: false,
       note: "",
       otherSideOrderId: "",
+      tradeType,
     };
 
     dtransactionsPerPair[csvTrans.Pair] =
@@ -45,7 +106,8 @@ export const binanceCsvFileToDTransactions = (
 };
 
 export const binanceApiOrdersToDTransactions = (
-  apiTransactions: TransactionIf[]
+  apiTransactions: TransactionIf[],
+  tradeType: TradeType
 ): { [pair: string]: DagobertTransaction[] } => {
   let dtransactionsPerPair: { [pair: string]: DagobertTransaction[] } = {};
 
@@ -54,6 +116,7 @@ export const binanceApiOrdersToDTransactions = (
 
     const dtransaction: DagobertTransaction = {
       orderId: uuidv4(),
+      binanceApiId: apiTransaction.orderId,
       pair: apiTransaction.symbol,
       amount: apiTransaction.side === "SELL" ? cqq : 0 - cqq,
       dateEpoch: apiTransaction.updateTime - 60 * 60000 - 60000, // TODO -1 óra és 1 perc, hogy ne duplikálja a csv utolsó tranzakcióját
@@ -67,6 +130,7 @@ export const binanceApiOrdersToDTransactions = (
       grouped: false,
       note: "",
       otherSideOrderId: "",
+      tradeType,
     };
 
     dtransactionsPerPair[apiTransaction.symbol] =

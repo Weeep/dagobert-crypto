@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
+import {
+  Color,
+  DagobertTransaction,
+  KVRoot,
+  TradeType,
+} from "@/utils/typesAndEnums";
 import {
   decreaseLastDigitByTwo,
   formatDate,
@@ -71,10 +76,23 @@ const DTransactionCard: React.FC<Props> = ({
     setNumber(Number(event.target.value));
   };
 
-  const getProfit = (): number => {
-    return parseFloat(
-      (currentPrice * dtransaction.executed + dtransaction.amount).toFixed(2)
-    );
+  const getProfit = (tradeType: TradeType): number => {
+    switch (tradeType) {
+      case TradeType.Spot:
+        return parseFloat(
+          (currentPrice * dtransaction.executed + dtransaction.amount).toFixed(
+            2
+          )
+        );
+      case TradeType.Margin:
+        return parseFloat(
+          (dtransaction.amount - currentPrice * dtransaction.executed).toFixed(
+            2
+          )
+        );
+      default:
+        return -1;
+    }
   };
 
   const postNewSlOrder = async (
@@ -93,7 +111,7 @@ const DTransactionCard: React.FC<Props> = ({
       stopPrice: price.toString(),
     };
 
-    const response = await fetch("/api/binanceapi/allOrders", {
+    const response = await fetch("/api/binanceapi/spot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newSlOrder),
@@ -125,7 +143,7 @@ const DTransactionCard: React.FC<Props> = ({
     event.stopPropagation();
 
     try {
-      const response = await fetch("/api/binanceapi/allOrders", {
+      const response = await fetch("/api/binanceapi/spot", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(options),
@@ -167,11 +185,22 @@ const DTransactionCard: React.FC<Props> = ({
     setIsExpanded(!isExpanded);
   };
 
+  const getColor = (t: TradeType): string => {
+    switch (t) {
+      case TradeType.Spot:
+        return "bg-" + Color.SpotColor;
+      case TradeType.Margin:
+        return "bg-" + Color.MarginColor;
+      default:
+        return "";
+    }
+  };
+
   return (
     <DFrame errorMessage={errorMessage[0]} errorEpoch={errorMessage[1]}>
       <div
         onClick={toggleSelection}
-        className={`bg-${
+        className={`relative bg-${
           isMarked ? "blue" : "slate"
         }-100 p-4 rounded-md shadow-md ${isVisible ? "" : "hidden"}`}
       >
@@ -182,8 +211,17 @@ const DTransactionCard: React.FC<Props> = ({
           <span className="bg-blue-100"></span>
           <span className="text-lime-600"></span>
           <span className="text-red-500"></span>
+          <span className={`bg-${Color.SpotColor}`}></span>
+          <span className={`bg-${Color.MarginColor}`}></span>
           TODO: It looks without these the below coloring does not work
         </div>
+
+        <div
+          className={`absolute top-2 bottom-2 left-1 w-1 ${getColor(
+            dtransaction.tradeType
+          )} rounded-full`}
+          title="Spot Order"
+        ></div>
 
         {/* Row 1 */}
         <div className="flex justify-center font-semibold mb-2 text-black">
@@ -230,15 +268,18 @@ const DTransactionCard: React.FC<Props> = ({
 
         {/* Row 3 */}
         <div className="h-4 text-xs text-center px-3 text-black mb-2">
-          {dtransaction.side === "BUY" && (
+          {((dtransaction.side === "BUY" &&
+            dtransaction.tradeType === TradeType.Spot) ||
+            (dtransaction.side === "SELL" &&
+              dtransaction.tradeType === TradeType.Margin)) && (
             <>
               Current price: <b>{currentPrice}</b> || Profit:{" "}
               <span
                 className={`text-${
-                  getProfit() > 0 ? "lime-600" : "red-500"
+                  getProfit(dtransaction.tradeType) > 0 ? "lime-600" : "red-500"
                 } font-bold`}
               >
-                {getProfit()}$ (
+                {getProfit(dtransaction.tradeType)}$ (
                 {(100 * (currentPrice / dtransaction.price - 1)).toFixed(2)}%)
               </span>
             </>
@@ -249,7 +290,10 @@ const DTransactionCard: React.FC<Props> = ({
         <div
           className={`relative overflow-hidden w-full h-8 rounded-lg text-xs`}
         >
-          {dtransaction.side === "BUY" && (
+          {((dtransaction.side === "BUY" &&
+            dtransaction.tradeType === TradeType.Spot) ||
+            (dtransaction.side === "SELL" &&
+              dtransaction.tradeType === TradeType.Margin)) && (
             <div
               className={`absolute bg-blue-500 h-8 text-gray-100 flex justify-self-end transition-all duration-300 ease-in-out ${
                 isExpanded ? "left-0" : "left-full -ml-6"

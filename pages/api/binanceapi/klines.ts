@@ -1,33 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import binanceapiutils from "../../../utils/binanceapiutil";
-import { ApiResponse } from "@/utils/typesAndEnums";
+import { binanceClient } from "../../../utils/binanceapiutil";
 import { withAuth } from "@/utils/auth";
-import Binance from "binance-api-node";
+import { CandleChartResult, CandlesOptions } from "binance-api-node";
 
 const apiKey: string = process.env.BAPI_KEY as string;
 const apiSecret: string = process.env.BAPI_SEC as string;
 
 async function klines(req: NextApiRequest, res: NextApiResponse) {
-  //const client = Binance({ apiKey, apiSecret });
-  //const ai = await client.allBookTickers(); //.prices({ symbol: "SOLUSDC" }); //.accountInfo();
-
-  //return res.status(200).json(ai);
-
-  const apiResponse: ApiResponse = await libKlines(req.query);
-  if (apiResponse.ok) {
-    res.status(apiResponse.code).json(apiResponse.response);
-  } else {
-    res.status(apiResponse.code).json({ error: apiResponse.error });
-  }
-}
-
-export async function libKlines({
-  symbol = "",
-  interval = "",
-  limit = "50",
-}): Promise<ApiResponse> {
-  let resultCode: number = 500;
-  let resultBody: string = "";
+  const { symbol, interval, limit = 50 } = req.query;
 
   if (
     !symbol ||
@@ -37,15 +17,25 @@ export async function libKlines({
     interval === "" ||
     typeof interval !== "string"
   ) {
-    return {
-      ok: false,
-      code: 400,
-      response: null,
-      error: "Invalid symbol parameter",
-    };
+    return res
+      .status(400)
+      .json("Missing mandatory parameter: symbol or/and interval");
   }
 
-  return binanceapiutils("klines", { symbol, interval, limit }, false, false);
+  try {
+    const response: CandleChartResult[] = await binanceClient.candles({
+      symbol,
+      interval,
+      limit,
+      useServerTime: true,
+    } as CandlesOptions);
+
+    return res.status(200).json(response);
+  } catch (error: any) {
+    return res
+      .status(500)
+      .json({ message: error.message, error: JSON.stringify(error) });
+  }
 }
 
 export default withAuth(klines);
