@@ -1,23 +1,12 @@
 import React, { useRef, useEffect } from "react";
 import * as d3 from "d3";
+import { CandleChartResult } from "binance-api-node";
 
-interface CandlestickChartProps {
-  data: {
-    openTime: number;
-    open: string;
-    high: string;
-    low: string;
-    close: string;
-    volume: string;
-    closeTime: number;
-    quoteVolume: string;
-    trades: number;
-    baseAssetVolume: string;
-    quoteAssetVolume: string;
-  }[];
+interface Props {
+  data: CandleChartResult[];
 }
 
-const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
+const CandlestickChart: React.FC<Props> = ({ data }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
@@ -52,24 +41,24 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
       ])
       .range([height, 0]);
 
-    const xAxis = d3.axisBottom(xScale).tickFormat((d) => {
-      const date = new Date(+d);
-      return d3.timeFormat("%Y-%m-%d %H:%M")(date);
-    });
+    // const xAxis = d3.axisBottom(xScale).tickFormat((d) => {
+    //   const date = new Date(+d);
+    //   return d3.timeFormat("%Y-%m-%d %H:%M")(date);
+    // });
 
-    const yAxis = d3.axisLeft(yScale);
+    // const yAxis = d3.axisLeft(yScale);
 
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${height})`)
-      .call(xAxis)
-      .selectAll("text")
-      .style("text-anchor", "end")
-      .attr("dx", "-.8em")
-      .attr("dy", ".15em")
-      .attr("transform", "rotate(-90)");
+    // svg
+    //   .append("g")
+    //   .attr("transform", `translate(0, ${height})`)
+    //   .call(xAxis)
+    //   .selectAll("text")
+    //   .style("text-anchor", "end")
+    //   .attr("dx", "-.8em")
+    //   .attr("dy", ".15em")
+    //   .attr("transform", "rotate(-90)");
 
-    svg.append("g").call(yAxis);
+    // svg.append("g").call(yAxis);
 
     svg
       .selectAll(".candlestick")
@@ -109,41 +98,41 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ data }) => {
         parseFloat(d.close) > parseFloat(d.open) ? "green" : "red"
       );
 
-    svg
-      .selectAll(".candle-text")
-      .data(data)
-      .enter()
-      .append("text")
-      .attr("class", "candle-text")
-      .attr("x", (d) => xScale(d.openTime.toString())! + xScale.bandwidth() / 2)
-      .attr("y", (d) => yScale(parseFloat(d.high)) - 15)
-      .attr("text-anchor", "middle")
-      .attr("fill", "white")
-      .attr("font-size", "8px")
-      .text((d) => {
-        const totalDiff =
-          ((parseFloat(d.high) - parseFloat(d.low)) / parseFloat(d.low)) * 100;
-        return totalDiff.toFixed(2) + "%";
-      });
+    // svg
+    //   .selectAll(".candle-text")
+    //   .data(data)
+    //   .enter()
+    //   .append("text")
+    //   .attr("class", "candle-text")
+    //   .attr("x", (d) => xScale(d.openTime.toString())! + xScale.bandwidth() / 2)
+    //   .attr("y", (d) => yScale(parseFloat(d.high)) - 15)
+    //   .attr("text-anchor", "middle")
+    //   .attr("fill", "white")
+    //   .attr("font-size", "8px")
+    //   .text((d) => {
+    //     const totalDiff =
+    //       ((parseFloat(d.high) - parseFloat(d.low)) / parseFloat(d.low)) * 100;
+    //     return totalDiff.toFixed(2) + "%";
+    //   });
 
-    svg
-      .selectAll(".body-text")
-      .data(data)
-      .enter()
-      .append("text")
-      .attr("class", "body-text")
-      .attr("x", (d) => xScale(d.openTime.toString())! + xScale.bandwidth() / 2)
-      .attr("y", (d) => yScale(parseFloat(d.high)) - 5)
-      .attr("text-anchor", "middle")
-      .attr("fill", "white")
-      .attr("font-size", "8px")
-      .text((d) => {
-        const bodyDiff =
-          (Math.abs(parseFloat(d.open) - parseFloat(d.close)) /
-            Math.min(parseFloat(d.open), parseFloat(d.close))) *
-          100;
-        return bodyDiff.toFixed(2) + "%";
-      });
+    // svg
+    //   .selectAll(".body-text")
+    //   .data(data)
+    //   .enter()
+    //   .append("text")
+    //   .attr("class", "body-text")
+    //   .attr("x", (d) => xScale(d.openTime.toString())! + xScale.bandwidth() / 2)
+    //   .attr("y", (d) => yScale(parseFloat(d.high)) - 5)
+    //   .attr("text-anchor", "middle")
+    //   .attr("fill", "white")
+    //   .attr("font-size", "8px")
+    //   .text((d) => {
+    //     const bodyDiff =
+    //       (Math.abs(parseFloat(d.open) - parseFloat(d.close)) /
+    //         Math.min(parseFloat(d.open), parseFloat(d.close))) *
+    //       100;
+    //     return bodyDiff.toFixed(2) + "%";
+    //   });
   }, [data]);
 
   return <svg ref={svgRef}></svg>;

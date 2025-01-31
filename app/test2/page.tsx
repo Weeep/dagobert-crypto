@@ -5,17 +5,44 @@ import CandlestickChart from "../components/CandlestickChart";
 import { CandleChartResult } from "binance-api-node";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
 import { KVRoot } from "@/utils/typesAndEnums";
+import { TradingAnalysis } from "../lib/TradingAnalysis";
+import { format } from "date-fns";
 
 const TestPage: React.FC = () => {
   const [klinesData, setKlinesData] = useState<{
     [key: string]: CandleChartResult[];
   }>({});
+  const [info, setInfo] = useState<string>("");
 
   //const pairs = ClientSideDbCache.smembers(KVRoot.pairs); // ["SOLUSDC", "AVAXUSDC", "TRUMPUSDC", "XRPUSDC"];
 
   useEffect(() => {
-    fetchKlines(); //await fetchKlines());
+    //fetchKlines(); //await fetchKlines());
+    test();
   }, []);
+
+  const test = async (): Promise<void> => {
+    const pair = "SOLUSDC";
+    const response = await fetch(
+      `/api/binanceapi/klines?symbol=${pair}&interval=1h&limit=200`
+    );
+
+    const data: CandleChartResult[] =
+      (await response.json()) as CandleChartResult[];
+
+    const ta = new TradingAnalysis(data);
+    setInfo(
+      `RSI(6): ${ta.getRsi(6) ?? -1}\nEMA(7): ${ta.getEma(
+        7
+      )}\nEMA(25): ${ta.getEma(25)}\nEMA(100): ${ta.getEma(
+        100
+      )}\ndiff to EMA% (100): ${ta.getPriceDiffPercentageToEma(237.02, 100)}`
+    );
+
+    setKlinesData((prev) => {
+      return { ...prev, [pair]: data };
+    });
+  };
 
   const fetchKlines = async (): Promise<void> => {
     const pairs = (await (await fetch(`/api/dbapi/pairs`)).json()) as string[];
@@ -51,6 +78,15 @@ const TestPage: React.FC = () => {
 
   return (
     <>
+      <div>
+        <div
+          className="text-3xl ml-10 mt-12 mb-4"
+          style={{ whiteSpace: "pre-line" }}
+        >
+          {info}
+        </div>
+      </div>
+
       {Object.keys(klinesData).map((key) => {
         return (
           <div>

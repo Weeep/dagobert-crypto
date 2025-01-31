@@ -89,6 +89,10 @@ class Dtransactions {
     ) as DagobertTransaction[];
   }
 
+  static getAllFilled(): DagobertTransaction[] {
+    return this.getAll().filter((dtrans) => dtrans.status === "FILLED");
+  }
+
   private static async store(
     dtransactionsPerPair: {
       [pair: string]: DagobertTransaction[];

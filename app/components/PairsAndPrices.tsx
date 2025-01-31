@@ -1,4 +1,4 @@
-import { /*React, {*/ useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { PairPriceIf } from "../lib/Interfaces";
 import Image from "next/image";
 import { convertArrayToObject, redCross } from "@/utils/helper";
@@ -8,6 +8,9 @@ import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
 import Dtransactions from "../lib/Dtransactions";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
 import { faRefresh } from "@fortawesome/free-solid-svg-icons";
+import CandlestickChart from "./CandlestickChart";
+import { CandleChartResult } from "binance-api-node";
+import { TradingAnalysis } from "../lib/TradingAnalysis";
 
 interface Props {
   pairsPricesCallback: (pairsPrices: {
@@ -16,10 +19,20 @@ interface Props {
       numOfTransactions: number;
     };
   }) => void;
-
   selectedPairs: string[];
   selectedPairsCallback: (selectedPairs: string[]) => void;
 }
+
+type PairData = {
+  [pair: string]: {
+    candles: CandleChartResult[];
+    ema7: number;
+    ema25: number;
+    ema100: number;
+    rsi: number;
+    diffToEma100: number;
+  };
+};
 
 const PairsAndPrices: React.FC<Props> = ({
   pairsPricesCallback,
@@ -35,74 +48,33 @@ const PairsAndPrices: React.FC<Props> = ({
       numOfTransactions: number;
     };
   }>({});
+  const [pairData1h, setPairData1h] = useState<PairData>({});
+  const [pairData1d, setPairData1d] = useState<PairData>({});
 
   //const pairPrices = convertArrayToObject(pairsAndPrices);
 
   useEffect(() => {
-    fetchPrices();
+    fetchAll();
     //const intervalId = setInterval(fetchPrices, 15000);
     //}
   }, []);
 
-  const fetchPrices = async (): Promise<boolean> => {
+  const fetchAll = async () => {
     setIsFetching(true);
     try {
-      const pairs = ClientSideDbCache.smembers(KVRoot.pairs); //await fetchh(`/api/dbapi/pairs`);
-      if (!pairs) {
-        setPairInfo("No any pair defined. Go to Config and add some.");
-        return false;
-      }
-      //if (pairsResponse.ok) {
-      //const pairs = await pairsResponse.json();
-
-      if ((pairs as string[]).length === 0) return false;
-
-      const response = await fetch(
-        `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(pairs)}`
-        // ["ADAUSDT","ARBUSDT","AVAXUSDT","BNBUSDT","BTCUSDT","DOTUSDT","ETHUSDT","ICPUSDT","MATICUSDT","SHIBUSDT","SOLUSDT","TRXUSDT","XRPUSDT"]
-      );
-
-      const rjson = await response.json();
-      if (response.status !== 200 || !Array.isArray(rjson)) {
-        throw response.status + "-" + JSON.stringify(rjson);
-      }
-
-      const prices = rjson.map(
-        (price: { symbol: string; price: string }): PairPriceIf => {
-          const pp: PairPriceIf = {
-            pair: price.symbol,
-            price: parseFloat(price.price),
-            numOfTransactions: 0,
-          };
-          return pp;
-        }
-      );
-
-      /// Num of Trans calculation
-      let numOfTransactions: { [key: string]: number } = {};
-      const dtranss: DagobertTransaction[] = Dtransactions.getAll();
-
-      for (const dtrans of dtranss) {
-        if (!dtrans.grouped) {
-          if (!(dtrans.pair in numOfTransactions)) {
-            numOfTransactions[dtrans.pair] = 1;
-          } else {
-            numOfTransactions[dtrans.pair] += 1;
-          }
+      console.log("aaa");
+      const pp = await fetchPrices();
+      if (pp !== null) {
+        setPairsPrices(pp);
+        pairsPricesCallback(pp);
+        console.log("bbb");
+        for (const pair of ClientSideDbCache.smembers(
+          KVRoot.pairs
+        ) as string[]) {
+          fetchCandleData(pair, "1h", pp);
+          fetchCandleData(pair, "1d", pp);
         }
       }
-
-      for (const price of prices as PairPriceIf[]) {
-        //as { symbol: string; price: string }[]) {
-        price.numOfTransactions =
-          price.pair in numOfTransactions ? numOfTransactions[price.pair] : 0;
-      }
-      ///
-
-      const ppobj = convertArrayToObject(prices as PairPriceIf[]);
-
-      setPairsPrices(ppobj);
-      pairsPricesCallback(ppobj);
     } catch (error) {
       setPairInfo(
         `${redCross} Error fetching prices: ${JSON.stringify(error)}`
@@ -112,9 +84,67 @@ const PairsAndPrices: React.FC<Props> = ({
     } finally {
       setIsFetching(false);
     }
+  };
 
-    //setInterval(fetchPrices, 15000);
-    return true;
+  const fetchPrices = async (): Promise<{
+    [key: string]: {
+      price: number;
+      numOfTransactions: number;
+    };
+  } | null> => {
+    const pairs = ClientSideDbCache.smembers(KVRoot.pairs); //await fetchh(`/api/dbapi/pairs`);
+    if (!pairs) {
+      setPairInfo("No any pair defined. Go to Config and add some.");
+      return null;
+    }
+    //if (pairsResponse.ok) {
+    //const pairs = await pairsResponse.json();
+
+    if ((pairs as string[]).length === 0) return null;
+
+    const response = await fetch(
+      `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(pairs)}`
+      // ["ADAUSDT","ARBUSDT","AVAXUSDT","BNBUSDT","BTCUSDT","DOTUSDT","ETHUSDT","ICPUSDT","MATICUSDT","SHIBUSDT","SOLUSDT","TRXUSDT","XRPUSDT"]
+    );
+
+    const rjson = await response.json();
+    if (response.status !== 200 || !Array.isArray(rjson)) {
+      throw response.status + "-" + JSON.stringify(rjson);
+    }
+
+    const prices = rjson.map(
+      (price: { symbol: string; price: string }): PairPriceIf => {
+        const pp: PairPriceIf = {
+          pair: price.symbol,
+          price: parseFloat(price.price),
+          numOfTransactions: 0,
+        };
+        return pp;
+      }
+    );
+
+    /// Num of Trans calculation
+    let numOfTransactions: { [key: string]: number } = {};
+    const dtranss: DagobertTransaction[] = Dtransactions.getAllFilled();
+
+    for (const dtrans of dtranss) {
+      if (!dtrans.grouped) {
+        if (!(dtrans.pair in numOfTransactions)) {
+          numOfTransactions[dtrans.pair] = 1;
+        } else {
+          numOfTransactions[dtrans.pair] += 1;
+        }
+      }
+    }
+
+    for (const price of prices as PairPriceIf[]) {
+      //as { symbol: string; price: string }[]) {
+      price.numOfTransactions =
+        price.pair in numOfTransactions ? numOfTransactions[price.pair] : 0;
+    }
+    ///
+
+    return convertArrayToObject(prices as PairPriceIf[]);
   };
 
   const handleCheckboxChange = (pair: string) => {
@@ -127,6 +157,61 @@ const PairsAndPrices: React.FC<Props> = ({
 
   const updatePairsAndPrices = () => {};
 
+  const fetchCandleData = async (
+    pair: string,
+    interval: string,
+    pp: {
+      [key: string]: {
+        price: number;
+        numOfTransactions: number;
+      };
+    }
+  ): Promise<void> => {
+    const response = await fetch(
+      `/api/binanceapi/klines?symbol=${pair}&interval=${interval}&limit=111`
+    );
+
+    const data: CandleChartResult[] =
+      (await response.json()) as CandleChartResult[];
+    if (response.status !== 200 || !Array.isArray(data)) {
+      console.error("error: " + response.status + " | " + JSON.stringify(data)); //TODO
+    } else {
+      const ta = new TradingAnalysis(data);
+      switch (interval) {
+        case "1h":
+          setPairData1h((prev) => {
+            prev[pair] = {
+              ema7: ta.getEma(7) ?? -1,
+              ema25: ta.getEma(25) ?? -1,
+              ema100: ta.getEma(100) ?? -1,
+              rsi: ta.getRsi(6) ?? -1,
+              diffToEma100:
+                ta.getPriceDiffPercentageToEma(pp[pair].price, 100) ?? -1000,
+              candles: data,
+            };
+
+            return prev;
+          });
+          break;
+        case "1d":
+          setPairData1d((prev) => {
+            prev[pair] = {
+              ema7: ta.getEma(7) ?? -1,
+              ema25: ta.getEma(25) ?? -1,
+              ema100: ta.getEma(100) ?? -1,
+              rsi: ta.getRsi(6) ?? -1,
+              diffToEma100:
+                ta.getPriceDiffPercentageToEma(pp[pair].price, 100) ?? -1000,
+              candles: data,
+            };
+
+            return prev;
+          });
+          break;
+      }
+    }
+  };
+
   return (
     <>
       <div className="cursor-pointer flex flex-row gap-2 items-center text-2xl font-bold mb-4 mt-4">
@@ -138,11 +223,10 @@ const PairsAndPrices: React.FC<Props> = ({
             }`}
           />{" "}
           Pairs
-          {/*<FontAwesomeIcon icon={faRefresh} onClick={updatePairsAndPrices()} />*/}
         </h1>
         <FontAwesomeIcon
           icon={faRefresh}
-          onClick={fetchPrices}
+          onClick={fetchAll}
           className={`cursor-pointer ${
             isFetching ? "animate-spin text-blue-500" : ""
           }`}
@@ -153,15 +237,19 @@ const PairsAndPrices: React.FC<Props> = ({
         {Object.keys(pairsPrices)
           .sort((a, b) => (a > b ? 1 : -1))
           .map((pair: string) => (
-            <label key={pair} className="flex items-center">
-              <input
-                type="checkbox"
-                checked={selectedPairs.includes(pair)}
-                onChange={() => handleCheckboxChange(pair)}
-                className="form-checkbox h-5 w-5 text-indigo-600"
-              />
-              <div className="ml-2">
+            <label
+              key={pair}
+              className="bg-black border border-white rounded p-1 flex items-center"
+            >
+              <div className="ml-2 w-36">
+                {/* Row 1 */}
                 <div className="flex space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedPairs.includes(pair)}
+                    onChange={() => handleCheckboxChange(pair)}
+                    className="form-checkbox h-5 w-5 text-indigo-600"
+                  />
                   <div>{pair}</div>
                   <a
                     href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${pair}`}
@@ -175,12 +263,68 @@ const PairsAndPrices: React.FC<Props> = ({
                     />
                   </a>
                 </div>
+
+                {/* Row 2 */}
                 <div className="flex justify-between">
                   <div className="text-xs">${pairsPrices[pair].price}</div>
                   <div className="text-xs">
                     {pairsPrices[pair].numOfTransactions}
                   </div>
                 </div>
+
+                {/* Row 3 */}
+                {pairData1h[pair] && (
+                  <div>
+                    <CandlestickChart
+                      data={pairData1h[pair].candles.slice(-30)}
+                    />
+                    <div className="flex space-x-2 text-xs">
+                      {/*<span>{pairData1h[pair].ema7}</span>
+                      <span>{pairData1h[pair].ema25}</span>
+                      <span>{pairData1h[pair].ema100}</span>
+                      <span>{pairData1h[pair].rsi}</span>*/}
+                      <span>
+                        EMA 100 diff:{" "}
+                        <span
+                          className={`text-${
+                            pairData1h[pair].diffToEma100 > 0
+                              ? "lime-600"
+                              : "red-500"
+                          }`}
+                        >
+                          {pairData1h[pair].diffToEma100.toFixed(2)}%
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Row 4 */}
+                {pairData1d[pair] && (
+                  <div>
+                    <CandlestickChart
+                      data={pairData1d[pair].candles.slice(-30)}
+                    />
+                    <div className="flex space-x-2 text-xs">
+                      {/*<span>{pairData1h[pair].ema7}</span>
+                      <span>{pairData1h[pair].ema25}</span>
+                      <span>{pairData1h[pair].ema100}</span>
+                      <span>{pairData1h[pair].rsi}</span>*/}
+                      <span>
+                        EMA 100 diff:{" "}
+                        <span
+                          className={`text-${
+                            pairData1d[pair].diffToEma100 > 0
+                              ? "lime-600"
+                              : "red-500"
+                          }`}
+                        >
+                          {pairData1d[pair].diffToEma100.toFixed(2)}%
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </label>
           ))}

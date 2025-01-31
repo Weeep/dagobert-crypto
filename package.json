@@ -17,6 +17,7 @@
     "@use-gesture/react": "^10.3.1",
     "@vercel/kv": "^1.0.1",
     "axios": "^1.6.5",
+    "big.js": "^6.2.2",
     "binance-api-node": "^0.12.9",
     "cookie": "^1.0.2",
     "d3": "^7.9.0",
@@ -32,6 +33,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/big.js": "^6.2.2",
     "@types/cookie": "^1.0.0",
     "@types/d3": "^7.4.3",
     "@types/dotenv": "^8.2.3",

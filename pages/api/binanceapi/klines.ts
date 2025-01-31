@@ -27,7 +27,7 @@ async function klines(req: NextApiRequest, res: NextApiResponse) {
       symbol,
       interval,
       limit,
-      useServerTime: true,
+      //useServerTime: true,
     } as CandlesOptions);
 
     return res.status(200).json(response);
