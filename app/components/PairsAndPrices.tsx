@@ -148,7 +148,8 @@ const PairsAndPrices: React.FC<Props> = ({
     return convertArrayToObject(prices as PairPriceIf[]);
   };
 
-  const handleCheckboxChange = (pair: string) => {
+  const handleCheckboxChange = (pair: string, event: React.ChangeEvent) => {
+    event.stopPropagation();
     if (selectedPairs.includes(pair)) {
       selectedPairsCallback(selectedPairs.filter((s) => s !== pair));
     } else {
@@ -239,104 +240,103 @@ const PairsAndPrices: React.FC<Props> = ({
           .sort((a, b) => (a > b ? 1 : -1))
           .map((pair: string) => (
             <Foldable
-              className="w-48"
+              className="w-52"
               title={
-                <>
+                <label
+                  key={pair}
+                  className="p-1 flex items-center"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPairs.includes(pair)}
+                    onChange={(event) => handleCheckboxChange(pair, event)}
+                    className="form-checkbox h-5 w-5 mr-1 text-indigo-600"
+                  />
                   {pair} ${pairsPrices[pair].price}
-                </>
+                </label>
               }
               isOpenByDefault={false}
             >
-              <label
-                key={pair}
-                className="bg-black border border-white rounded p-1 flex items-center"
-              >
-                <div className="ml-2 w-36">
-                  {/* Row 1 */}
-                  <div className="flex space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedPairs.includes(pair)}
-                      onChange={() => handleCheckboxChange(pair)}
-                      className="form-checkbox h-5 w-5 text-indigo-600"
+              <div className="bg-black border border-white rounded p-1 ml-2 w-36">
+                {/* Row 1 */}
+                <div className="flex space-x-2">
+                  <div>{pair}</div>
+                  <a
+                    href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${pair}`}
+                    target="_blank"
+                  >
+                    <Image
+                      src="/images/white-short-logo.png"
+                      alt="tradingview-logo"
+                      width={24}
+                      height={24}
                     />
-                    <div>{pair}</div>
-                    <a
-                      href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${pair}`}
-                      target="_blank"
-                    >
-                      <Image
-                        src="/images/white-short-logo.png"
-                        alt="tradingview-logo"
-                        width={24}
-                        height={24}
-                      />
-                    </a>
-                  </div>
-
-                  {/* Row 2 */}
-                  <div className="flex justify-between">
-                    <div className="text-xs">${pairsPrices[pair].price}</div>
-                    <div className="text-xs">
-                      {pairsPrices[pair].numOfTransactions}
-                    </div>
-                  </div>
-
-                  {/* Row 3 */}
-                  {pairData1h[pair] && (
-                    <div>
-                      <CandlestickChart
-                        data={pairData1h[pair].candles.slice(-30)}
-                      />
-                      <div className="flex space-x-2 text-xs">
-                        {/*<span>{pairData1h[pair].ema7}</span>
-                      <span>{pairData1h[pair].ema25}</span>
-                      <span>{pairData1h[pair].ema100}</span>
-                      <span>{pairData1h[pair].rsi}</span>*/}
-                        <span>
-                          EMA 100 diff:{" "}
-                          <span
-                            className={`text-${
-                              pairData1h[pair].diffToEma100 > 0
-                                ? "lime-600"
-                                : "red-500"
-                            }`}
-                          >
-                            {pairData1h[pair].diffToEma100.toFixed(2)}%
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Row 4 */}
-                  {pairData1d[pair] && (
-                    <div>
-                      <CandlestickChart
-                        data={pairData1d[pair].candles.slice(-30)}
-                      />
-                      <div className="flex space-x-2 text-xs">
-                        {/*<span>{pairData1h[pair].ema7}</span>
-                      <span>{pairData1h[pair].ema25}</span>
-                      <span>{pairData1h[pair].ema100}</span>
-                      <span>{pairData1h[pair].rsi}</span>*/}
-                        <span>
-                          EMA 100 diff:{" "}
-                          <span
-                            className={`text-${
-                              pairData1d[pair].diffToEma100 > 0
-                                ? "lime-600"
-                                : "red-500"
-                            }`}
-                          >
-                            {pairData1d[pair].diffToEma100.toFixed(2)}%
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  </a>
                 </div>
-              </label>
+
+                {/* Row 2 */}
+                <div className="flex justify-between">
+                  <div className="text-xs">${pairsPrices[pair].price}</div>
+                  <div className="text-xs">
+                    {pairsPrices[pair].numOfTransactions}
+                  </div>
+                </div>
+
+                {/* Row 3 */}
+                {pairData1h[pair] && (
+                  <div>
+                    <CandlestickChart
+                      data={pairData1h[pair].candles.slice(-30)}
+                    />
+                    <div className="flex space-x-2 text-xs">
+                      {/*<span>{pairData1h[pair].ema7}</span>
+                      <span>{pairData1h[pair].ema25}</span>
+                      <span>{pairData1h[pair].ema100}</span>
+                      <span>{pairData1h[pair].rsi}</span>*/}
+                      <span>
+                        EMA 100 diff:{" "}
+                        <span
+                          className={`text-${
+                            pairData1h[pair].diffToEma100 > 0
+                              ? "lime-600"
+                              : "red-500"
+                          }`}
+                        >
+                          {pairData1h[pair].diffToEma100.toFixed(2)}%
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Row 4 */}
+                {pairData1d[pair] && (
+                  <div>
+                    <CandlestickChart
+                      data={pairData1d[pair].candles.slice(-30)}
+                    />
+                    <div className="flex space-x-2 text-xs">
+                      {/*<span>{pairData1h[pair].ema7}</span>
+                      <span>{pairData1h[pair].ema25}</span>
+                      <span>{pairData1h[pair].ema100}</span>
+                      <span>{pairData1h[pair].rsi}</span>*/}
+                      <span>
+                        EMA 100 diff:{" "}
+                        <span
+                          className={`text-${
+                            pairData1d[pair].diffToEma100 > 0
+                              ? "lime-600"
+                              : "red-500"
+                          }`}
+                        >
+                          {pairData1d[pair].diffToEma100.toFixed(2)}%
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </Foldable>
           ))}
       </div>

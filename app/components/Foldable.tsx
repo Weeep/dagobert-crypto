@@ -19,7 +19,10 @@ const Foldable: React.FC<Props> = ({
 
   return (
     <div className={`cursor-pointer ${className}`}>
-      <h1 onClick={() => setIsOpen(!isOpen)}>
+      <h1
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex flex-row items-center"
+      >
         <FontAwesomeIcon
           icon={faChevronRight}
           className={`transform transition-transform duration-300 ${
@@ -29,9 +32,7 @@ const Foldable: React.FC<Props> = ({
         {title}
       </h1>
 
-      <div className={`${!isOpen ? "hidden" : ""} flex flex-wrap gap-4`}>
-        {children}{" "}
-      </div>
+      <div className={`${!isOpen ? "hidden" : ""}`}>{children} </div>
     </div>
   );
 };

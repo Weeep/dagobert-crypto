@@ -15,6 +15,7 @@ export type DagobertTransaction = {
   note: string;
   otherSideOrderId: string;
   tradeType: TradeType;
+  tradeStyle: TradeStyle;
 };
 
 export type DagobertTransactionGroup = {
@@ -71,6 +72,13 @@ export enum DbActionsViaApi {
 export enum TradeType {
   Spot = "spot",
   Margin = "margin",
+}
+
+export enum TradeStyle {
+  Day = "day",
+  Swing = "swing",
+  Hodling = "hodling",
+  Trash = "trash",
 }
 
 export enum Color {

@@ -1,16 +1,20 @@
 import { TransactionIf } from "@/app/lib/Interfaces";
 import {
-  binanceApiOrdersToDTransactions,
-  binanceCsvFileToDTransactions,
+  getPrice,
   isBnceTradeHisFromCsvArray,
   isTransactionIfArray,
+  stringToRoundedFloat,
 } from "@/utils/helper";
 import {
   BnceTradeHisFromCsv,
   DagobertTransaction,
   KVRoot,
+  TradeStyle,
   TradeType,
 } from "@/utils/typesAndEnums";
+import { parse } from "date-fns";
+import { v4 as uuidv4 } from "uuid";
+
 import ClientSideDbCache from "./ClientSideDbCache";
 
 class Dtransactions {
@@ -33,14 +37,20 @@ class Dtransactions {
   }> {
     if (isTransactionIfArray(data)) {
       const apiR = await this.store(
-        binanceApiOrdersToDTransactions(data as TransactionIf[], tradeType),
+        this.binanceApiOrdersToDTransactions(
+          data as TransactionIf[],
+          tradeType
+        ),
         tradeType,
         "binanceapi" //TODO
       );
       return { ok: true, error: "", response: apiR };
     } else if (isBnceTradeHisFromCsvArray(data)) {
       const csvR = await this.store(
-        binanceCsvFileToDTransactions(data as BnceTradeHisFromCsv[], tradeType),
+        this.binanceCsvFileToDTransactions(
+          data as BnceTradeHisFromCsv[],
+          tradeType
+        ),
         tradeType,
         "binancecsv" //TODO
       );
@@ -91,6 +101,26 @@ class Dtransactions {
 
   static getAllFilled(): DagobertTransaction[] {
     return this.getAll().filter((dtrans) => dtrans.status === "FILLED");
+  }
+
+  static async setStyleProperty(orderId: string, tradeStyle: TradeStyle) {
+    return this.setProperty(orderId, "tradeStyle", tradeStyle);
+  }
+
+  private static async setProperty(
+    orderId: string,
+    propName: string,
+    propValue: any
+  ) {
+    //TODO error handling
+
+    const dtg = this.get(orderId);
+    await ClientSideDbCache.hset(KVRoot.dtransactions, {
+      [dtg.orderId as string]: {
+        ...dtg,
+        ...{ [propName]: propValue },
+      },
+    });
   }
 
   private static async store(
@@ -150,6 +180,83 @@ class Dtransactions {
 
     return info;
   }
+
+  private static binanceCsvFileToDTransactions = (
+    csvTransactions: BnceTradeHisFromCsv[],
+    tradeType: TradeType
+  ): { [pair: string]: DagobertTransaction[] } => {
+    let dtransactionsPerPair: { [pair: string]: DagobertTransaction[] } = {};
+    csvTransactions.map((csvTrans) => {
+      const dateString = csvTrans["Date(UTC)"];
+      const parsedDate = parse(dateString, "MM/dd/yyyy HH:mm", new Date());
+      const parsedDateEpoch = parsedDate.getTime();
+      const amount = stringToRoundedFloat(csvTrans.Amount, 2);
+
+      const dtransaction: DagobertTransaction = {
+        orderId: uuidv4(),
+        binanceApiId: -1,
+        pair: csvTrans.Pair,
+        amount: csvTrans.Side === "SELL" ? amount : 0 - amount,
+        dateEpoch: parsedDateEpoch,
+        date: parsedDate,
+        side: csvTrans.Side,
+        executed: stringToRoundedFloat(csvTrans.Executed),
+        price: stringToRoundedFloat(csvTrans.Price),
+        status: "FILLED", // csv file contains FILLED only! (?)
+        grouped: false,
+        note: "",
+        otherSideOrderId: "",
+        tradeType,
+        tradeStyle: TradeStyle.Swing,
+      };
+
+      dtransactionsPerPair[csvTrans.Pair] =
+        dtransactionsPerPair[csvTrans.Pair] ?? [];
+      dtransactionsPerPair[csvTrans.Pair].push(dtransaction);
+    });
+
+    return dtransactionsPerPair;
+  };
+
+  private static binanceApiOrdersToDTransactions = (
+    apiTransactions: TransactionIf[],
+    tradeType: TradeType
+  ): { [pair: string]: DagobertTransaction[] } => {
+    let dtransactionsPerPair: { [pair: string]: DagobertTransaction[] } = {};
+
+    apiTransactions.map((apiTransaction) => {
+      const cqq = stringToRoundedFloat(apiTransaction.cummulativeQuoteQty, 2);
+
+      const dtransaction: DagobertTransaction = {
+        orderId: uuidv4(),
+        binanceApiId: apiTransaction.orderId,
+        pair: apiTransaction.symbol,
+        amount: apiTransaction.side === "SELL" ? cqq : 0 - cqq,
+        dateEpoch: apiTransaction.updateTime - 60 * 60000 - 60000, // TODO -1 óra és 1 perc, hogy ne duplikálja a csv utolsó tranzakcióját
+        date: new Date(apiTransaction.updateTime),
+        side: apiTransaction.side,
+        executed: stringToRoundedFloat(apiTransaction.executedQty),
+        price: stringToRoundedFloat(
+          getPrice(
+            apiTransaction.cummulativeQuoteQty,
+            apiTransaction.executedQty
+          )
+        ),
+        status: apiTransaction.status,
+        grouped: false,
+        note: "",
+        otherSideOrderId: "",
+        tradeType,
+        tradeStyle: TradeStyle.Swing,
+      };
+
+      dtransactionsPerPair[apiTransaction.symbol] =
+        dtransactionsPerPair[apiTransaction.symbol] ?? [];
+      dtransactionsPerPair[apiTransaction.symbol].push(dtransaction);
+    });
+
+    return dtransactionsPerPair;
+  };
 
   private static async epochNewerThanStored(
     type: string,

@@ -390,6 +390,11 @@ const DTransactionCard: React.FC<Props> = ({
             />
           )}
         </div>
+
+        {/* Row 6*/}
+        <div className="text-xs text-right text-gray-300 italic">
+          {dtransaction.tradeStyle}
+        </div>
       </div>
     </DFrame>
   );

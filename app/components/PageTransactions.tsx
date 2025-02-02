@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import DTransactionCardContainer from "./DTransactionCardContainer";
 import PairsAndPrices from "./PairsAndPrices";
 import DTransactionGroupContainer from "./DTransactionGroupContainer";
-import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
+import { DagobertTransaction, KVRoot, TradeStyle } from "@/utils/typesAndEnums";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
 
 const PageTransactions = () => {
@@ -33,7 +33,11 @@ const PageTransactions = () => {
     if (isTransactions) {
       const dtransactions = Object.values(data) as DagobertTransaction[];
       filteredTransactions = dtransactions.filter(
-        (obj) => obj && obj.status === "FILLED" && !obj.grouped
+        (obj) =>
+          obj &&
+          obj.status === "FILLED" &&
+          !obj.grouped &&
+          obj.tradeStyle === TradeStyle.Swing
       );
 
       isTransactions = filteredTransactions.length > 0;

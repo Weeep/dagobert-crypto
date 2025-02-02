@@ -3,12 +3,18 @@ import DTransactionCard from "./DTransactionCard";
 import {
   DagobertTransaction,
   DagobertTransactionGroup,
+  TradeStyle,
   TradeType,
 } from "@/utils/typesAndEnums";
 import DtransactionGroups from "../lib/DtransactionGroups";
 import DTransactionGroupContainer from "./DTransactionGroupContainer";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronRight,
+  faObjectGroup,
+  faTrash,
+} from "@fortawesome/free-solid-svg-icons";
+import Dtransactions from "../lib/Dtransactions";
 
 interface Props {
   dtransactions: DagobertTransaction[];
@@ -35,6 +41,9 @@ const DTransactionCardContainer: React.FC<Props> = ({
   const [markedForMerge, setMarkedForMerge] = useState<MarkedDTransaction[]>(
     []
   );
+  const [markedForTrash, setMarkedForTrash] = useState<MarkedDTransaction[]>(
+    []
+  );
   const [isOpen, setIsOpen] = useState<boolean>(true);
 
   const handleTransactionMarked = (
@@ -58,6 +67,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
       });
     }
     setMarkedForMerge(newMarkedForMerge);
+    setMarkedForTrash(newMarkedForMerge);
   };
 
   const mergeCalculation = (
@@ -98,6 +108,15 @@ const DTransactionCardContainer: React.FC<Props> = ({
     }
 
     return transactionGroup;
+  };
+
+  const trash = () => {
+    for (const mdt of markedForTrash) {
+      Dtransactions.setStyleProperty(
+        mdt.dtransaction.orderId,
+        TradeStyle.Trash
+      );
+    }
   };
 
   const merge = async () => {
@@ -144,31 +163,40 @@ const DTransactionCardContainer: React.FC<Props> = ({
   };
 
   const drawActionPanel = (): React.ReactElement => {
-    if (markedForMerge.length <= 1) return <></>;
+    if (markedForMerge.length == 0) return <></>;
 
-    const trashButton: React.ReactElement =
-      markedForMerge.length > 0 ? <button>Trash</button> : <></>;
-    const mergeButton: React.ReactElement =
+    const buttonCss =
+      "cursor-pointer bg-white hover:bg-blue-700 hover:text-white rounded-full text-blue-500 text-center flex items-center font-bold p-3 w-10 h-10";
+
+    //"bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800"
+
+    const trashButton: React.ReactElement | null =
+      markedForMerge.length > 0 ? (
+        <button onClick={trash} className={buttonCss} title="Trash">
+          <FontAwesomeIcon icon={faTrash} />
+        </button>
+      ) : null;
+    const mergeButton: React.ReactElement | null =
       markedForMerge.length > 1 ? (
-        <>
-          <button
-            onClick={merge}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800"
-          >
-            Merge
-          </button>
-        </>
-      ) : (
-        <></>
-      );
+        <button onClick={merge} className={buttonCss} title="Merge">
+          <FontAwesomeIcon icon={faObjectGroup} />
+        </button>
+      ) : null;
 
     return (
-      <div className="z-50 fixed bottom-0 left-20 right-20 m-10 p-5 bg-gray-200 text-black rounded-md">
-        <div id="buttons">
+      <div className="z-50 fixed bottom-2 left-1/2 -translate-x-1/2 p-5 bg-blue-500 rounded">
+        <div
+          id="buttons"
+          className="flex flex-row space-x-2 mb-2 items-center justify-center"
+        >
           {trashButton}
           {mergeButton}
         </div>
-        <div id="preview">{markedForMerge.length > 1 && mergePreview()}</div>
+        {mergeButton && (
+          <div className="bg-white text-black rounded px-5" id="preview">
+            {markedForMerge.length > 1 && mergePreview()}
+          </div>
+        )}
       </div>
     );
   };
