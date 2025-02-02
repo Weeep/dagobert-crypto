@@ -11,6 +11,7 @@ import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 import CandlestickChart from "./CandlestickChart";
 import { CandleChartResult } from "binance-api-node";
 import { TradingAnalysis } from "../lib/TradingAnalysis";
+import Foldable from "./Foldable";
 
 interface Props {
   pairsPricesCallback: (pairsPrices: {
@@ -237,96 +238,106 @@ const PairsAndPrices: React.FC<Props> = ({
         {Object.keys(pairsPrices)
           .sort((a, b) => (a > b ? 1 : -1))
           .map((pair: string) => (
-            <label
-              key={pair}
-              className="bg-black border border-white rounded p-1 flex items-center"
+            <Foldable
+              className="w-48"
+              title={
+                <>
+                  {pair} ${pairsPrices[pair].price}
+                </>
+              }
+              isOpenByDefault={false}
             >
-              <div className="ml-2 w-36">
-                {/* Row 1 */}
-                <div className="flex space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedPairs.includes(pair)}
-                    onChange={() => handleCheckboxChange(pair)}
-                    className="form-checkbox h-5 w-5 text-indigo-600"
-                  />
-                  <div>{pair}</div>
-                  <a
-                    href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${pair}`}
-                    target="_blank"
-                  >
-                    <Image
-                      src="/images/white-short-logo.png"
-                      alt="tradingview-logo"
-                      width={24}
-                      height={24}
+              <label
+                key={pair}
+                className="bg-black border border-white rounded p-1 flex items-center"
+              >
+                <div className="ml-2 w-36">
+                  {/* Row 1 */}
+                  <div className="flex space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedPairs.includes(pair)}
+                      onChange={() => handleCheckboxChange(pair)}
+                      className="form-checkbox h-5 w-5 text-indigo-600"
                     />
-                  </a>
-                </div>
-
-                {/* Row 2 */}
-                <div className="flex justify-between">
-                  <div className="text-xs">${pairsPrices[pair].price}</div>
-                  <div className="text-xs">
-                    {pairsPrices[pair].numOfTransactions}
+                    <div>{pair}</div>
+                    <a
+                      href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${pair}`}
+                      target="_blank"
+                    >
+                      <Image
+                        src="/images/white-short-logo.png"
+                        alt="tradingview-logo"
+                        width={24}
+                        height={24}
+                      />
+                    </a>
                   </div>
-                </div>
 
-                {/* Row 3 */}
-                {pairData1h[pair] && (
-                  <div>
-                    <CandlestickChart
-                      data={pairData1h[pair].candles.slice(-30)}
-                    />
-                    <div className="flex space-x-2 text-xs">
-                      {/*<span>{pairData1h[pair].ema7}</span>
+                  {/* Row 2 */}
+                  <div className="flex justify-between">
+                    <div className="text-xs">${pairsPrices[pair].price}</div>
+                    <div className="text-xs">
+                      {pairsPrices[pair].numOfTransactions}
+                    </div>
+                  </div>
+
+                  {/* Row 3 */}
+                  {pairData1h[pair] && (
+                    <div>
+                      <CandlestickChart
+                        data={pairData1h[pair].candles.slice(-30)}
+                      />
+                      <div className="flex space-x-2 text-xs">
+                        {/*<span>{pairData1h[pair].ema7}</span>
                       <span>{pairData1h[pair].ema25}</span>
                       <span>{pairData1h[pair].ema100}</span>
                       <span>{pairData1h[pair].rsi}</span>*/}
-                      <span>
-                        EMA 100 diff:{" "}
-                        <span
-                          className={`text-${
-                            pairData1h[pair].diffToEma100 > 0
-                              ? "lime-600"
-                              : "red-500"
-                          }`}
-                        >
-                          {pairData1h[pair].diffToEma100.toFixed(2)}%
+                        <span>
+                          EMA 100 diff:{" "}
+                          <span
+                            className={`text-${
+                              pairData1h[pair].diffToEma100 > 0
+                                ? "lime-600"
+                                : "red-500"
+                            }`}
+                          >
+                            {pairData1h[pair].diffToEma100.toFixed(2)}%
+                          </span>
                         </span>
-                      </span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Row 4 */}
-                {pairData1d[pair] && (
-                  <div>
-                    <CandlestickChart
-                      data={pairData1d[pair].candles.slice(-30)}
-                    />
-                    <div className="flex space-x-2 text-xs">
-                      {/*<span>{pairData1h[pair].ema7}</span>
+                  {/* Row 4 */}
+                  {pairData1d[pair] && (
+                    <div>
+                      <CandlestickChart
+                        data={pairData1d[pair].candles.slice(-30)}
+                      />
+                      <div className="flex space-x-2 text-xs">
+                        {/*<span>{pairData1h[pair].ema7}</span>
                       <span>{pairData1h[pair].ema25}</span>
                       <span>{pairData1h[pair].ema100}</span>
                       <span>{pairData1h[pair].rsi}</span>*/}
-                      <span>
-                        EMA 100 diff:{" "}
-                        <span
-                          className={`text-${
-                            pairData1d[pair].diffToEma100 > 0
-                              ? "lime-600"
-                              : "red-500"
-                          }`}
-                        >
-                          {pairData1d[pair].diffToEma100.toFixed(2)}%
+                        <span>
+                          EMA 100 diff:{" "}
+                          <span
+                            className={`text-${
+                              pairData1d[pair].diffToEma100 > 0
+                                ? "lime-600"
+                                : "red-500"
+                            }`}
+                          >
+                            {pairData1d[pair].diffToEma100.toFixed(2)}%
+                          </span>
                         </span>
-                      </span>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </label>
+                  )}
+                </div>
+              </label>
+            </Foldable>
           ))}
       </div>
     </>
