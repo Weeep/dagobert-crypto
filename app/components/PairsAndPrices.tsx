@@ -14,13 +14,12 @@ import { TradingAnalysis } from "../lib/TradingAnalysis";
 import Foldable from "./Foldable";
 
 interface Props {
-  pairsPricesCallback: (pairsPrices: {
+  pairsAndPricesCallback: (pairsPrices: {
     [key: string]: {
       price: number;
       numOfTransactions: number;
     };
   }) => void;
-  selectedPairs: string[];
   selectedPairsCallback: (selectedPairs: string[]) => void;
 }
 
@@ -36,8 +35,7 @@ type PairData = {
 };
 
 const PairsAndPrices: React.FC<Props> = ({
-  pairsPricesCallback,
-  selectedPairs,
+  pairsAndPricesCallback: pairsPricesCallback,
   selectedPairsCallback,
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -49,6 +47,7 @@ const PairsAndPrices: React.FC<Props> = ({
       numOfTransactions: number;
     };
   }>({});
+  const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
   const [pairData1h, setPairData1h] = useState<PairData>({});
   const [pairData1d, setPairData1d] = useState<PairData>({});
 
@@ -152,8 +151,10 @@ const PairsAndPrices: React.FC<Props> = ({
     event.stopPropagation();
     if (selectedPairs.includes(pair)) {
       selectedPairsCallback(selectedPairs.filter((s) => s !== pair));
+      setSelectedPairs((prev) => prev.filter((s) => s !== pair));
     } else {
       selectedPairsCallback([...selectedPairs, pair]);
+      setSelectedPairs((prev) => [...prev, pair]);
     }
   };
 

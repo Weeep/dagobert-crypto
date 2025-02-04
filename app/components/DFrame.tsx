@@ -4,9 +4,15 @@ interface Props {
   children: React.ReactNode;
   errorMessage: string;
   errorEpoch: number;
+  className?: string;
 }
 
-const DFrame: React.FC<Props> = ({ children, errorMessage, errorEpoch }) => {
+const DFrame: React.FC<Props> = ({
+  children,
+  errorMessage,
+  errorEpoch,
+  className = "",
+}) => {
   const [isOpacity, setIsOpacity] = useState(false);
   const [isHidden, setHidden] = useState(true);
 
@@ -32,7 +38,7 @@ const DFrame: React.FC<Props> = ({ children, errorMessage, errorEpoch }) => {
   };
 
   return (
-    <>
+    <div className={className}>
       {children}
       <div
         className={`fixed bottom-2 right-0 left-0 z-40 mx-auto w-3/4 p-6 rounded bg-red-500 text-white transition-opacity duration-500 ${
@@ -44,7 +50,7 @@ const DFrame: React.FC<Props> = ({ children, errorMessage, errorEpoch }) => {
         </div>
         <div className="break-words">{errorMessage}</div>
       </div>
-    </>
+    </div>
   );
 };
 

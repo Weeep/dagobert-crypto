@@ -2,6 +2,7 @@ import {
   DagobertTransaction,
   DagobertTransactionGroup,
   KVRoot,
+  TradeType,
 } from "@/utils/typesAndEnums";
 import { v4 as uuidv4 } from "uuid";
 import ClientSideDbCache from "./ClientSideDbCache";
@@ -107,23 +108,46 @@ class DtransactionGroups {
       });
     }
 
-    ///check
-    //const dTranss2 = dTransIds
-    //  .map((id) => Dtransactions.get(id))
-    //  .map((dt) => [dt.orderId, dt.grouped]);
-    //console.log(JSON.stringify(dTranss2));
-    ///
-
     const success = await ClientSideDbCache.hdel(
       KVRoot.dtransactionGroups,
       groupId
     );
 
-    ///check
-    //const dgroup = this.get(groupId);
-    //console.log("eeeeeeee " + success + ", " + JSON.stringify(dgroup));
-
     return success;
+  }
+
+  static group(dtransactions: DagobertTransaction[]): DagobertTransactionGroup {
+    let transactionGroup: DagobertTransactionGroup = {
+      groupId: null,
+      pair: "",
+      tradeType: TradeType.Spot,
+      amount: 0,
+      executed: 0,
+      lastTransDateEpoch: 0,
+      groupedTrans: [],
+      note: "",
+    };
+
+    for (const dtrans of dtransactions) {
+      //const dTrans = dtrans.dtransaction;
+
+      transactionGroup.pair = dtrans.pair; //TODO same pair WARNING validation needed, AVAX and SOL cannot be grouped
+      transactionGroup.tradeType = dtrans.tradeType; //TODO same tradeType ERROR validation needed
+      transactionGroup.amount += dtrans.amount;
+      transactionGroup.executed =
+        dtrans.side === "BUY"
+          ? transactionGroup.executed + dtrans.executed
+          : transactionGroup.executed - dtrans.executed;
+      transactionGroup.lastTransDateEpoch =
+        transactionGroup.lastTransDateEpoch === 0
+          ? dtrans.dateEpoch
+          : dtrans.dateEpoch > transactionGroup.lastTransDateEpoch
+          ? dtrans.dateEpoch
+          : transactionGroup.lastTransDateEpoch;
+      transactionGroup.groupedTrans.push(dtrans);
+    }
+
+    return transactionGroup;
   }
 }
 

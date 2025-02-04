@@ -9,7 +9,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 interface Props {
-  epoch: number;
+  newDtransactionGroupEpoch: number;
+  //newDtransactionGroup: DagobertTransactionGroup | undefined;
 }
 
 type DtransactionGroupsInPairs = {
@@ -19,7 +20,9 @@ type DtransactionGroupsInPairs = {
   dtransactionGroups: DagobertTransactionGroup[];
 };
 
-const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
+const DTransactionGroupContainer: React.FC<Props> = ({
+  newDtransactionGroupEpoch,
+}) => {
   const [profitTotal, setProfitTotal] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isPairOpen, setIsPairOpen] = useState<{
@@ -37,7 +40,7 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
       useEffectFirst = false;
       initData();
     }
-  }, [epoch]);
+  }, [newDtransactionGroupEpoch]);
 
   const initData = () => {
     const transactionGroupsTemp = DtransactionGroups.getAll();
@@ -100,7 +103,7 @@ const DTransactionGroupContainer: React.FC<Props> = ({ epoch }) => {
           }`}
         />{" "}
         Grouped Transactions (profit: {profitTotal.toFixed(2)}){" "}
-        <span className="hidden text-xs">{epoch}</span>
+        <span className="hidden text-xs">{newDtransactionGroupEpoch}</span>
       </div>
       <div className={`ml-8 ${!isOpen ? "hidden" : ""}`}>
         {dtgips.length !== 0 &&

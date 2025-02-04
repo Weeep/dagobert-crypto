@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import DTransactionCard from "./DTransactionCard";
 import {
   DagobertTransaction,
   DagobertTransactionGroup,
+  KVRoot,
   TradeStyle,
   TradeType,
 } from "@/utils/typesAndEnums";
@@ -15,129 +16,137 @@ import {
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import Dtransactions from "../lib/Dtransactions";
+import ClientSideDbCache from "../lib/ClientSideDbCache";
 
 interface Props {
-  dtransactions: DagobertTransaction[];
+  //dtransactions: DagobertTransaction[];
+  selectedPairs: string[];
   pairsAndPrices: {
     [key: string]: { price: number; numOfTransactions: number };
   };
-  numOfTransactions: number;
-  selectedPairs: string[];
-  setDtransGroupContainer: (dtransGroupContainer: React.ReactNode) => void;
+  //numOfTransactions: number;
+  //selectedPairs: string[];
+  //setDtransGroupContainer: (dtransGroupContainer: React.ReactNode) => void;
+  newDtransactionGroupEpochCallback: (dTransactionGroupEpoch: number) => void;
 }
 
-type MarkedDTransaction = {
-  dtransaction: DagobertTransaction;
-  visibilityFunc: (isVisible: boolean) => void;
-};
+//type MarkedDTransaction = {
+//  dtransaction: DagobertTransaction;
+//  visibilityFunc: (isVisible: boolean) => void;
+//};
 
 const DTransactionCardContainer: React.FC<Props> = ({
-  dtransactions,
-  pairsAndPrices,
-  numOfTransactions,
+  //dtransactions,
   selectedPairs,
-  setDtransGroupContainer,
+  pairsAndPrices,
+  //numOfTransactions,
+  //selectedPairs,
+  //setDtransGroupContainer,
+  newDtransactionGroupEpochCallback,
 }) => {
-  const [markedForMerge, setMarkedForMerge] = useState<MarkedDTransaction[]>(
+  const [dtransactions, setDtransactions] = useState<DagobertTransaction[]>([]);
+  const [markedForMerge, setMarkedForMerge] = useState<DagobertTransaction[]>(
     []
   );
-  const [markedForTrash, setMarkedForTrash] = useState<MarkedDTransaction[]>(
+  const [markedForTrash, setMarkedForTrash] = useState<DagobertTransaction[]>(
     []
   );
   const [isOpen, setIsOpen] = useState<boolean>(true);
 
-  const handleTransactionMarked = (
-    dtransaction: DagobertTransaction,
-    add: boolean,
-    handleVisibility: (isVisible: boolean) => void
-  ) => {
-    let newMarkedForMerge: MarkedDTransaction[] = []; // = //markedForMerge; //
+  useEffect(() => {
+    fetchDtransactions();
+  }, [selectedPairs]);
+
+  const fetchDtransactions = () => {
+    const data = ClientSideDbCache.hgetall(KVRoot.dtransactions);
+    let isTransactions: boolean = data;
+    let filteredTransactions: DagobertTransaction[] = [];
+
+    if (isTransactions) {
+      const dtransactions = Object.values(data) as DagobertTransaction[];
+      filteredTransactions = dtransactions.filter(
+        (obj) =>
+          obj &&
+          obj.status === "FILLED" &&
+          !obj.grouped &&
+          obj.tradeStyle === TradeStyle.Swing
+      );
+
+      filteredTransactions = filteredTransactions.filter(
+        (dt: DagobertTransaction) => {
+          return selectedPairs.length === 0 || selectedPairs.includes(dt.pair);
+        }
+      );
+
+      isTransactions = filteredTransactions.length > 0;
+    }
+
+    if (isTransactions) {
+      filteredTransactions.sort((a, b) => b.dateEpoch - a.dateEpoch);
+      setDtransactions(filteredTransactions);
+    }
+  };
+
+  const handleDTransactionCardClicked = (dtransaction: DagobertTransaction) => {
+    let newMarkedForMerge: DagobertTransaction[] = [];
+
+    const add = !markedForMerge.some(
+      (mdtrans) => mdtrans.orderId === dtransaction.orderId
+    );
+
     if (add) {
-      //newMarkedForMerge.push({
-      //  dtransaction,
-      //  visibilityFunc: handleVisibility,
-      //});
-      newMarkedForMerge = [
-        ...markedForMerge,
-        { dtransaction, visibilityFunc: handleVisibility },
-      ];
+      newMarkedForMerge = [...markedForMerge, dtransaction];
     } else {
       newMarkedForMerge = markedForMerge.filter(function (item) {
-        return item.dtransaction.orderId !== dtransaction.orderId;
+        return item.orderId !== dtransaction.orderId;
       });
     }
+
     setMarkedForMerge(newMarkedForMerge);
     setMarkedForTrash(newMarkedForMerge);
   };
 
-  const mergeCalculation = (
-    handleVisibility: boolean = false
-  ): DagobertTransactionGroup => {
-    let transactionGroup: DagobertTransactionGroup = {
-      groupId: null,
-      pair: "",
-      tradeType: TradeType.Spot,
-      amount: 0,
-      executed: 0,
-      lastTransDateEpoch: 0,
-      groupedTrans: [],
-      note: "",
-    };
-
-    for (const mDTrans of markedForMerge) {
-      const dTrans = mDTrans.dtransaction;
-
-      transactionGroup.pair = dTrans.pair; //TODO same pair WARNING validation needed, AVAX and SOL cannot be grouped
-      transactionGroup.tradeType = dTrans.tradeType; //TODO same tradeType ERROR validation needed
-      transactionGroup.amount += dTrans.amount;
-      transactionGroup.executed =
-        dTrans.side === "BUY"
-          ? transactionGroup.executed + dTrans.executed
-          : transactionGroup.executed - dTrans.executed;
-      transactionGroup.lastTransDateEpoch =
-        transactionGroup.lastTransDateEpoch === 0
-          ? dTrans.dateEpoch
-          : dTrans.dateEpoch > transactionGroup.lastTransDateEpoch
-          ? dTrans.dateEpoch
-          : transactionGroup.lastTransDateEpoch;
-      transactionGroup.groupedTrans.push(dTrans);
-
-      if (handleVisibility) {
-        mDTrans.visibilityFunc(false);
-      }
+  const trash = () => {
+    for (const dt of markedForTrash) {
+      Dtransactions.setStyleProperty(dt.orderId, TradeStyle.Trash);
     }
-
-    return transactionGroup;
   };
 
-  const trash = () => {
-    for (const mdt of markedForTrash) {
-      Dtransactions.setStyleProperty(
-        mdt.dtransaction.orderId,
-        TradeStyle.Trash
+  const mergePreview = (): React.ReactElement => {
+    const dtransactionGroup: DagobertTransactionGroup =
+      DtransactionGroups.group(markedForMerge);
+    let r: React.ReactElement = <></>;
+    if (dtransactionGroup.groupedTrans.length > 1) {
+      r = (
+        <>
+          {dtransactionGroup.amount.toFixed(2)}
+          {"$ "}
+          {dtransactionGroup.executed.toFixed(3)} {dtransactionGroup.pair}
+        </>
       );
     }
+    return r;
   };
 
   const merge = async () => {
-    let transactionGroup: DagobertTransactionGroup = mergeCalculation(true);
+    let dtransactionGroup: DagobertTransactionGroup =
+      DtransactionGroups.group(markedForMerge);
 
-    if (transactionGroup.groupedTrans.length > 1) {
+    if (dtransactionGroup.groupedTrans.length > 1) {
       try {
-        const r = await DtransactionGroups.post([transactionGroup]);
-        setDtransGroupContainer(
-          <DTransactionGroupContainer epoch={Date.now()} />
-        );
+        const r = await DtransactionGroups.post([dtransactionGroup]);
+        if (r.ok) {
+          newDtransactionGroupEpochCallback(new Date().getTime());
+        } else {
+          throw new Error(JSON.stringify(r));
+        }
         setMarkedForMerge([]);
+        fetchDtransactions();
       } catch (error) {
-        console.error("Error storing transactionGroup", error);
+        console.error("Error storing transactionGroup", error); //TODO
       }
     }
   };
-
-  const filteredData = dtransactions.filter((dt: DagobertTransaction) => {
-    return selectedPairs.length === 0 || selectedPairs.includes(dt.pair);
-  });
 
   const getCurPrice = (pair: string): number => {
     if (pair in pairsAndPrices) {
@@ -145,21 +154,6 @@ const DTransactionCardContainer: React.FC<Props> = ({
     } else {
       return 100; // TODO, he nincs 100 sehol, pedig exceptiont dobott ha nem csekkolom
     }
-  };
-
-  const mergePreview = (): React.ReactElement => {
-    const transactionGroup = mergeCalculation();
-    let r: React.ReactElement = <></>;
-    if (transactionGroup.groupedTrans.length > 1) {
-      r = (
-        <>
-          {transactionGroup.amount.toFixed(2)}
-          {"$ "}
-          {transactionGroup.executed.toFixed(3)} {transactionGroup.pair}
-        </>
-      );
-    }
-    return r;
   };
 
   const drawActionPanel = (): React.ReactElement => {
@@ -214,10 +208,17 @@ const DTransactionCardContainer: React.FC<Props> = ({
             isOpen ? "rotate-90" : "rotate-0"
           }`}
         />{" "}
-        Transactions ({numOfTransactions})
+        Transactions ({dtransactions.length})
       </h1>
 
       {drawActionPanel()}
+
+      {dtransactions.length === 0 && (
+        <div>
+          No transaction in the database, fetch them by pressing Refresh (via
+          binance api).
+        </div>
+      )}
 
       <div
         id="cont"
@@ -225,13 +226,13 @@ const DTransactionCardContainer: React.FC<Props> = ({
           !isOpen ? "hidden" : ""
         } grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`}
       >
-        {filteredData.length !== 0 &&
-          filteredData.map((transaction, index) => (
+        {dtransactions.length !== 0 &&
+          dtransactions.map((transaction, index) => (
             <DTransactionCard
               key={transaction.orderId + "." + index}
               dtransaction={transaction}
               currentPrice={getCurPrice(transaction.pair)}
-              onClick={handleTransactionMarked}
+              onClick={handleDTransactionCardClicked}
             />
           ))}
       </div>

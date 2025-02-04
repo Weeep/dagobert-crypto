@@ -18,17 +18,15 @@ import DFrame from "./DFrame";
 interface Props {
   dtransaction: DagobertTransaction;
   currentPrice: number;
-  onClick: (
-    transaction: DagobertTransaction,
-    remove: boolean,
-    handleVisibility: (isVisible: boolean) => void
-  ) => void;
+  onClick: (transaction: DagobertTransaction) => void;
+  className?: string;
 }
 
 const DTransactionCard: React.FC<Props> = ({
   dtransaction,
   currentPrice,
   onClick,
+  className = "",
 }) => {
   const [isMarked, setIsMarked] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -44,7 +42,7 @@ const DTransactionCard: React.FC<Props> = ({
     setIsOtherSideOrder(!!dtransaction.otherSideOrderId);
   }, []);
 
-  const handleEnterNewNote = async () => {
+  const handleNoteEnterPressed = async () => {
     const newNote = { note: inputValue.trim() };
 
     await ClientSideDbCache.hset(KVRoot.dtransactions, {
@@ -59,7 +57,7 @@ const DTransactionCard: React.FC<Props> = ({
     setInputValue("");
   };
 
-  const handleClickOnNote = (
+  const handleNoteClicked = (
     event: React.MouseEvent<HTMLSpanElement, MouseEvent>
   ) => {
     event.stopPropagation();
@@ -67,35 +65,16 @@ const DTransactionCard: React.FC<Props> = ({
     setInputValue(note);
   };
 
-  const toggleSelection = () => {
-    onClick(dtransaction, !isMarked, setIsVisible);
+  const handleCardClicked = () => {
+    onClick(dtransaction);
     setIsMarked(!isMarked);
   };
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSellPctChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNumber(Number(event.target.value));
   };
 
-  const getProfit = (tradeType: TradeType): number => {
-    switch (tradeType) {
-      case TradeType.Spot:
-        return parseFloat(
-          (currentPrice * dtransaction.executed + dtransaction.amount).toFixed(
-            2
-          )
-        );
-      case TradeType.Margin:
-        return parseFloat(
-          (dtransaction.amount - currentPrice * dtransaction.executed).toFixed(
-            2
-          )
-        );
-      default:
-        return -1;
-    }
-  };
-
-  const postNewSlOrder = async (
+  const handleNewSlSellOrderClicked = async (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     event.stopPropagation();
@@ -136,7 +115,7 @@ const DTransactionCard: React.FC<Props> = ({
     }
   };
 
-  const handleClickCancelOrder = async (
+  const handleCancelClicked = async (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
     options: CancelOrderOptions
   ) => {
@@ -178,11 +157,30 @@ const DTransactionCard: React.FC<Props> = ({
     }
   };
 
-  const handleSellClick = (
+  const handleSellClicked = (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     event.stopPropagation();
     setIsExpanded(!isExpanded);
+  };
+
+  const getProfit = (tradeType: TradeType): number => {
+    switch (tradeType) {
+      case TradeType.Spot:
+        return parseFloat(
+          (currentPrice * dtransaction.executed + dtransaction.amount).toFixed(
+            2
+          )
+        );
+      case TradeType.Margin:
+        return parseFloat(
+          (dtransaction.amount - currentPrice * dtransaction.executed).toFixed(
+            2
+          )
+        );
+      default:
+        return -1;
+    }
   };
 
   const getColor = (t: TradeType): string => {
@@ -197,9 +195,13 @@ const DTransactionCard: React.FC<Props> = ({
   };
 
   return (
-    <DFrame errorMessage={errorMessage[0]} errorEpoch={errorMessage[1]}>
+    <DFrame
+      className={className}
+      errorMessage={errorMessage[0]}
+      errorEpoch={errorMessage[1]}
+    >
       <div
-        onClick={toggleSelection}
+        onClick={handleCardClicked}
         className={`relative bg-${
           isMarked ? "blue" : "slate"
         }-100 p-4 rounded-md shadow-md ${isVisible ? "" : "hidden"}`}
@@ -300,7 +302,7 @@ const DTransactionCard: React.FC<Props> = ({
               } rounded-l-full w-full pr-12 items-center`}
             >
               <button
-                onClick={(event) => handleSellClick(event)}
+                onClick={(event) => handleSellClicked(event)}
                 className="pl-1 pr-2 text-left flex-grow font-bold "
               >
                 {isExpanded ? ">" : "<"}
@@ -312,12 +314,12 @@ const DTransactionCard: React.FC<Props> = ({
               <input
                 type="number"
                 value={number}
-                onChange={handleChange}
+                onChange={handleSellPctChanged}
                 onClick={(event) => event.stopPropagation()}
                 className="w-14 px-2 py-1 text-black border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
-                onClick={(event) => postNewSlOrder(event)}
+                onClick={(event) => handleNewSlSellOrderClicked(event)}
                 className="bg-red-100 text-black rounded-full ml-2 px-2 text-center flex-grow"
               >
                 SELL
@@ -359,7 +361,7 @@ const DTransactionCard: React.FC<Props> = ({
         <div className="mt-2 text-xs">
           {note !== "" && !editNote && (
             <span
-              onClick={(event) => handleClickOnNote(event)}
+              onClick={(event) => handleNoteClicked(event)}
               className="text-gray-700 px-2 py-1 cursor-pointer"
             >
               {note}
@@ -368,7 +370,7 @@ const DTransactionCard: React.FC<Props> = ({
           {isOtherSideOrder && (
             <button
               onClick={(event) =>
-                handleClickCancelOrder(event, {
+                handleCancelClicked(event, {
                   orderId: parseInt(dtransaction.otherSideOrderId),
                   symbol: dtransaction.pair,
                 })
@@ -384,7 +386,7 @@ const DTransactionCard: React.FC<Props> = ({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onClick={(event) => event.stopPropagation()}
-              onKeyDown={(e) => e.key === "Enter" && handleEnterNewNote()}
+              onKeyDown={(e) => e.key === "Enter" && handleNoteEnterPressed()}
               placeholder="Add a note"
               className="text-xs text-black px-2 py-1 border rounded w-full"
             />
@@ -393,7 +395,7 @@ const DTransactionCard: React.FC<Props> = ({
 
         {/* Row 6*/}
         <div className="text-xs text-right text-gray-300 italic">
-          {dtransaction.tradeStyle}
+          {dtransaction.orderId} | {dtransaction.tradeStyle}
         </div>
       </div>
     </DFrame>
