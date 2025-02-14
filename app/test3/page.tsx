@@ -16,9 +16,9 @@ const Test3Page: React.FC = () => {
       if (await ClientSideDbCache.initializeCache()) {
         //init();
         //init2();
-        changeDtransaction("9bc3cf04-e446-4fd4-992c-5711e9da21c1", {
-          tradeStyle: TradeStyle.Swing,
-        });
+        //changeDtransaction("9bc3cf04-e446-4fd4-992c-5711e9da21c1", {
+        //  tradeStyle: TradeStyle.Swing,
+        //});
       }
     };
 

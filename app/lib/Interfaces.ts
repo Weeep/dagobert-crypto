@@ -23,4 +23,6 @@ export interface PairPriceIf {
   pair: string;
   price: number;
   numOfTransactions: number;
+  rsi6: number;
+  ema100DiffPct: number;
 }

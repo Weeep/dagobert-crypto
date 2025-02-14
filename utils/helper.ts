@@ -71,15 +71,31 @@ export const isBnceTradeHisFromCsvArray = (data: any): boolean => {
 
 export const convertArrayToObject = (
   array: PairPriceIf[]
-): { [key: string]: { price: number; numOfTransactions: number } } => {
+): {
+  [key: string]: {
+    price: number;
+    numOfTransactions: number;
+    rsi6: number;
+    ema100DiffPct: number;
+  };
+} => {
   return array.reduce(
     (
-      obj: { [key: string]: { price: number; numOfTransactions: number } },
+      obj: {
+        [key: string]: {
+          price: number;
+          numOfTransactions: number;
+          rsi6: number;
+          ema100DiffPct: number;
+        };
+      },
       item: PairPriceIf
     ) => {
       obj[item.pair] = {
         price: parseFloat(item.price as unknown as string),
         numOfTransactions: item.numOfTransactions,
+        rsi6: item.rsi6,
+        ema100DiffPct: item.ema100DiffPct,
       };
       return obj;
     },
@@ -136,8 +152,19 @@ export function getPrice(cummulativeQuoteQty: string, executedQty: string) {
 }
 
 export function decreaseLastDigitByTwo(num: number): number {
-  // Convert the number to a string
+  return modifyLastDigit(num, -2);
+}
+
+export function increaseLastDigitByTwo(num: number): number {
+  return modifyLastDigit(num, 2);
+}
+
+export function modifyLastDigit(
+  num: number,
+  modifier: number //"increase" | "decrease"
+): number {
   const numStr = num.toString();
+  //const modifier = action === "increase" ? 2 : -2;
 
   // Find the position of the last digit
   const decimalIndex = numStr.indexOf(".");
@@ -146,12 +173,13 @@ export function decreaseLastDigitByTwo(num: number): number {
   if (decimalIndex === -1) {
     // No decimal point: integer number
     const lastDigit = parseInt(numStr[numStr.length - 1], 10);
-    resultStr = numStr.slice(0, -1) + (lastDigit - 2).toString();
+    resultStr = numStr.slice(0, -1) + (lastDigit + modifier).toString();
   } else {
     // Decimal number
     const lastDigitIndex = numStr.length - 1;
     const lastDigit = parseInt(numStr[lastDigitIndex], 10);
-    resultStr = numStr.slice(0, lastDigitIndex) + (lastDigit - 2).toString();
+    resultStr =
+      numStr.slice(0, lastDigitIndex) + (lastDigit + modifier).toString();
   }
 
   // Convert the result back to a number

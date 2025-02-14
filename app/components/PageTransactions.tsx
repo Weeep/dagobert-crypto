@@ -22,7 +22,7 @@ const PageTransactions = () => {
       />
 
       <DTransactionCardContainer
-        selectedPairs={selectedPairs}
+        selectedPairsProp={selectedPairs}
         pairsAndPrices={pairsAndPrices}
         newDtransactionGroupEpochCallback={setNewDtransactionGroupEpoch}
       />

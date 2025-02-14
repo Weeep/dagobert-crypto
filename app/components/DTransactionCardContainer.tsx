@@ -20,7 +20,7 @@ import ClientSideDbCache from "../lib/ClientSideDbCache";
 
 interface Props {
   //dtransactions: DagobertTransaction[];
-  selectedPairs: string[];
+  selectedPairsProp: string[];
   pairsAndPrices: {
     [key: string]: { price: number; numOfTransactions: number };
   };
@@ -37,7 +37,7 @@ interface Props {
 
 const DTransactionCardContainer: React.FC<Props> = ({
   //dtransactions,
-  selectedPairs,
+  selectedPairsProp,
   pairsAndPrices,
   //numOfTransactions,
   //selectedPairs,
@@ -45,6 +45,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
   newDtransactionGroupEpochCallback,
 }) => {
   const [dtransactions, setDtransactions] = useState<DagobertTransaction[]>([]);
+  const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
   const [markedForMerge, setMarkedForMerge] = useState<DagobertTransaction[]>(
     []
   );
@@ -56,6 +57,10 @@ const DTransactionCardContainer: React.FC<Props> = ({
   useEffect(() => {
     fetchDtransactions();
   }, [selectedPairs]);
+
+  useEffect(() => {
+    setSelectedPairs(selectedPairsProp);
+  }, [selectedPairsProp]);
 
   const fetchDtransactions = () => {
     const data = ClientSideDbCache.hgetall(KVRoot.dtransactions);
@@ -87,7 +92,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
     }
   };
 
-  const handleDTransactionCardClicked = (dtransaction: DagobertTransaction) => {
+  const handleCardClicked = (dtransaction: DagobertTransaction) => {
     let newMarkedForMerge: DagobertTransaction[] = [];
 
     const add = !markedForMerge.some(
@@ -104,6 +109,14 @@ const DTransactionCardContainer: React.FC<Props> = ({
 
     setMarkedForMerge(newMarkedForMerge);
     setMarkedForTrash(newMarkedForMerge);
+  };
+
+  const handlePairOnCardClicked = (pair: string) => {
+    if (selectedPairs.length !== 1) {
+      setSelectedPairs([pair]); //(prev) => [...prev, pair]);
+    } else {
+      setSelectedPairs([]); //(prev) => prev.filter((p) => p !== pair));
+    }
   };
 
   const trash = () => {
@@ -161,8 +174,6 @@ const DTransactionCardContainer: React.FC<Props> = ({
 
     const buttonCss =
       "cursor-pointer bg-white hover:bg-blue-700 hover:text-white rounded-full text-blue-500 text-center flex items-center font-bold p-3 w-10 h-10";
-
-    //"bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800"
 
     const trashButton: React.ReactElement | null =
       markedForMerge.length > 0 ? (
@@ -232,7 +243,8 @@ const DTransactionCardContainer: React.FC<Props> = ({
               key={transaction.orderId + "." + index}
               dtransaction={transaction}
               currentPrice={getCurPrice(transaction.pair)}
-              onClick={handleDTransactionCardClicked}
+              clickOnCard={handleCardClicked}
+              clickOnPair={handlePairOnCardClicked}
             />
           ))}
       </div>

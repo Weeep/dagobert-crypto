@@ -5,14 +5,16 @@ import CandlestickChart from "../components/CandlestickChart";
 import { CandleChartResult } from "binance-api-node";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
 import { KVRoot } from "@/utils/typesAndEnums";
-import { TradingAnalysis } from "../lib/TradingAnalysis";
+import { DCandle, TradingAnalysis } from "../lib/TradingAnalysis";
 import { format } from "date-fns";
+import * as d3 from "d3";
 
 const TestPage: React.FC = () => {
   const [klinesData, setKlinesData] = useState<{
     [key: string]: CandleChartResult[];
   }>({});
   const [info, setInfo] = useState<string>("");
+  const [dCandles, setDCandles] = useState<DCandle[]>([]);
 
   //const pairs = ClientSideDbCache.smembers(KVRoot.pairs); // ["SOLUSDC", "AVAXUSDC", "TRUMPUSDC", "XRPUSDC"];
 
@@ -23,21 +25,45 @@ const TestPage: React.FC = () => {
 
   const test = async (): Promise<void> => {
     const pair = "SOLUSDC";
-    const response = await fetch(
+    const klinesRes = await fetch(
       `/api/binanceapi/klines?symbol=${pair}&interval=1h&limit=200`
     );
+    const data: DCandle[] = (await klinesRes.json()) as DCandle[];
 
-    const data: CandleChartResult[] =
-      (await response.json()) as CandleChartResult[];
-
-    const ta = new TradingAnalysis(data);
-    setInfo(
-      `RSI(6): ${ta.getRsi(6) ?? -1}\nEMA(7): ${ta.getEma(
-        7
-      )}\nEMA(25): ${ta.getEma(25)}\nEMA(100): ${ta.getEma(
-        100
-      )}\ndiff to EMA% (100): ${ta.getPriceDiffPercentageToEma(237.02, 100)}`
+    const priceRes = await fetch(
+      `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(pair)}`
     );
+    const currPrice = (await priceRes.json())[0].price;
+
+    // const a1 = data.slice(-6, -1);
+    // const a2 = data.slice(-7, -2);
+    // const a3 = data.slice(-8, -3);
+
+    // console.log(a1);
+    // console.log(a2);
+    // console.log(a3);
+
+    const ta = new TradingAnalysis(data, currPrice);
+
+    const newDCandles: DCandle[] = ta.extend();
+    setDCandles(newDCandles.slice(-25));
+
+    const rsi1 = ta.getRsi(6);
+    const rsi2 = ta.getRsi_ooooooooooooooo(6);
+    const rsi3 = ta.getRsi3(6);
+    const rsi4 = ta.getRsi4(6);
+
+    setInfo(`${rsi1}\n${rsi2}\n${rsi3}\n${rsi4}`);
+
+    console.log(newDCandles[newDCandles.length - 1]);
+
+    // setInfo(
+    //   `RSI(6): ${ta.getRsi(6) ?? -1}\nEMA(7): ${ta.getEma(
+    //     7
+    //   )}\nEMA(25): ${ta.getEma(25)}\nEMA(100): ${ta.getEma(
+    //     100
+    //   )}\ndiff to EMA% (100): ${ta.getPriceDiffPercentageToEma(237.02, 100)}`
+    // );
 
     setKlinesData((prev) => {
       return { ...prev, [pair]: data };
@@ -79,6 +105,40 @@ const TestPage: React.FC = () => {
   return (
     <>
       <div>
+        <div className="mt-4 flex justify-evenly w-full">
+          <div>Open Time</div>
+          <div>RSI6</div>
+          <div>EMA7</div>
+          <div>EMA7DIFF</div>
+          <div>EMA7DIFFPCT</div>
+          <div>EMA25</div>
+          <div>EMA25DIFF</div>
+          <div>EMA25DIFFPCT</div>
+          <div>EMA100</div>
+          <div>EMA100DIFF</div>
+          <div>EMA100DIFFPCT</div>
+        </div>
+        {dCandles.map((dcandle) => (
+          <div
+            key={dcandle.openTime}
+            className="mt-4 flex justify-evenly w-full"
+          >
+            <div>
+              {d3.timeFormat("%Y-%m-%d %H:%M")(new Date(dcandle.openTime))}
+            </div>
+            <div>{dcandle.rsi6?.toFixed(2)}</div>
+            <div>{dcandle.ema7?.toFixed(2)}</div>
+            <div>{dcandle.ema7Diff?.toFixed(2)}</div>
+            <div>{dcandle.ema7DiffPct?.toFixed(2)}</div>
+            <div>{dcandle.ema25?.toFixed(2)}</div>
+            <div>{dcandle.ema25Diff?.toFixed(2)}</div>
+            <div>{dcandle.ema25DiffPct?.toFixed(2)}</div>
+            <div>{dcandle.ema100?.toFixed(2)}</div>
+            <div>{dcandle.ema100Diff?.toFixed(2)}</div>
+            <div>{dcandle.ema100DiffPct?.toFixed(2)}</div>
+          </div>
+        ))}
+
         <div
           className="text-3xl ml-10 mt-12 mb-4"
           style={{ whiteSpace: "pre-line" }}
@@ -89,7 +149,7 @@ const TestPage: React.FC = () => {
 
       {Object.keys(klinesData).map((key) => {
         return (
-          <div>
+          <div key={key}>
             <div className="text-3xl ml-10 mt-12 mb-4">{key}</div>
             <CandlestickChart data={klinesData[key]} />
           </div>

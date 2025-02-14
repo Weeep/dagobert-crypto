@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { ReactElement, useEffect, useState } from "react";
+import Image from "next/image";
 import {
   Color,
   DagobertTransaction,
@@ -10,30 +11,50 @@ import {
   formatDate,
   getPrice,
   getTargetPrices,
+  modifyLastDigit,
 } from "@/utils/helper";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
-import { CancelOrderOptions, NewOrderSL, OrderType } from "binance-api-node";
+import {
+  CancelOrderOptions,
+  CandleChartResult,
+  NewOrderSL,
+  OrderSide_LT,
+  OrderType,
+} from "binance-api-node";
 import DFrame from "./DFrame";
+import { m } from "framer-motion";
+import * as d3 from "d3";
+import CandlestickChart from "./CandlestickChart";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { DCandle, TradingAnalysis } from "../lib/TradingAnalysis";
 
 interface Props {
   dtransaction: DagobertTransaction;
   currentPrice: number;
-  onClick: (transaction: DagobertTransaction) => void;
+  clickOnCard: (transaction: DagobertTransaction) => void;
+  clickOnPair: (pair: string) => void;
   className?: string;
 }
 
 const DTransactionCard: React.FC<Props> = ({
   dtransaction,
   currentPrice,
-  onClick,
+  clickOnCard,
+  clickOnPair,
   className = "",
 }) => {
   const [isMarked, setIsMarked] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
-  const [number, setNumber] = useState(10);
+  const [number, setNumber] = useState(
+    dtransaction.tradeType === TradeType.Margin ? -10 : 10
+  );
   const [note, setNote] = useState<string>(dtransaction.note);
   const [inputValue, setInputValue] = useState("");
   const [editNote, setEditNote] = useState<boolean>(false);
+  const [candleChart, setCandleChart] = useState<ReactElement>(<></>);
+  const [isCandleChartLoading, setIsCandleChartLoading] =
+    useState<boolean>(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOtherSideOrder, setIsOtherSideOrder] = useState(false);
   const [errorMessage, setErrorMessage] = useState<[string, number]>(["", 0]);
@@ -66,40 +87,80 @@ const DTransactionCard: React.FC<Props> = ({
   };
 
   const handleCardClicked = () => {
-    onClick(dtransaction);
+    clickOnCard(dtransaction);
     setIsMarked(!isMarked);
+  };
+
+  const handlePairClicked = (
+    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    pair: string
+  ) => {
+    event.stopPropagation();
+    clickOnPair(pair);
   };
 
   const handleSellPctChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNumber(Number(event.target.value));
   };
 
+  const handleNewTpBuyOrderClicked = async (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    event.stopPropagation();
+    await newOrder(
+      "BUY",
+      "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT,
+      "margin",
+      2
+    );
+  };
+
   const handleNewSlSellOrderClicked = async (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     event.stopPropagation();
+    await newOrder(
+      "SELL",
+      "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT,
+      "spot",
+      -2
+    );
+  };
 
-    const price = getTargetPrices(dtransaction.price, [number])[0];
+  const newOrder = async (
+    side: OrderSide_LT,
+    type: OrderType.STOP_LOSS_LIMIT | OrderType.TAKE_PROFIT_LIMIT,
+    endpoint: "spot" | "margin",
+    modifier: number
+  ) => {
+    const stopPrice = getTargetPrices(dtransaction.price, [number])[0];
 
-    const newSlOrder: NewOrderSL = {
+    //const side = "SELL";
+    //const type = "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT;  //TAKE_PROFIT_LIMIT
+    const price = modifyLastDigit(stopPrice, modifier).toString();
+    const apiUri = `/api/binanceapi/${endpoint}`;
+
+    const newOrder: NewOrderSL = {
       symbol: dtransaction.pair,
-      side: "SELL",
-      type: "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT,
+      side: side,
+      type: type,
       quantity: dtransaction.executed.toString(),
-      price: decreaseLastDigitByTwo(price).toString(),
-      stopPrice: price.toString(),
+      price: price,
+      stopPrice: stopPrice.toString(),
     };
 
-    const response = await fetch("/api/binanceapi/spot", {
+    const response = await fetch(apiUri, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newSlOrder),
+      body: JSON.stringify(newOrder),
     });
 
+    const rjson = await response.json();
+
     if (response.ok) {
-      const newNote = { note: `Sell set to ${price} (${number}%)` };
+      const newNote = { note: `${side} set to ${stopPrice} (${number}%)` };
       const newOtherSideOrderId = {
-        otherSideOrderId: (await response.json())?.orderId ?? "",
+        otherSideOrderId: rjson?.orderId ?? "",
       };
       await ClientSideDbCache.hset(KVRoot.dtransactions, {
         [dtransaction.orderId]: {
@@ -109,6 +170,8 @@ const DTransactionCard: React.FC<Props> = ({
         },
       });
 
+      dtransaction.otherSideOrderId = newOtherSideOrderId.otherSideOrderId;
+      setIsOtherSideOrder(true);
       setNote(newNote.note);
     } else {
       setNote("failed to create sl order: " + JSON.stringify(response));
@@ -122,7 +185,9 @@ const DTransactionCard: React.FC<Props> = ({
     event.stopPropagation();
 
     try {
-      const response = await fetch("/api/binanceapi/spot", {
+      let endpoint = dtransaction.tradeType.toString().toLowerCase();
+
+      const response = await fetch(`/api/binanceapi/${endpoint}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(options),
@@ -162,6 +227,151 @@ const DTransactionCard: React.FC<Props> = ({
   ) => {
     event.stopPropagation();
     setIsExpanded(!isExpanded);
+  };
+
+  const chartClicked = (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ): void => {
+    event.stopPropagation();
+    setCandleChart(
+      <div
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+        className="absolute inset-1 bg-black"
+        title="Chart"
+      >
+        <button
+          onClick={(event) => chartCancelClicked(event)}
+          className="absolute top-2 right-2 text-white"
+        >
+          X
+        </button>
+
+        {isCandleChartLoading && (
+          <FontAwesomeIcon
+            icon={faSpinner}
+            className="absolute m-auto inset-0 animate-spin text-blue-500"
+          />
+        )}
+
+        {loadChart()}
+      </div>
+    );
+  };
+
+  const chartCancelClicked = (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ): void => {
+    event.stopPropagation();
+    setIsCandleChartLoading(true);
+    setCandleChart(<></>);
+  };
+
+  const loadChart = async (): Promise<ReactElement> => {
+    let klines = {
+      "1h": {
+        ema7: -1,
+        ema25: -1,
+        ema100: -1,
+        rsi: -1,
+        diffPctToEma100: -1000,
+        candles: [] as DCandle[],
+      },
+      "1d": {
+        ema7: -1,
+        ema25: -1,
+        ema100: -1,
+        rsi: -1,
+        diffPctToEma100: -1000,
+        candles: [] as DCandle[],
+      },
+    };
+    const pair = dtransaction.pair;
+
+    for (const interval of Object.keys(klines)) {
+      const response = await fetch(
+        `/api/binanceapi/klines?symbol=${pair}&interval=${interval}&limit=111`
+      );
+
+      const data: DCandle[] = (await response.json()) as DCandle[];
+      if (response.status !== 200 || !Array.isArray(data)) {
+        console.error(
+          "error: " + response.status + " | " + JSON.stringify(data)
+        ); //TODO
+        return <>Error</>;
+      } else {
+        const ta = new TradingAnalysis(data, currentPrice);
+
+        const ema7 = ta.getEma(7);
+        const ema25 = ta.getEma(25);
+        const ema100 = ta.getEma(100);
+
+        const d = {
+          ema7: ema7.ema ?? -1,
+          ema25: ema25.ema ?? -1,
+          ema100: ema100.ema ?? -1,
+          rsi: ta.getRsi(6) ?? -1,
+          diffPctToEma100: ema100.emaDiffPct ?? -1000,
+          candles: data,
+        };
+
+        switch (interval) {
+          case "1h":
+            klines["1h"] = d;
+            break;
+          case "1d":
+            klines["1d"] = d;
+            break;
+        }
+      }
+    }
+
+    setIsCandleChartLoading(false);
+
+    return (
+      <div className="flex">
+        <div className="w-1/2">
+          <CandlestickChart data={klines["1h"].candles.slice(-30)} />
+          <div className="flex space-x-2 text-xs">
+            {/*<span>{pairData1h[pair].ema7}</span>
+      <span>{pairData1h[pair].ema25}</span>
+      <span>{pairData1h[pair].ema100}</span>
+      <span>{pairData1h[pair].rsi}</span>*/}
+            <span>
+              EMA 100 diff:{" "}
+              <span
+                className={`text-${
+                  klines["1h"].diffPctToEma100 > 0 ? "lime-600" : "red-500"
+                }`}
+              >
+                {klines["1h"].diffPctToEma100.toFixed(2)}%
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <div className="w-1/2">
+          <CandlestickChart data={klines["1d"].candles.slice(-30)} />
+          <div className="flex space-x-2 text-xs">
+            {/*<span>{pairData1h[pair].ema7}</span>
+      <span>{pairData1h[pair].ema25}</span>
+      <span>{pairData1h[pair].ema100}</span>
+      <span>{pairData1h[pair].rsi}</span>*/}
+            <span>
+              EMA 100 diff:{" "}
+              <span
+                className={`text-${
+                  klines["1d"].diffPctToEma100 > 0 ? "lime-600" : "red-500"
+                }`}
+              >
+                {klines["1d"].diffPctToEma100.toFixed(2)}%
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const getProfit = (tradeType: TradeType): number => {
@@ -227,24 +437,47 @@ const DTransactionCard: React.FC<Props> = ({
 
         {/* Row 1 */}
         <div className="flex justify-center font-semibold mb-2 text-black">
-          {[
+          {/* {[
             ["Pair", dtransaction.pair],
-            ["Price", dtransaction.price.toString()],
             ["Executed", dtransaction.executed.toString()],
           ].map((cardElement: string[], index: number) => {
-            return (
-              <div key={index} className="w-1/3 text-center">
-                <div className="text-xs text-gray-400">{cardElement[0]}</div>
-                <div className="text-xl">{cardElement[1]}</div>
+            return ( */}
+          <div /*key={index}*/ className="w-1/2 text-center">
+            <div className="text-xs text-gray-400">Pair</div>
+            {/*<div className="text-xl">{dtransaction.pair}</div>*/}
+            <div className="flex space-x-1 justify-center items-center">
+              <div
+                className="text-xl cursor-pointer"
+                onClick={(event) => handlePairClicked(event, dtransaction.pair)}
+              >
+                {dtransaction.pair}
               </div>
-            );
-          })}
+              <a
+                href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${dtransaction.pair}`}
+                target="_blank"
+              >
+                <Image
+                  src="/images/black-short-logo.png"
+                  alt="tradingview-logo"
+                  width={24}
+                  height={24}
+                />
+              </a>
+            </div>
+          </div>
+          <div /*key={index}*/ className="w-1/2 text-center">
+            <div className="text-xs text-gray-400">Executed</div>
+            <div className="text-xl">{dtransaction.executed}</div>
+          </div>
+          {/*   );*/}
+          {/* })}*/}
         </div>
 
         {/* Row 2 */}
         <div className="flex justify-center mb-2 text-black">
           {[
-            ["Date", formatDate(dtransaction.dateEpoch), ""],
+            /*["Date", formatDate(dtransaction.dateEpoch), ""],*/
+            ["Price", dtransaction.price.toString(), ""],
             [
               "Side",
               dtransaction.side,
@@ -308,7 +541,8 @@ const DTransactionCard: React.FC<Props> = ({
                 {isExpanded ? ">" : "<"}
               </button>
               <span className="text-white pr-2">
-                Sell on {getTargetPrices(dtransaction.price, [number])[0]}$
+                {dtransaction.side === "BUY" ? "Sell" : "Buy"} on{" "}
+                {getTargetPrices(dtransaction.price, [number])[0]}$
               </span>
 
               <input
@@ -318,12 +552,22 @@ const DTransactionCard: React.FC<Props> = ({
                 onClick={(event) => event.stopPropagation()}
                 className="w-14 px-2 py-1 text-black border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <button
-                onClick={(event) => handleNewSlSellOrderClicked(event)}
-                className="bg-red-100 text-black rounded-full ml-2 px-2 text-center flex-grow"
-              >
-                SELL
-              </button>
+              {dtransaction.tradeType === TradeType.Spot && (
+                <button
+                  onClick={(event) => handleNewSlSellOrderClicked(event)}
+                  className="bg-red-100 text-black rounded-full ml-2 px-2 text-center flex-grow"
+                >
+                  SELL
+                </button>
+              )}
+              {dtransaction.tradeType === TradeType.Margin && (
+                <button
+                  onClick={(event) => handleNewTpBuyOrderClicked(event)}
+                  className="bg-green-100 text-black rounded-full ml-2 px-2 text-center flex-grow"
+                >
+                  BUY
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -358,45 +602,56 @@ const DTransactionCard: React.FC<Props> = ({
       </div>*/}
 
         {/* Row 5 - Note */}
-        <div className="mt-2 text-xs">
-          {note !== "" && !editNote && (
-            <span
-              onClick={(event) => handleNoteClicked(event)}
-              className="text-gray-700 px-2 py-1 cursor-pointer"
-            >
-              {note}
-            </span>
-          )}
-          {isOtherSideOrder && (
-            <button
-              onClick={(event) =>
-                handleCancelClicked(event, {
-                  orderId: parseInt(dtransaction.otherSideOrderId),
-                  symbol: dtransaction.pair,
-                })
-              }
-              className="text-blue-600"
-            >
-              Cancel
-            </button>
-          )}
-          {(note === "" || note === undefined || editNote) && (
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onClick={(event) => event.stopPropagation()}
-              onKeyDown={(e) => e.key === "Enter" && handleNoteEnterPressed()}
-              placeholder="Add a note"
-              className="text-xs text-black px-2 py-1 border rounded w-full"
-            />
-          )}
+        <div className="flex justify-between">
+          <div className="mt-2 mr-2 w-full text-xs">
+            {note !== "" && !editNote && (
+              <span
+                onClick={(event) => handleNoteClicked(event)}
+                className="text-gray-700 px-2 py-1 cursor-pointer"
+              >
+                {note}
+              </span>
+            )}
+            {isOtherSideOrder && (
+              <button
+                onClick={(event) =>
+                  handleCancelClicked(event, {
+                    orderId: parseInt(dtransaction.otherSideOrderId),
+                    symbol: dtransaction.pair,
+                  })
+                }
+                className="text-blue-600"
+              >
+                Cancel
+              </button>
+            )}
+            {(note === "" || note === undefined || editNote) && (
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(e) => e.key === "Enter" && handleNoteEnterPressed()}
+                placeholder="Add a note"
+                className="text-xs text-black px-2 py-1 border rounded w-full"
+              />
+            )}
+          </div>
+          <button
+            onClick={(event) => chartClicked(event)}
+            className="text-xs text-black"
+          >
+            chart
+          </button>
         </div>
 
         {/* Row 6*/}
         <div className="text-xs text-right text-gray-300 italic">
-          {dtransaction.orderId} | {dtransaction.tradeStyle}
+          {d3.timeFormat("%y-%m-%d %H:%M")(new Date(dtransaction.dateEpoch))} |{" "}
+          {dtransaction.orderId.slice(-6)} | {dtransaction.tradeStyle}
         </div>
+
+        {candleChart}
       </div>
     </DFrame>
   );
@@ -422,3 +677,17 @@ function getDate(epoch: number): string {
 }
 
 export default DTransactionCard;
+
+/*
+
+spot sell sl - ha eladni akarsz alacsonyabb áron mint a current 
+spot buy tp - ha eladni akarsz magasabb áron mint a mostani (ua mint spot buy l(imit))
+
+margin sell sl
+margin sell tp
+margin buy sl
+margin buy tp
+
+
+
+*/

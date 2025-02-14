@@ -74,7 +74,7 @@ export default function PageConfig() {
     for (const pair of pairs) {
       updateOrdersViaBinanceApi(
         pair,
-        "/api/binanceapi/margin?dummy=dummy", //TODO dummy
+        "/api/binanceapi/margin?action=AllOrders",
         TradeType.Margin,
         setOrdersUpdateInfo
       );
