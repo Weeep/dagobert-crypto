@@ -69,38 +69,14 @@ export const isBnceTradeHisFromCsvArray = (data: any): boolean => {
   return true;
 };
 
-export const convertArrayToObject = (
-  array: PairPriceIf[]
-): {
-  [key: string]: {
-    price: number;
-    numOfTransactions: number;
-    rsi6: number;
-    ema100DiffPct: number;
-  };
-} => {
-  return array.reduce(
-    (
-      obj: {
-        [key: string]: {
-          price: number;
-          numOfTransactions: number;
-          rsi6: number;
-          ema100DiffPct: number;
-        };
-      },
-      item: PairPriceIf
-    ) => {
-      obj[item.pair] = {
-        price: parseFloat(item.price as unknown as string),
-        numOfTransactions: item.numOfTransactions,
-        rsi6: item.rsi6,
-        ema100DiffPct: item.ema100DiffPct,
-      };
-      return obj;
-    },
-    {}
-  );
+export const convertArrayToObject = <T, K extends keyof T>(
+  array: T[],
+  key: K
+): { [key: string]: T } => {
+  return array.reduce((obj: { [key: string]: T }, item: T) => {
+    obj[String(item[key])] = item; // Convert key to string to ensure compatibility
+    return obj;
+  }, {});
 };
 
 export const formatDate = (epoch: number): string => {

@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { ReactElement, useEffect, useState } from "react";
 import { PairPriceIf } from "../lib/Interfaces";
 import Image from "next/image";
-import { convertArrayToObject, redCross } from "@/utils/helper";
+import {
+  convertArrayToObject as arrayToObject,
+  redCross,
+} from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
@@ -14,46 +17,42 @@ import { DCandle, TradingAnalysis } from "../lib/TradingAnalysis";
 import Foldable from "./Foldable";
 
 interface Props {
-  pairsAndPricesCallback: (pairsPrices: {
-    [key: string]: {
-      price: number;
-      numOfTransactions: number;
-    };
-  }) => void;
+  pairsAndPricesCallback: (pairsPrices: { [key: string]: PairPriceIf }) => void;
   selectedPairsCallback: (selectedPairs: string[]) => void;
 }
-
-type PairData = {
-  [pair: string]: {
-    candles: CandleChartResult[];
-    ema7: number;
-    ema25: number;
-    ema100: number;
-    rsi: number;
-    diffToEma100: number;
-  };
-};
 
 const PairsAndPrices: React.FC<Props> = ({
   pairsAndPricesCallback: pairsPricesCallback,
   selectedPairsCallback,
 }) => {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(true);
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const [pairInfo, setPairInfo] = useState<string>("");
   const [pairsPrices, setPairsPrices] = useState<{
-    [key: string]: {
-      price: number;
-      numOfTransactions: number;
-      rsi6: number;
-      ema100DiffPct: number;
-    };
+    [key: string]: PairPriceIf;
   }>({});
   const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
-  const [pairData1h, setPairData1h] = useState<PairData>({});
-  const [pairData1d, setPairData1d] = useState<PairData>({});
-  const [rsi6, setRsi6] = useState<number>(0);
-  const [ema100, setEma100] = useState<number>(0);
+  // const [pairData1h, setPairData1h] = useState<PairData>({});
+  // const [pairData1d, setPairData1d] = useState<PairData>({});
+  const [emaRsis1h, setEmaRsis1h] = useState<{
+    [key: string]: { ema100: number; rsi6: number };
+  }>({});
+  const [emaRsis1hColor, setEmaRsis1hColor] = useState<{
+    [key: string]: {
+      ema100: string; //"text-red-500" | "text-lime-500" | "text-gray-700";
+      rsi6: string; //"text-red-500" | "text-lime-500" | "text-gray-700";
+    };
+  }>({});
+  const [emaRsis1d, setEmaRsis1d] = useState<{
+    [key: string]: { ema100: number; rsi6: number };
+  }>({});
+  const [emaRsis1dColor, setEmaRsis1dColor] = useState<{
+    [key: string]: {
+      ema100: string; //"text-red-500" | "text-lime-500" | "text-gray-700";
+      rsi6: string; //"text-red-500" | "text-lime-500" | "text-gray-700";
+    };
+  }>({});
+  //const [ema100s, setEma100s] = useState<{ [key: string]: number }>({});
 
   //const pairPrices = convertArrayToObject(pairsAndPrices);
 
@@ -65,11 +64,18 @@ const PairsAndPrices: React.FC<Props> = ({
 
   const fetchAll = async () => {
     setIsFetching(true);
+    setEmaRsis1hColor({});
+    setEmaRsis1dColor({});
     try {
       const pp = await fetchPrices();
       if (pp !== null) {
         setPairsPrices(pp);
         pairsPricesCallback(pp);
+        for (const pair of Object.keys(pp)) {
+          fetchEmaRsi("1h", pair, pp[pair].price);
+          fetchEmaRsi("1d", pair, pp[pair].price);
+          //console.log(pair);
+        }
         // for (const pair of ClientSideDbCache.smembers(
         //   KVRoot.pairs
         // ) as string[]) {
@@ -88,13 +94,53 @@ const PairsAndPrices: React.FC<Props> = ({
     }
   };
 
+  const fetchEmaRsi = async (interval: string, pair: string, price: number) => {
+    const response = await fetch(
+      `/api/binanceapi/klines?symbol=${pair}&interval=${interval}&limit=111`
+    );
+
+    const data: DCandle[] = (await response.json()) as DCandle[];
+    if (response.status !== 200 || !Array.isArray(data)) {
+      console.error("error: " + response.status + " | " + JSON.stringify(data)); //TODO
+      //price.rsi6 = -1; //TODO ??
+      //price.ema100DiffPct = -200; //TODO ??
+    } else {
+      const ta = new TradingAnalysis(data, price);
+      const pairEmaRsi = {
+        rsi6: ta.getRsi(6) ?? -1,
+        ema100: ta.getEma(100).emaDiffPct ?? -202,
+      };
+      const pairEmaRsiColor = {
+        rsi6: getRsiColor(ta.getRsi(6) ?? 0),
+        ema100: getEmaColor(ta.getEma(100).emaDiffPct ?? 0),
+      };
+      switch (interval) {
+        case "1h":
+          setEmaRsis1h((prev) => ({
+            ...prev,
+            [pair]: pairEmaRsi,
+          }));
+          setEmaRsis1hColor((prev) => ({
+            ...prev,
+            [pair]: pairEmaRsiColor,
+          }));
+          break;
+        case "1d":
+          setEmaRsis1d((prev) => ({
+            ...prev,
+            [pair]: pairEmaRsi,
+          }));
+          setEmaRsis1dColor((prev) => ({
+            ...prev,
+            [pair]: pairEmaRsiColor,
+          }));
+          break;
+      }
+    }
+  };
+
   const fetchPrices = async (): Promise<{
-    [key: string]: {
-      price: number;
-      numOfTransactions: number;
-      rsi6: number;
-      ema100DiffPct: number;
-    };
+    [key: string]: PairPriceIf;
   } | null> => {
     const pairs = ClientSideDbCache.smembers(KVRoot.pairs); //await fetchh(`/api/dbapi/pairs`);
     if (!pairs) {
@@ -144,31 +190,12 @@ const PairsAndPrices: React.FC<Props> = ({
     }
 
     for (const price of prices as PairPriceIf[]) {
-      //as { symbol: string; price: string }[]) {
       price.numOfTransactions =
         price.pair in numOfTransactions ? numOfTransactions[price.pair] : 0;
-
-      const interval = "1h";
-      const response = await fetch(
-        `/api/binanceapi/klines?symbol=${price.pair}&interval=${interval}&limit=111`
-      );
-
-      const data: DCandle[] = (await response.json()) as DCandle[];
-      if (response.status !== 200 || !Array.isArray(data)) {
-        console.error(
-          "error: " + response.status + " | " + JSON.stringify(data)
-        ); //TODO
-        price.rsi6 = -1; //TODO ??
-        price.ema100DiffPct = -200; //TODO ??
-      } else {
-        const ta = new TradingAnalysis(data, price.price);
-        price.rsi6 = ta.getRsi(6) ?? -1;
-        price.ema100DiffPct = ta.getEma(100).emaDiffPct ?? -201;
-      }
     }
     ///
 
-    return convertArrayToObject(prices as PairPriceIf[]);
+    return arrayToObject(prices as PairPriceIf[], "pair");
   };
 
   const handleCheckboxChange = (pair: string, event: React.ChangeEvent) => {
@@ -247,6 +274,33 @@ const PairsAndPrices: React.FC<Props> = ({
     else return "text-lime-500";
   };
 
+  function emaRsiElement(
+    pair: string,
+    interval: string,
+    emaRsiData: {
+      [key: string]: { ema100: number; rsi6: number };
+    },
+    emaRsiDataColor: {
+      [key: string]: { ema100: string; rsi6: string };
+    }
+  ): ReactElement {
+    const rsiColor = emaRsiDataColor[pair]?.rsi6 ?? "text-gray-700";
+    const rsi = emaRsiData[pair]?.rsi6.toFixed(2) ?? "...";
+    const emaColor = emaRsiDataColor[pair]?.ema100 ?? "text-gray-700";
+    const ema = emaRsiData[pair]?.ema100.toFixed(2) ?? "...";
+
+    return (
+      <div className="text-xs flex space-x-1">
+        <span>
+          {interval} RSI(6): <span className={rsiColor}>{rsi}</span>
+        </span>
+        <span>
+          Ema100: <span className={emaColor}>{ema}</span>
+        </span>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="cursor-pointer flex flex-row gap-2 items-center text-2xl font-bold mb-4 mt-4">
@@ -286,16 +340,8 @@ const PairsAndPrices: React.FC<Props> = ({
                 />
                 {pair} ${pairsPrices[pair].price}
               </label>
-              <div className="text-xs flex space-x-1">
-                <span className={`${getRsiColor(pairsPrices[pair].rsi6)}`}>
-                  RSI(6): {pairsPrices[pair].rsi6.toFixed(0)}
-                </span>
-                <span
-                  className={`${getEmaColor(pairsPrices[pair].ema100DiffPct)}`}
-                >
-                  Ema100: {pairsPrices[pair].ema100DiffPct.toFixed(2)}
-                </span>
-              </div>
+              {emaRsiElement(pair, "1h", emaRsis1h, emaRsis1hColor)}
+              {emaRsiElement(pair, "1d", emaRsis1d, emaRsis1dColor)}
 
               {/* <div className="bg-black border border-white rounded p-1 ml-2 w-36">
                 {/* Row 1 * /}
