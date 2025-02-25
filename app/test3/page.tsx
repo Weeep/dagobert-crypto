@@ -6,24 +6,46 @@ import Dtransactions from "../lib/Dtransactions";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
 import { KVRoot, TradeStyle, TradeType } from "@/utils/typesAndEnums";
 import DtransactionGroups from "../lib/DtransactionGroups";
+import { DailyStatsResult } from "binance-api-node";
+import DIndicator from "../components/DIndicator";
 
 const Test3Page: React.FC = () => {
   const [infoNum, setInfoNum] = useState<number>(0);
   const [infoStr, setInfoStr] = useState<string>("");
+  const [prices, setPrices] = useState<{ symbol: string; price: string }[]>([]);
 
   useEffect(() => {
-    const a = async () => {
-      if (await ClientSideDbCache.initializeCache()) {
-        //init();
-        //init2();
-        //changeDtransaction("9bc3cf04-e446-4fd4-992c-5711e9da21c1", {
-        //  tradeStyle: TradeStyle.Swing,
-        //});
-      }
-    };
-
-    a();
+    fetchCoins();
+    // const a = async () => {
+    //   if (await ClientSideDbCache.initializeCache()) {
+    //     //init();
+    //     //init2();
+    //     //changeDtransaction("9bc3cf04-e446-4fd4-992c-5711e9da21c1", {
+    //     //  tradeStyle: TradeStyle.Swing,
+    //     //});
+    //   }
+    // };
+    // a();
   }, []);
+
+  const fetchCoins = async () => {
+    const tickersRes = await fetch(
+      "/api/binanceapi/tickerPrice?action=futuresdailystats"
+    );
+    const tickers = (await tickersRes.json()) as DailyStatsResult[];
+
+    const pairs = tickers
+      .filter((ticker) => ticker.symbol.endsWith("USDC"))
+      .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .map((ticker) => ticker.symbol)
+      .slice(0, 200);
+
+    const pricesRes = await fetch(
+      `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(pairs)}`
+    );
+
+    setPrices((await pricesRes.json()).filter((price: any) => price.price > 0));
+  };
 
   const changeDtransaction = async (orderId: string, newParams: object) => {
     const dt = Dtransactions.get(orderId);
@@ -77,10 +99,18 @@ const Test3Page: React.FC = () => {
   };
 
   return (
-    <>
-      <div>{infoNum}</div>
-      <div>{infoStr}</div>
-    </>
+    <div className="flex space-x-5 flex-wrap">
+      {prices.map((price) => {
+        return (
+          <DIndicator
+            className="w-64 mr-4 py-2"
+            key={price.symbol}
+            pair={price.symbol}
+            price={parseFloat(price.price)}
+          />
+        );
+      })}
+    </div>
   );
 };
 

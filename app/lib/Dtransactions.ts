@@ -175,7 +175,11 @@ class Dtransactions {
         }
       }
       info.pairInfo[pair].processed = dtransactions.length;
-      await ClientSideDbCache.sadd(KVRoot.pairs, pair);
+      if (ClientSideDbCache.hget(KVRoot.pairs, pair) === null) {
+        await ClientSideDbCache.hset(KVRoot.pairs, {
+          [pair]: { pair: pair, decimals: 4 },
+        });
+      }
     }
 
     return info;

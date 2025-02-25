@@ -7,7 +7,6 @@ import {
   TradeType,
 } from "@/utils/typesAndEnums";
 import {
-  decreaseLastDigitByTwo,
   formatDate,
   getPrice,
   getTargetPrices,
@@ -137,6 +136,7 @@ const DTransactionCard: React.FC<Props> = ({
 
     //const side = "SELL";
     //const type = "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT;  //TAKE_PROFIT_LIMIT
+    //const price = side === "BUY" ? stopPrice * 1.0005 : stopPrice * 0.9995;
     const price = modifyLastDigit(stopPrice, modifier).toString();
     const apiUri = `/api/binanceapi/${endpoint}`;
 
@@ -145,7 +145,7 @@ const DTransactionCard: React.FC<Props> = ({
       side: side,
       type: type,
       quantity: dtransaction.executed.toString(),
-      price: price,
+      price: price.toString(),
       stopPrice: stopPrice.toString(),
     };
 

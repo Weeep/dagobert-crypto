@@ -35,3 +35,9 @@
 .hover\:bg-purple-400:hover {
   background-color: #a78bfa !important;
 }
+
+@layer components {
+  .dbutton {
+    @apply ml-2 px-4 py-2 bg-blue-500 hover:bg-blue-700 text-gray-100 rounded-full font-bold transition-colors;
+  }
+}

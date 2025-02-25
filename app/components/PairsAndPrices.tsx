@@ -16,6 +16,15 @@ import { CandleChartResult } from "binance-api-node";
 import { DCandle, TradingAnalysis } from "../lib/TradingAnalysis";
 import Foldable from "./Foldable";
 
+type Indicators = {
+  ema100: number;
+  rsi6: number;
+  min: number;
+  max: number;
+  diffPctMin: number;
+  diffPctMax: number;
+};
+
 interface Props {
   pairsAndPricesCallback: (pairsPrices: { [key: string]: PairPriceIf }) => void;
   selectedPairsCallback: (selectedPairs: string[]) => void;
@@ -35,7 +44,7 @@ const PairsAndPrices: React.FC<Props> = ({
   // const [pairData1h, setPairData1h] = useState<PairData>({});
   // const [pairData1d, setPairData1d] = useState<PairData>({});
   const [emaRsis1h, setEmaRsis1h] = useState<{
-    [key: string]: { ema100: number; rsi6: number };
+    [key: string]: Indicators;
   }>({});
   const [emaRsis1hColor, setEmaRsis1hColor] = useState<{
     [key: string]: {
@@ -44,7 +53,7 @@ const PairsAndPrices: React.FC<Props> = ({
     };
   }>({});
   const [emaRsis1d, setEmaRsis1d] = useState<{
-    [key: string]: { ema100: number; rsi6: number };
+    [key: string]: Indicators;
   }>({});
   const [emaRsis1dColor, setEmaRsis1dColor] = useState<{
     [key: string]: {
@@ -106,9 +115,14 @@ const PairsAndPrices: React.FC<Props> = ({
       //price.ema100DiffPct = -200; //TODO ??
     } else {
       const ta = new TradingAnalysis(data, price);
-      const pairEmaRsi = {
+      const minMax = ta.getMinMax(30);
+      const pairEmaRsi: Indicators = {
         rsi6: ta.getRsi(6) ?? -1,
         ema100: ta.getEma(100).emaDiffPct ?? -202,
+        min: minMax.min,
+        max: minMax.max,
+        diffPctMin: minMax.currentPriceMinDiffPct,
+        diffPctMax: minMax.currentPriceMaxDiffPct,
       };
       const pairEmaRsiColor = {
         rsi6: getRsiColor(ta.getRsi(6) ?? 0),
@@ -153,7 +167,9 @@ const PairsAndPrices: React.FC<Props> = ({
     if ((pairs as string[]).length === 0) return null;
 
     const response = await fetch(
-      `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(pairs)}`
+      `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(
+        Object.keys(pairs)
+      )}`
       // ["ADAUSDT","ARBUSDT","AVAXUSDT","BNBUSDT","BTCUSDT","DOTUSDT","ETHUSDT","ICPUSDT","MATICUSDT","SHIBUSDT","SOLUSDT","TRXUSDT","XRPUSDT"]
     );
 
@@ -209,60 +225,6 @@ const PairsAndPrices: React.FC<Props> = ({
     }
   };
 
-  const updatePairsAndPrices = () => {};
-
-  const fetchCandleData = async (
-    pair: string,
-    interval: string,
-    pp: {
-      [key: string]: {
-        price: number;
-        numOfTransactions: number;
-      };
-    }
-  ): Promise<void> => {
-    const response = await fetch(
-      `/api/binanceapi/klines?symbol=${pair}&interval=${interval}&limit=111`
-    );
-
-    const data: DCandle[] = (await response.json()) as DCandle[];
-    if (response.status !== 200 || !Array.isArray(data)) {
-      console.error("error: " + response.status + " | " + JSON.stringify(data)); //TODO
-    } else {
-      //const ta = new TradingAnalysis(data, pp[pair].price);
-      //setRsi6(ta.getRsi(6)?.toFixed(0) ?? -1);
-      //setEma100(ta.getEma(100).emaDiffPct ?? -1);
-      // switch (interval) {
-      //   case "1h":
-      //     setPairData1h((prev) => {
-      //       prev[pair] = {
-      //         ema7: ta.getEma(7) ?? -1,
-      //         ema25: ta.getEma(25) ?? -1,
-      //         ema100: ta.getEma(100) ?? -1,
-      //         rsi: ta.getRsi(6) ?? -1,
-      //         diffToEma100: ta.getEmaDiffPct(pp[pair].price, 100) ?? -1000,
-      //         candles: data,
-      //       };
-      //       return prev;
-      //     });
-      //     break;
-      //   case "1d":
-      //     setPairData1d((prev) => {
-      //       prev[pair] = {
-      //         ema7: ta.getEma(7) ?? -1,
-      //         ema25: ta.getEma(25) ?? -1,
-      //         ema100: ta.getEma(100) ?? -1,
-      //         rsi: ta.getRsi(6) ?? -1,
-      //         diffToEma100: ta.getEmaDiffPct(pp[pair].price, 100) ?? -1000,
-      //         candles: data,
-      //       };
-      //       return prev;
-      //     });
-      //     break;
-      // }
-    }
-  };
-
   const getRsiColor = (rsi: number): string => {
     if (rsi > 80) return "text-red-500";
     if (rsi < 20) return "text-lime-500";
@@ -278,7 +240,7 @@ const PairsAndPrices: React.FC<Props> = ({
     pair: string,
     interval: string,
     emaRsiData: {
-      [key: string]: { ema100: number; rsi6: number };
+      [key: string]: Indicators;
     },
     emaRsiDataColor: {
       [key: string]: { ema100: string; rsi6: string };
@@ -289,15 +251,25 @@ const PairsAndPrices: React.FC<Props> = ({
     const emaColor = emaRsiDataColor[pair]?.ema100 ?? "text-gray-700";
     const ema = emaRsiData[pair]?.ema100.toFixed(2) ?? "...";
 
+    const min = emaRsiData[pair]?.min ?? "...";
+    const max = emaRsiData[pair]?.max ?? "...";
+    const diffMin = emaRsiData[pair]?.diffPctMin.toFixed(2) ?? "...";
+    const diffMax = emaRsiData[pair]?.diffPctMax.toFixed(2) ?? "...";
+
     return (
-      <div className="text-xs flex space-x-1">
-        <span>
-          {interval} RSI(6): <span className={rsiColor}>{rsi}</span>
-        </span>
-        <span>
-          Ema100: <span className={emaColor}>{ema}</span>
-        </span>
-      </div>
+      <>
+        <div className="text-xs flex space-x-1">
+          <span>
+            {interval} RSI(6): <span className={rsiColor}>{rsi}</span>
+          </span>
+          <span>
+            Ema100: <span className={emaColor}>{ema}</span>
+          </span>
+        </div>
+        {/*<span className="text-xs">
+          {min} ({diffMin}%) | {max} ({diffMax}%)
+        </span>*/}
+      </>
     );
   }
 

@@ -10,16 +10,16 @@ import {
 } from "@/utils/typesAndEnums";
 import Dtransactions from "@/app/lib/Dtransactions";
 import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
-import FollowedPairs from "./FollowedPairs";
+import FollowedPairs, { PairsInfo } from "./FollowedPairs";
 import { QueryOrderResult } from "binance-api-node";
 import { TransactionIf } from "@/app/lib/Interfaces";
 
 export default function PageConfig() {
   const [dbConnStatusStr, setDbConnStatusStr] = useState<string>("Checking...");
   const [isDbConnOk, setDbConn] = useState<boolean>(true);
-  const [numOfNewTransactions, setNumOfNewTransactions] = useState<{
-    [pair: string]: number;
-  }>({});
+  const [numOfNewTransactions, setNumOfNewTransactions] = useState<PairsInfo>(
+    {}
+  );
   const [ordersUpdateInfo, setOrdersUpdateInfo] = useState<string>(
     "Press Update to start"
   );
@@ -43,13 +43,22 @@ export default function PageConfig() {
   }, []);
 
   const fetchPairs = () => {
-    const ps = ClientSideDbCache.smembers(KVRoot.pairs) as string[];
+    const ps = ClientSideDbCache.hgetall(KVRoot.pairs) as {
+      [pair: string]: { pair: string; decimals: number };
+    };
+
+    //Dtransactions.getAll()
+
+    console.log(ps);
+
     if (ps) {
-      const initNums: {
-        [pair: string]: number;
-      } = {};
-      for (const p of ps) {
-        initNums[p] = 0;
+      const initNums: PairsInfo = {};
+      for (const p of Object.keys(ps)) {
+        initNums[p] = {
+          pair: ps[p].pair,
+          decimals: ps[p].decimals,
+          newTransactions: 0,
+        };
       }
       setNumOfNewTransactions(initNums);
     } else {
@@ -58,8 +67,8 @@ export default function PageConfig() {
   };
 
   const updateSpotBtnClicked = async () => {
-    const pairs = ClientSideDbCache.smembers(KVRoot.pairs);
-    for (const pair of pairs) {
+    const pairs = ClientSideDbCache.hgetall(KVRoot.pairs);
+    for (const pair of Object.keys(pairs)) {
       updateOrdersViaBinanceApi(
         pair,
         "/api/binanceapi/spot?action=AllOrders",
@@ -70,8 +79,8 @@ export default function PageConfig() {
   };
 
   const updateMarginBtnClicked = async () => {
-    const pairs = ClientSideDbCache.smembers(KVRoot.pairs);
-    for (const pair of pairs) {
+    const pairs = ClientSideDbCache.hgetall(KVRoot.pairs);
+    for (const pair of Object.keys(pairs)) {
       updateOrdersViaBinanceApi(
         pair,
         "/api/binanceapi/margin?action=AllOrders",
@@ -104,7 +113,7 @@ export default function PageConfig() {
 
       if (pi && pi[pair] && pi[pair].added) {
         setNumOfNewTransactions((prev) => {
-          prev[pair] = pi[pair].added;
+          prev[pair].newTransactions = pi[pair].added;
           return prev;
         });
         infoFunc(JSON.stringify(pi));

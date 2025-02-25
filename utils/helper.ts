@@ -127,13 +127,13 @@ export function getPrice(cummulativeQuoteQty: string, executedQty: string) {
     : 0;
 }
 
-export function decreaseLastDigitByTwo(num: number): number {
-  return modifyLastDigit(num, -2);
-}
+// export function decreaseLastDigitByTwo(num: number): number {
+//   return modifyLastDigit(num, -2);
+// }
 
-export function increaseLastDigitByTwo(num: number): number {
-  return modifyLastDigit(num, 2);
-}
+// export function increaseLastDigitByTwo(num: number): number {
+//   return modifyLastDigit(num, 2);
+// }
 
 export function modifyLastDigit(
   num: number,

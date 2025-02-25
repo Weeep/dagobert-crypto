@@ -1,5 +1,6 @@
 import {
   BnceTradeHisFromCsv,
+  DagobertPair,
   DagobertTransaction,
   DagobertTransactionGroup,
   DbActionsViaApi,
@@ -66,12 +67,14 @@ class ClientSideDbCache {
   public static hget(
     key: KVRoot,
     field: string
-  ): DagobertTransaction | DagobertTransactionGroup | null {
+  ): DagobertTransaction | DagobertTransactionGroup | DagobertPair | null {
     switch (key) {
       case KVRoot.dtransactions:
         return (this.cache[key][field] as DagobertTransaction) ?? null;
       case KVRoot.dtransactionGroups:
         return (this.cache[key][field] as DagobertTransactionGroup) ?? null;
+      case KVRoot.pairs:
+        return (this.cache[key][field] as DagobertPair) ?? null;
       default:
         return null; // Only dtrans and dtransgroup supported
     }

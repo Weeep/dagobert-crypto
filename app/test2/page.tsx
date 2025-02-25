@@ -49,11 +49,8 @@ const TestPage: React.FC = () => {
     setDCandles(newDCandles.slice(-25));
 
     const rsi1 = ta.getRsi(6);
-    const rsi2 = ta.getRsi_ooooooooooooooo(6);
-    const rsi3 = ta.getRsi3(6);
-    const rsi4 = ta.getRsi4(6);
 
-    setInfo(`${rsi1}\n${rsi2}\n${rsi3}\n${rsi4}`);
+    setInfo(`${rsi1}`);
 
     console.log(newDCandles[newDCandles.length - 1]);
 

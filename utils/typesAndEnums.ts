@@ -29,6 +29,11 @@ export type DagobertTransactionGroup = {
   note: string;
 };
 
+export type DagobertPair = {
+  pair: string;
+  decimals: number;
+};
+
 export type ApiResponse = {
   ok: boolean;
   code: number;

@@ -4,19 +4,25 @@ import { withAuth } from "@/utils/auth";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.query.symbols && typeof req.query.symbols === "string") {
-    return fetchSymbols(req.query.symbols, res);
+    return fetchSymbols(res, req.query.symbols);
   } else if (req.query.symbol && typeof req.query.symbol === "string") {
-    return fetchSymbol(req.query.symbol, res);
+    return fetchSymbol(res, req.query.symbol);
+  } else if (req.query.action) {
+    if (req.query.action.toString().toLowerCase() === "futuresprices") {
+      const r = await binanceClient.prices();
+      return res.status(200).json(r);
+    } else if (
+      req.query.action.toString().toLowerCase() === "futuresdailystats"
+    ) {
+      const r = await binanceClient.dailyStats();
+      return res.status(200).json(r);
+    }
   } else {
-    return res
-      .status(400)
-      .json(
-        'symbols (e.g.: ["SOLUSDC","AVAXUSDT"]) or symbol (SOLUSDC) mandatory'
-      );
+    return fetchSymbol(res);
   }
 }
 
-async function fetchSymbols(symbols: string, res: NextApiResponse) {
+async function fetchSymbols(res: NextApiResponse, symbols: string) {
   try {
     const symbolsArr = JSON.parse(symbols);
     const pricesObj = await binanceClient.prices();
@@ -40,9 +46,15 @@ async function fetchSymbols(symbols: string, res: NextApiResponse) {
   }
 }
 
-async function fetchSymbol(symbol: string, res: NextApiResponse) {
+async function fetchSymbol(res: NextApiResponse, symbol: string | null = null) {
   try {
-    const p = await binanceClient.prices({ symbol });
+    let p;
+    if (symbol === null) {
+      p = await binanceClient.prices();
+    } else {
+      p = await binanceClient.prices({ symbol });
+    }
+
     return res.status(200).json(p);
 
     // const symbolsArr = JSON.parse(symbols);

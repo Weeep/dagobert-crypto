@@ -1,10 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { KVRoot, TradeType } from "@/utils/typesAndEnums";
+import { ReactElement, useEffect, useState } from "react";
+import { DagobertPair, KVRoot, TradeType } from "@/utils/typesAndEnums";
 import Dtransactions from "@/app/lib/Dtransactions";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRefresh } from "@fortawesome/free-solid-svg-icons";
+
+export type PairsInfo = {
+  [pair: string]: {
+    pair: string;
+    decimals: number;
+    newTransactions: number;
+  };
+};
 
 interface Props {
   updateOrdersViaBinanceApiFunc: (
@@ -16,9 +24,7 @@ interface Props {
   // numOfNewTransactionsUseStateFunc: (numOfNewTransactions: {
   //   [pair: string]: number;
   // }) => void;
-  numOfNewTransactions: {
-    [pair: string]: number;
-  };
+  numOfNewTransactions: PairsInfo;
   fetchPairs: () => void;
 }
 
@@ -27,8 +33,10 @@ const FollowedPairs: React.FC<Props> = ({
   numOfNewTransactions,
   fetchPairs,
 }) => {
-  const [pairs, setPairs] = useState<string[]>([]);
+  const [pairs, setPairs] = useState<PairsInfo>({});
   const [inputValue, setInputValue] = useState<string>("");
+  const [newDecimal, setNewDecimal] = useState<number>(0);
+  const [decimalPopup, setDecimalPopup] = useState<ReactElement>(<></>);
 
   const defaultInfoMessage =
     "e.g.: BTCUSDT, ETHUSDT, ADAUSDT, DOTUSDT, BNBUSDT, XRPUSDT, SOLUSDT, " +
@@ -37,16 +45,15 @@ const FollowedPairs: React.FC<Props> = ({
   const [info, setInfo] = useState<string>(defaultInfoMessage);
 
   useEffect(() => {
-    setPairs(Object.keys(numOfNewTransactions));
+    setPairs(numOfNewTransactions); //Object.keys(numOfNewTransactions));
   }, [numOfNewTransactions]);
 
   const handleAdd = async () => {
     const formattedInputValue = inputValue.trim().toUpperCase();
     if (formattedInputValue) {
-      const success = await ClientSideDbCache.sadd(
-        KVRoot.pairs,
-        formattedInputValue
-      );
+      const success = await ClientSideDbCache.hset(KVRoot.pairs, {
+        [formattedInputValue]: { pair: formattedInputValue, decimals: 4 },
+      });
 
       if (success) {
         setInputValue("");
@@ -67,7 +74,9 @@ const FollowedPairs: React.FC<Props> = ({
       }
 
       for (const pair of Object.keys(pairs)) {
-        await ClientSideDbCache.sadd(KVRoot.pairs, pair);
+        await ClientSideDbCache.hset(KVRoot.pairs, {
+          [pair]: { pair: pair, decimals: 4 },
+        });
         setInfo(pair + " added to followed pairs.");
       }
 
@@ -77,7 +86,7 @@ const FollowedPairs: React.FC<Props> = ({
   };
 
   const handleDelete = async (pair: string) => {
-    const success = await ClientSideDbCache.srem(KVRoot.pairs, pair);
+    const success = await ClientSideDbCache.hdel(KVRoot.pairs, pair);
     if (success) {
       fetchPairs();
     }
@@ -92,27 +101,61 @@ const FollowedPairs: React.FC<Props> = ({
     );
   };
 
+  const decimalClicked = (pair: string, decimal: number): void => {
+    setDecimalPopup(
+      <div className="z-50 absolute flex flex-col space-y-2 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-black items-center p-4 rounded">
+        <div>Decimals of {pair}</div>
+        <input
+          type="text"
+          value="44"
+          onChange={(event) => {
+            console.log("Sss |" + event.target.value + "|");
+            setNewDecimal(Number(event.target.value));
+          }}
+          className="w-14 px-2 py-1 text-black border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          className="dbutton"
+          onClick={() => {
+            console.log(newDecimal);
+          }}
+        >
+          SET
+        </button>
+      </div>
+    );
+  };
+
   return (
     <>
-      <div className="ml-8 flex flex-wrap">
+      <div className="relative ml-8 flex flex-wrap">
+        {decimalPopup}
         {pairs &&
-          pairs.map((pair, index) => (
+          Object.values(pairs).map((pair, index) => (
             <div
-              key={pair + "_" + index}
+              key={pair.pair + "_" + index}
               className="relative w-32 bg-gray-300 text-gray-800 flex justify-between items-center space-x-1 rounded-full p-2 mr-2 mb-2"
             >
               <div
                 className={`${
-                  numOfNewTransactions[pair] === 0 ? "hidden" : ""
+                  pair.newTransactions === 0 ? "hidden" : ""
                 } absolute top-0 left-0 bg-red-500 text-white rounded-full text-xs text-center w-4 h-4`}
               >
-                {numOfNewTransactions[pair]}
+                {pair.newTransactions}
               </div>
-              <div className="text-xs">{pair}</div>
-              <button onClick={() => handleRefresh(pair)}>
+              <div className="text-xs">
+                {pair.pair}{" "}
+                <span onClick={() => decimalClicked(pair.pair, pair.decimals)}>
+                  {pair.decimals}
+                </span>
+              </div>
+              <button onClick={() => handleRefresh(pair.pair)}>
                 <FontAwesomeIcon icon={faRefresh} />
               </button>
-              <button className="text-xs" onClick={() => handleDelete(pair)}>
+              <button
+                className="text-xs"
+                onClick={() => handleDelete(pair.pair)}
+              >
                 {redCross}
               </button>
             </div>
@@ -127,16 +170,10 @@ const FollowedPairs: React.FC<Props> = ({
           className="px-4 py-2 border border-gray-700 rounded bg-gray-800 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Add new pair"
         />
-        <button
-          onClick={handleAdd}
-          className="ml-2 px-4 py-2 bg-blue-500 hover:bg-blue-700 text-gray-100 rounded-full font-bold transition-colors"
-        >
+        <button onClick={handleAdd} className="dbutton">
           Add
         </button>
-        <button
-          onClick={handleFromTransactions}
-          className="ml-2 px-4 py-2 bg-blue-500 hover:bg-blue-700 text-gray-100 rounded-full font-bold transition-colors"
-        >
+        <button onClick={handleFromTransactions} className="dbutton">
           from Transactions
         </button>
       </div>
