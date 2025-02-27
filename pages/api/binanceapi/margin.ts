@@ -6,6 +6,7 @@ import {
   CancelOrderResult,
   HttpMethod,
   MyTrade,
+  NewOrderLimit,
   NewOrderSL,
   NewOrderSpot,
   OrderType,
@@ -45,7 +46,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     case MarginActions.CancelOrder:
       return await cancelOrder(res, req.body as CancelOrderOptions);
     case MarginActions.NewTpOrder:
-      return await newTakeProfitOrder(res, req.body as NewOrderSL);
+      return await newOrder(res, req.body);
     case MarginActions.AllOrders:
       return await allOrders(req, res);
   }
@@ -96,18 +97,18 @@ async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
   }
 }
 
-async function newTakeProfitOrder(
+async function newOrder(
   res: NextApiResponse,
-  newOrderTP: NewOrderSL //TODO? as no NewOrderTP
+  order: NewOrderSL | NewOrderLimit //TODO? as no NewOrderTP
 ) {
   try {
     if (
-      !newOrderTP.type ||
-      !newOrderTP.quantity ||
-      !newOrderTP.price ||
-      !newOrderTP.stopPrice ||
-      !newOrderTP.symbol ||
-      !newOrderTP.side
+      !order.type ||
+      !order.quantity ||
+      !order.price ||
+      //!order.stopPrice ||
+      !order.symbol ||
+      !order.side
     ) {
       return res.status(400).json({
         error:
@@ -116,13 +117,15 @@ async function newTakeProfitOrder(
     }
 
     const response = await binanceClient.marginOrder({
-      ...newOrderTP,
+      ...order,
       useServerTime: true,
     });
     return res.status(200).json(response); //response is empty, maybe a bug in order?
   } catch (err: any) {
     return res.status(500).json({
-      error: `Error happened: ${err.message} | ${err?.response?.data}`,
+      error: `${err.message}${
+        err?.response?.data ? " | " + err.response.data : ""
+      }`,
     });
   }
 }

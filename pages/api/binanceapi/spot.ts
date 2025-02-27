@@ -5,6 +5,7 @@ import {
   CancelOrderOptions,
   CancelOrderResult,
   MyTrade,
+  NewOrderLimit,
   NewOrderSL,
   NewOrderSpot,
   OrderType,
@@ -44,7 +45,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     case SpotActions.CancelOrder:
       return await cancelOrder(res, req.body as CancelOrderOptions);
     case SpotActions.NewSlOrder:
-      return await newStopLimitOrder(res, req.body as NewOrderSL);
+      return await newStopLimitOrder(res, req.body);
     case SpotActions.AllOrders:
       return await allOrders(req, res);
   }
@@ -94,13 +95,16 @@ async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
   }
 }
 
-async function newStopLimitOrder(res: NextApiResponse, newOrderSL: NewOrderSL) {
+async function newStopLimitOrder(
+  res: NextApiResponse,
+  newOrderSL: NewOrderSL | NewOrderLimit
+) {
   try {
     if (
       !newOrderSL.type ||
       !newOrderSL.quantity ||
       !newOrderSL.price ||
-      !newOrderSL.stopPrice ||
+      //!newOrderSL.stopPrice ||
       !newOrderSL.symbol ||
       !newOrderSL.side
     ) {
@@ -117,7 +121,9 @@ async function newStopLimitOrder(res: NextApiResponse, newOrderSL: NewOrderSL) {
     return res.status(200).json(response); //response is empty, maybe a bug in order?
   } catch (err: any) {
     return res.status(500).json({
-      error: `Error happened: ${err.message} | ${err?.response?.data}`,
+      error: `${err.message}${
+        err?.response?.data ? " | " + err.response.data : ""
+      }`,
     });
   }
 }

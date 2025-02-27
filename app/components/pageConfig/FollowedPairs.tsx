@@ -37,6 +37,9 @@ const FollowedPairs: React.FC<Props> = ({
   const [inputValue, setInputValue] = useState<string>("");
   const [newDecimal, setNewDecimal] = useState<number>(0);
   const [decimalPopup, setDecimalPopup] = useState<ReactElement>(<></>);
+  const [popupPair, setPopupPair] = useState<string>("");
+  const [popupDecimal, setPopupDecimal] = useState<number>(0);
+  const [showDecimalPopup, setShowDecimalPopup] = useState<boolean>(false);
 
   const defaultInfoMessage =
     "e.g.: BTCUSDT, ETHUSDT, ADAUSDT, DOTUSDT, BNBUSDT, XRPUSDT, SOLUSDT, " +
@@ -102,39 +105,48 @@ const FollowedPairs: React.FC<Props> = ({
   };
 
   const decimalClicked = (pair: string, decimal: number): void => {
-    setDecimalPopup(
-      <div className="z-50 absolute flex flex-col space-y-2 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-black items-center p-4 rounded">
-        <div>Decimals of {pair}</div>
-        <input
-          type="text"
-          value="44"
-          onChange={(event) => {
-            console.log("Sss |" + event.target.value + "|");
-            setNewDecimal(Number(event.target.value));
-          }}
-          className="w-14 px-2 py-1 text-black border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          className="dbutton"
-          onClick={() => {
-            console.log(newDecimal);
-          }}
-        >
-          SET
-        </button>
-      </div>
-    );
+    setPopupPair(pair);
+    setPopupDecimal(decimal);
+    setShowDecimalPopup(true);
+  };
+
+  const setDecimalClicked = async () => {
+    const success = await ClientSideDbCache.hset(KVRoot.pairs, {
+      [popupPair]: {
+        pair: popupPair,
+        decimals: popupDecimal,
+      } as DagobertPair,
+    });
+    if (success) {
+      setShowDecimalPopup(false);
+      fetchPairs();
+    }
   };
 
   return (
     <>
       <div className="relative ml-8 flex flex-wrap">
-        {decimalPopup}
+        {showDecimalPopup && (
+          <div className="z-50 absolute flex flex-col space-y-2 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-black items-center p-4 rounded">
+            <div>Decimals of {popupPair}</div>
+            <input
+              type="text"
+              value={popupDecimal}
+              onChange={(event) => {
+                setPopupDecimal(Number(event.target.value) || popupDecimal);
+              }}
+              className="w-14 px-2 py-1 text-black border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button className="dbutton" onClick={setDecimalClicked}>
+              SET
+            </button>
+          </div>
+        )}
         {pairs &&
           Object.values(pairs).map((pair, index) => (
             <div
               key={pair.pair + "_" + index}
-              className="relative w-32 bg-gray-300 text-gray-800 flex justify-between items-center space-x-1 rounded-full p-2 mr-2 mb-2"
+              className="relative w-36 bg-gray-300 text-gray-800 flex justify-between items-center space-x-1 rounded-full p-2 mr-2 mb-2"
             >
               <div
                 className={`${
@@ -145,8 +157,11 @@ const FollowedPairs: React.FC<Props> = ({
               </div>
               <div className="text-xs">
                 {pair.pair}{" "}
-                <span onClick={() => decimalClicked(pair.pair, pair.decimals)}>
-                  {pair.decimals}
+                <span
+                  className="cursor-pointer"
+                  onClick={() => decimalClicked(pair.pair, pair.decimals)}
+                >
+                  .{pair.decimals}
                 </span>
               </div>
               <button onClick={() => handleRefresh(pair.pair)}>

@@ -2,6 +2,7 @@ import React, { ReactElement, useEffect, useState } from "react";
 import Image from "next/image";
 import {
   Color,
+  DagobertPair,
   DagobertTransaction,
   KVRoot,
   TradeType,
@@ -16,6 +17,7 @@ import ClientSideDbCache from "../lib/ClientSideDbCache";
 import {
   CancelOrderOptions,
   CandleChartResult,
+  NewOrderLimit,
   NewOrderSL,
   OrderSide_LT,
   OrderType,
@@ -106,59 +108,94 @@ const DTransactionCard: React.FC<Props> = ({
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     event.stopPropagation();
-    await newOrder(
-      "BUY",
-      "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT,
-      "margin",
-      2
-    );
+    const price = getTargetPrices(dtransaction.price, [number])[0];
+
+    let order: NewOrderLimit | NewOrderSL = {
+      symbol: dtransaction.pair,
+      side: "BUY",
+      quantity: dtransaction.executed.toString(),
+      price: price.toString(),
+      type: "LIMIT" as OrderType.LIMIT,
+    };
+
+    if (price >= currentPrice) {
+      const decimals = (
+        ClientSideDbCache.hget(KVRoot.pairs, dtransaction.pair) as DagobertPair
+      ).decimals;
+      const stopPrice = (price * 0.9996).toFixed(decimals);
+
+      order = {
+        symbol: order.symbol,
+        side: order.side,
+        quantity: order.quantity,
+        price: order.price,
+        type: "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT,
+        stopPrice: stopPrice.toString(),
+      };
+    }
+
+    await newOrder("margin", order);
   };
 
   const handleNewSlSellOrderClicked = async (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     event.stopPropagation();
-    await newOrder(
-      "SELL",
-      "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT,
-      "spot",
-      -2
-    );
+    const price = getTargetPrices(dtransaction.price, [number])[0];
+
+    let order: NewOrderLimit | NewOrderSL = {
+      symbol: dtransaction.pair,
+      side: "SELL",
+      quantity: dtransaction.executed.toString(),
+      price: price.toString(),
+      type: "LIMIT" as OrderType.LIMIT,
+    };
+
+    if (price < currentPrice) {
+      const decimals = (
+        ClientSideDbCache.hget(KVRoot.pairs, dtransaction.pair) as DagobertPair
+      ).decimals;
+      const stopPrice = (price * 1.0004).toFixed(decimals);
+
+      order = {
+        symbol: order.symbol,
+        side: order.side,
+        quantity: order.quantity,
+        price: order.price,
+        type: "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT,
+        stopPrice: stopPrice.toString(),
+      };
+    }
+
+    await newOrder("spot", order);
   };
 
   const newOrder = async (
-    side: OrderSide_LT,
-    type: OrderType.STOP_LOSS_LIMIT | OrderType.TAKE_PROFIT_LIMIT,
-    endpoint: "spot" | "margin",
-    modifier: number
+    endpoint: string,
+    order: NewOrderLimit | NewOrderSL
+    // side: OrderSide_LT,
+    // type: OrderType.STOP_LOSS_LIMIT | OrderType.TAKE_PROFIT_LIMIT,
+    // endpoint: "spot" | "margin",
+    // price: number,
+    // modifier: number
   ) => {
-    const stopPrice = getTargetPrices(dtransaction.price, [number])[0];
-
     //const side = "SELL";
     //const type = "STOP_LOSS_LIMIT" as OrderType.STOP_LOSS_LIMIT;  //TAKE_PROFIT_LIMIT
-    //const price = side === "BUY" ? stopPrice * 1.0005 : stopPrice * 0.9995;
-    const price = modifyLastDigit(stopPrice, modifier).toString();
+
+    //const price = modifyLastDigit(stopPrice, modifier).toString();
     const apiUri = `/api/binanceapi/${endpoint}`;
-
-    const newOrder: NewOrderSL = {
-      symbol: dtransaction.pair,
-      side: side,
-      type: type,
-      quantity: dtransaction.executed.toString(),
-      price: price.toString(),
-      stopPrice: stopPrice.toString(),
-    };
-
     const response = await fetch(apiUri, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newOrder),
+      body: JSON.stringify(order),
     });
 
     const rjson = await response.json();
 
     if (response.ok) {
-      const newNote = { note: `${side} set to ${stopPrice} (${number}%)` };
+      const newNote = {
+        note: `${order.side} set to ${order.price} (${number}%)`,
+      };
       const newOtherSideOrderId = {
         otherSideOrderId: rjson?.orderId ?? "",
       };
@@ -174,7 +211,7 @@ const DTransactionCard: React.FC<Props> = ({
       setIsOtherSideOrder(true);
       setNote(newNote.note);
     } else {
-      setNote("failed to create sl order: " + JSON.stringify(response));
+      setNote("Failed to create order: " + rjson.error);
     }
   };
 

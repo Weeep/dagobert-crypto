@@ -47,10 +47,6 @@ export default function PageConfig() {
       [pair: string]: { pair: string; decimals: number };
     };
 
-    //Dtransactions.getAll()
-
-    console.log(ps);
-
     if (ps) {
       const initNums: PairsInfo = {};
       for (const p of Object.keys(ps)) {
