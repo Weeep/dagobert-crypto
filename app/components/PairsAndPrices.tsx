@@ -258,12 +258,25 @@ const PairsAndPrices: React.FC<Props> = ({
 
     return (
       <>
-        <div className="text-xs flex space-x-1">
+        <div className="text-xs flex items-center space-x-1">
           <span>
             {interval} RSI(6): <span className={rsiColor}>{rsi}</span>
           </span>
           <span>
             Ema100: <span className={emaColor}>{ema}</span>
+          </span>
+          <span>
+            <a
+              href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${pair}&interval=${interval}`}
+              target="_blank"
+            >
+              <Image
+                src="/images/white-short-logo.png"
+                alt="tradingview-logo"
+                width={22}
+                height={22}
+              />
+            </a>
           </span>
         </div>
         {/*<span className="text-xs">
@@ -312,8 +325,8 @@ const PairsAndPrices: React.FC<Props> = ({
                 />
                 {pair} ${pairsPrices[pair].price}
               </label>
-              {emaRsiElement(pair, "1h", emaRsis1h, emaRsis1hColor)}
-              {emaRsiElement(pair, "1d", emaRsis1d, emaRsis1dColor)}
+              {emaRsiElement(pair, "60", emaRsis1h, emaRsis1hColor)}
+              {emaRsiElement(pair, "D", emaRsis1d, emaRsis1dColor)}
 
               {/* <div className="bg-black border border-white rounded p-1 ml-2 w-36">
                 {/* Row 1 * /}

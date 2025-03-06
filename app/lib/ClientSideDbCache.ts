@@ -38,6 +38,10 @@ class ClientSideDbCache {
     return this.cache;
   }
 
+  public static isCacheEmpty(): boolean {
+    return Object.keys(this.cache).length === 0;
+  }
+
   // ADD
 
   public static async set(key: string, value: string): Promise<boolean> {
@@ -70,6 +74,8 @@ class ClientSideDbCache {
   ): DagobertTransaction | DagobertTransactionGroup | DagobertPair | null {
     switch (key) {
       case KVRoot.dtransactions:
+        console.log(this.cache[key] === undefined);
+        console.log(this.cache[key][field] === undefined);
         return (this.cache[key][field] as DagobertTransaction) ?? null;
       case KVRoot.dtransactionGroups:
         return (this.cache[key][field] as DagobertTransactionGroup) ?? null;

@@ -15,17 +15,17 @@ const Test3Page: React.FC = () => {
   const [prices, setPrices] = useState<{ symbol: string; price: string }[]>([]);
 
   useEffect(() => {
-    fetchCoins();
-    // const a = async () => {
-    //   if (await ClientSideDbCache.initializeCache()) {
-    //     //init();
-    //     //init2();
-    //     //changeDtransaction("9bc3cf04-e446-4fd4-992c-5711e9da21c1", {
-    //     //  tradeStyle: TradeStyle.Swing,
-    //     //});
-    //   }
-    // };
-    // a();
+    //fetchCoins();
+    const a = async () => {
+      if (await ClientSideDbCache.initializeCache()) {
+        //     //init();
+        //     //init2();
+        changeDtransaction("10a21bdc-e4b6-444a-90c7-8d92b1a25b51", {
+          executed: 0.013,
+        });
+      }
+    };
+    a();
   }, []);
 
   const fetchCoins = async () => {
@@ -100,7 +100,8 @@ const Test3Page: React.FC = () => {
 
   return (
     <div className="flex space-x-5 flex-wrap">
-      {prices.map((price) => {
+      {infoStr}
+      {/* prices.map((price) => {
         return (
           <DIndicator
             className="w-64 mr-4 py-2"
@@ -109,7 +110,7 @@ const Test3Page: React.FC = () => {
             price={parseFloat(price.price)}
           />
         );
-      })}
+      }) */}
     </div>
   );
 };

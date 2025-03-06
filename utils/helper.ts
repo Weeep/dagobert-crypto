@@ -1,6 +1,7 @@
 import { PairPriceIf, TransactionIf } from "@/app/lib/Interfaces";
 import {
   BnceTradeHisFromCsv,
+  Color,
   DagobertTransaction,
   TradeType,
 } from "@/utils/typesAndEnums";
@@ -67,6 +68,17 @@ export const isBnceTradeHisFromCsvArray = (data: any): boolean => {
   }
 
   return true;
+};
+
+export const getTradeTypeColor = (t: TradeType): string => {
+  switch (t) {
+    case TradeType.Spot:
+      return "bg-" + Color.SpotColor;
+    case TradeType.Margin:
+      return "bg-" + Color.MarginColor;
+    default:
+      return "";
+  }
 };
 
 export const convertArrayToObject = <T, K extends keyof T>(

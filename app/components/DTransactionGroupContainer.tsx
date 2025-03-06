@@ -3,7 +3,7 @@ import {
   DagobertTransaction,
   DagobertTransactionGroup,
 } from "@/utils/typesAndEnums";
-import { formatDate, redCross } from "@/utils/helper";
+import { formatDate, getTradeTypeColor, redCross } from "@/utils/helper";
 import DtransactionGroups from "../lib/DtransactionGroups";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
@@ -34,12 +34,8 @@ const DTransactionGroupContainer: React.FC<Props> = ({
     DtransactionGroupsInPairs[]
   >([]);
 
-  let useEffectFirst = true;
   useEffect(() => {
-    if (useEffectFirst) {
-      useEffectFirst = false;
-      initData();
-    }
+    initData();
   }, [newDtransactionGroupEpoch]);
 
   const initData = () => {
@@ -124,69 +120,80 @@ const DTransactionGroupContainer: React.FC<Props> = ({
               <div
                 className={`${!isPairOpen[dtgip.pair].isOpen ? "hidden" : ""}`}
               >
-                {dtgip.dtransactionGroups.map((dtg) => (
-                  <div
-                    key={dtg.groupId}
-                    className={`bg-${dtg.amount <= 0 ? "red" : "green"}-100
+                {dtgip.dtransactionGroups
+                  .sort((a, b) =>
+                    a.lastTransDateEpoch > b.lastTransDateEpoch ? -1 : 1
+                  )
+                  .map((dtg) => (
+                    <div
+                      key={dtg.groupId}
+                      className={`bg-${dtg.amount <= 0 ? "red" : "green"}-100
        p-4 my-4 rounded-md shadow-md relative`}
-                  >
-                    <button
-                      className="absolute right-2 top-2 text-xs"
-                      onClick={() => {
-                        deleteGroup(dtg.groupId as string);
-                      }}
                     >
-                      {redCross}
-                    </button>
-                    <div style={{ display: "none" }}>
-                      <span className="text-lime-600"></span>
-                      <span className="text-red-500"></span>
-                      <span className="bg-red-100"></span>
-                      <span className="bg-green-100"></span>
-                      <span className="bg-slate-100"></span>
-                      <span className="bg-blue-100"></span>
-                      TODO: It looks without these the below aggregation does
-                      not work
-                    </div>
-                    <h2 className="text-xl font-semibold mb-2 text-black">
-                      {dtgip.pair}&nbsp;&nbsp;
-                      <span
-                        className={`text-${
-                          dtg.amount >= 0 ? "lime" : "red"
-                        }-600`}
+                      <div
+                        className={`absolute top-2 bottom-2 left-1 w-1 ${getTradeTypeColor(
+                          dtg.tradeType
+                        )} rounded-full`}
+                        title={`${dtg.tradeType} Order`}
+                      ></div>
+                      <button
+                        className="absolute right-2 top-2 text-xs"
+                        onClick={() => {
+                          deleteGroup(dtg.groupId as string);
+                        }}
                       >
-                        {dtg.amount >= 0
-                          ? "+" + dtg.amount.toFixed(2)
-                          : dtg.amount.toFixed(2)}
-                        $
-                      </span>
-                      &nbsp;&nbsp;{dtg.executed.toFixed(2)}
-                      &nbsp;&nbsp;{dtg.tradeType}
-                    </h2>
-                    {dtg.groupedTrans
-                      .sort((a, b) => (a.dateEpoch > b.dateEpoch ? -1 : 1))
-                      .map((t) => {
-                        return (
-                          <p
-                            key={t.orderId}
-                            className="text-xs text-gray-500 mb-2"
-                          >
-                            {formatDate(t.dateEpoch)}:{" "}
-                            <span
-                              className={`bg-${
-                                t.side === "BUY" ? "green" : "red"
-                              }-100 p-1`}
+                        {redCross}
+                      </button>
+                      <div style={{ display: "none" }}>
+                        <span className="text-lime-600"></span>
+                        <span className="text-red-500"></span>
+                        <span className="bg-red-100"></span>
+                        <span className="bg-green-100"></span>
+                        <span className="bg-slate-100"></span>
+                        <span className="bg-blue-100"></span>
+                        TODO: It looks without these the below aggregation does
+                        not work
+                      </div>
+                      <h2 className="text-xl flex space-x-3 font-semibold mb-2 text-black">
+                        <span>{dtgip.pair}</span>
+                        <span
+                          className={`text-${
+                            dtg.amount >= 0 ? "lime" : "red"
+                          }-600`}
+                        >
+                          {dtg.amount >= 0
+                            ? "+" + dtg.amount.toFixed(2)
+                            : dtg.amount.toFixed(2)}
+                          $
+                        </span>
+                        <span>
+                          {dtg.executed !== 0 && dtg.executed.toFixed(2)}
+                        </span>
+                      </h2>
+                      {dtg.groupedTrans
+                        .sort((a, b) => (a.dateEpoch > b.dateEpoch ? -1 : 1))
+                        .map((t) => {
+                          return (
+                            <p
+                              key={t.orderId}
+                              className="text-xs text-gray-500 mb-2"
                             >
-                              {t.side}
-                            </span>
-                            {" " + t.executed}
-                            {" on "}
-                            <b>${t.price}</b>
-                          </p>
-                        );
-                      })}
-                  </div>
-                ))}
+                              {formatDate(t.dateEpoch)}:{" "}
+                              <span
+                                className={`bg-${
+                                  t.side === "BUY" ? "green" : "red"
+                                }-100 p-1`}
+                              >
+                                {t.side}
+                              </span>
+                              {" " + t.executed}
+                              {" on "}
+                              <b>${t.price}</b>
+                            </p>
+                          );
+                        })}
+                    </div>
+                  ))}
               </div>
             </div>
           ))}

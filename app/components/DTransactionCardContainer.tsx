@@ -55,6 +55,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
   const [isOpen, setIsOpen] = useState<boolean>(true);
 
   useEffect(() => {
+    setMarkedForMerge([]);
     fetchDtransactions();
   }, [selectedPairs]);
 

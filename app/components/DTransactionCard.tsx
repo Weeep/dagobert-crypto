@@ -11,6 +11,7 @@ import {
   formatDate,
   getPrice,
   getTargetPrices,
+  getTradeTypeColor,
   modifyLastDigit,
 } from "@/utils/helper";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
@@ -46,7 +47,6 @@ const DTransactionCard: React.FC<Props> = ({
   className = "",
 }) => {
   const [isMarked, setIsMarked] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
   const [number, setNumber] = useState(
     dtransaction.tradeType === TradeType.Margin ? -10 : 10
   );
@@ -430,17 +430,6 @@ const DTransactionCard: React.FC<Props> = ({
     }
   };
 
-  const getColor = (t: TradeType): string => {
-    switch (t) {
-      case TradeType.Spot:
-        return "bg-" + Color.SpotColor;
-      case TradeType.Margin:
-        return "bg-" + Color.MarginColor;
-      default:
-        return "";
-    }
-  };
-
   return (
     <DFrame
       className={className}
@@ -451,7 +440,7 @@ const DTransactionCard: React.FC<Props> = ({
         onClick={handleCardClicked}
         className={`relative bg-${
           isMarked ? "blue" : "slate"
-        }-100 p-4 rounded-md shadow-md ${isVisible ? "" : "hidden"}`}
+        }-100 p-4 rounded-md shadow-md`}
       >
         <div style={{ display: "none" }}>
           <span className="bg-red-100"></span>
@@ -466,10 +455,10 @@ const DTransactionCard: React.FC<Props> = ({
         </div>
 
         <div
-          className={`absolute top-2 bottom-2 left-1 w-1 ${getColor(
+          className={`absolute top-2 bottom-2 left-1 w-1 ${getTradeTypeColor(
             dtransaction.tradeType
           )} rounded-full`}
-          title="Spot Order"
+          title={`${dtransaction.tradeType} Order`}
         ></div>
 
         {/* Row 1 */}
