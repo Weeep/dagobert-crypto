@@ -113,7 +113,7 @@ export function stringToRoundedFloat(
   if (fixed == 0) {
     fixed = 3;
     if (num <= 1) fixed = 4;
-    if (num <= 0.0001) fixed = 8;
+    if (num <= 0.001) fixed = 8;
 
     if (num >= 10) fixed = 2;
     if (num >= 100) fixed = 2; //1

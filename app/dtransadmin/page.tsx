@@ -20,8 +20,8 @@ const Test3Page: React.FC = () => {
       if (await ClientSideDbCache.initializeCache()) {
         //     //init();
         //     //init2();
-        changeDtransaction("10a21bdc-e4b6-444a-90c7-8d92b1a25b51", {
-          executed: 0.013,
+        changeDtransaction("64676df3-3997-45e1-8f26-8148b54b278b", {
+          price: 0.00014556,
         });
       }
     };
