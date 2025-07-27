@@ -1,5 +1,6 @@
 "use client";
 
+import "./globals.css";
 import { useEffect, useState } from "react";
 import PageTransactions from "./components/PageTransactions";
 import Charts from "./components/Charts";
@@ -32,19 +33,19 @@ export default function Home() {
 
   const ActivePageComponent = pages[activePage];
 
-  const initializeCache = async () => {
-    setInfo("Initalizing cache...");
-    try {
-      const success = await ClientSideDbCache.initializeCache();
-      setCacheInitialized(success);
-    } catch (error) {
-      setCacheInitialized(false);
-      console.error("error", error);
-      setInfo(
-        "Exception during cache initialization: " + JSON.stringify(error)
-      );
-    }
-  };
+  // const initializeCache = async () => {
+  //   setInfo("Initalizing cache...");
+  //   try {
+  //     const success = await ClientSideDbCache.initializeCache();
+  //     setCacheInitialized(success);
+  //   } catch (error) {
+  //     setCacheInitialized(false);
+  //     console.error("error", error);
+  //     setInfo(
+  //       "Exception during cache initialization: " + JSON.stringify(error)
+  //     );
+  //   }
+  // };
 
   //let useEffectFirst = true;
   useEffect(() => {
@@ -55,25 +56,47 @@ export default function Home() {
       .then((res) => {
         if (res.ok) {
           setAuthorized(true);
-        } else {
-          router.push("/login");
         }
       })
       .finally(() => {
         setLoading(false);
-        initializeCache();
+        ClientSideDbCache.initializeCache().then((success) => {
+          setCacheInitialized(success);
+          if (!success) {
+            setInfo("Failed to initialize cache.");
+          }
+        });
       });
+
+    // fetch("/api/auth/protected")
+    //   .then((res) => {
+    //     if (res.ok) {
+    //       setAuthorized(true);
+    //     } else {
+    //       router.push("/login");
+    //     }
+    //   })
+    //   .finally(() => {
+    //     setLoading(false);
+    //     initializeCache();
+    //   });
 
     //}
   }, [router]);
+
+  useEffect(() => {
+    if (!loading && !authorized) {
+      router.push("/login");
+    }
+  }, [loading, authorized, router]);
 
   if (loading) {
     return <div className="p-8 text-xl">Loading...</div>;
   }
 
-  if (!authorized) {
-    router.push("/login");
-  }
+  //if (!authorized) {
+  //  router.push("/login");
+  //}
 
   const logout = () => {
     fetch("/api/auth/logout", {

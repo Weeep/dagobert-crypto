@@ -1,33 +1,38 @@
 import { kv } from "@vercel/kv";
 import { ApiResponse, KVRoot } from "./typesAndEnums";
+import fs from "fs/promises";
 
 class DbApiUtil {
-  // private static cache: Record<string, any> = {};
-  // private static isInitialized = false;
-
-  // public static printCache(title: string = "cache") {
-  //   console.log(title + ": " + JSON.stringify(this.cache).substring(0, 100));
-  //   return title + ": " + JSON.stringify(this.cache).substring(0, 100);
-  // }
-
-  //static getCache(): Record<string, any> {
-  //  return this.cache;
-  //}
-
-  public static async getCache(): Promise<{
+  public static async getCache(
+    source: "kv" | "file" = "kv",
+    filePath = "./vercel_kv_export.json"
+  ): Promise<{
     message: string;
     cache: Record<string, any>;
   }> {
     const cache: Record<string, any> = {};
 
-    // Fetch all keys from the KV database
-    let cursor = 0;
-    let resp: [nextCursor: number, keys: string[]] = [0, []];
-    do {
-      resp = await kv.scan(cursor);
-      cursor = resp[0];
+    if (source === "file") {
+      try {
+        const data = await fs.readFile(filePath, "utf-8");
+        const parsed = JSON.parse(data);
+        return {
+          message: `Cache loaded from file: ${filePath}`,
+          cache: parsed,
+        };
+      } catch (err) {
+        console.error("Failed to read cache file:", err);
+        throw new Error(`Failed to load cache from file: ${err}`);
+      }
+    }
 
-      for (const key of resp[1]) {
+    let cursor: string = "0";
+
+    do {
+      const [nextCursor, keys] = await kv.scan(cursor);
+      cursor = nextCursor;
+
+      for (const key of keys) {
         try {
           // Get the type of the key
           const type = await kv.type(key);
@@ -50,33 +55,17 @@ class DbApiUtil {
           console.error(`Error processing key "${key}":`, error);
         }
       }
-    } while (cursor !== 0);
+    } while (cursor !== "0");
 
-    //console.log("Cache initialized at " + new Date().getTime() + "!"); //, this.cache["dtransactions"]);
-    return { message: "Cache initialized!", cache };
+    return { message: "Cache loaded from KV!", cache };
   }
 
-  // private static genCacheResponse(cacheData: any, input: any): ApiResponse {
-  //   if (cacheData !== null) {
-  //     return {
-  //       ok: true,
-  //       code: 200,
-  //       response: cacheData,
-  //       error: null,
-  //     } as ApiResponse;
-  //   } else {
-  //     try {
-  //       throw new Error("Cannot get data from cache: " + JSON.stringify(input));
-  //     } catch (error) {
-  //       return {
-  //         ok: false,
-  //         code: 500,
-  //         response: null,
-  //         error: (error as Error).message + "|" + (error as Error).stack,
-  //       };
-  //     }
-  //   }
-  // }
+  private static toKVRoot(value: string): KVRoot {
+    if (Object.values(KVRoot).includes(value as KVRoot)) {
+      return value as KVRoot;
+    }
+    throw new Error("Invalid KVRoot: " + value);
+  }
 
   private static async handleOperation<T>(
     operation: () => Promise<T>

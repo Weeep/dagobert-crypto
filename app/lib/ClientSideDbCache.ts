@@ -17,20 +17,52 @@ class ClientSideDbCache {
   private static cache: Record<string, any> = {};
   private static isInitialized = false;
 
+  // public static async old_initializeCache(): Promise<boolean> {
+  //   if (this.isInitialized) return true;
+
+  //   const response = await fetch(
+  //     `/api/dbapi/admin?action=${DbActionsViaApi.getcache}`
+  //   );
+  //   if (response.ok) {
+  //     this.cache = (await response.json()).response;
+  //     this.isInitialized = true;
+  //     return true;
+  //   } else {
+  //     throw new Error(
+  //       "Failed to initialize cache! " + JSON.stringify(await response.json())
+  //     );
+  //   }
+  // }
+
   public static async initializeCache(): Promise<boolean> {
     if (this.isInitialized) return true;
 
-    const response = await fetch(
-      `/api/dbapi/admin?action=${DbActionsViaApi.getcache}`
-    );
-    if (response.ok) {
-      this.cache = (await response.json()).response;
-      this.isInitialized = true;
-      return true;
-    } else {
-      throw new Error(
-        "Failed to initialize cache! " + JSON.stringify(await response.json())
+    this.cache = {};
+    this.isInitialized = false;
+    try {
+      const response = await fetch(
+        `/api/dbapi/admin?action=${DbActionsViaApi.getcachefromfile}`
       );
+
+      if (response.ok) {
+        const r = (await response.json()).response;
+        console.log(r.message);
+        this.cache = r.cache;
+        this.isInitialized = true;
+        return true;
+      } else if (response.status === 401) {
+        console.warn("User not authorized to initialize cache.");
+        return false;
+      } else {
+        console.error(
+          "Unexpected response during cache init:",
+          await response.json()
+        );
+        return false;
+      }
+    } catch (error) {
+      console.error("Exception during cache init:", error);
+      return false;
     }
   }
 

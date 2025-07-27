@@ -10,27 +10,29 @@ interface ResponseIf {
 
 async function admin(req: NextApiRequest, res: NextApiResponse) {
   const connectionTest = async (action: string): Promise<ResponseIf> => {
-    const badConnection = {
-      s: 500,
-      j: {
-        response:
-          "Database connection failed. It can be configuration, nameserver or temporary db issue.",
-        action,
-      },
-    };
-
     let dbResponse: ApiResponse;
 
     dbResponse = await DbApiUtil.lpush("listtest", {
       itemOne: "1",
       itemTwo: "2",
     });
-    if (!dbResponse.ok) return badConnection;
+    console.log("1");
+    console.log(JSON.stringify(dbResponse));
+    if (!dbResponse.ok) return getBadConnection(dbResponse, action);
 
     dbResponse = await DbApiUtil.del("listtest");
-    if (!dbResponse.ok) return badConnection;
+    console.log("2");
+    console.log(JSON.stringify(dbResponse));
+    if (!dbResponse.ok) return getBadConnection(dbResponse, action);
 
     return { s: 200, j: { response: "Database connection OK", action } };
+  };
+
+  const getBadConnection = async (
+    response: ApiResponse,
+    action: string
+  ): Promise<ResponseIf> => {
+    return { s: response.code, j: { response: response.error, action } };
   };
 
   const flushDb = async (action: string): Promise<ResponseIf> => {
@@ -54,9 +56,14 @@ async function admin(req: NextApiRequest, res: NextApiResponse) {
     }
   };
 
-  const getCache = async (action: string): Promise<ResponseIf> => {
-    const cache = await DbApiUtil.getCache();
-    return { s: 200, j: { response: cache.cache, action } };
+  const getCacheFromKV = async (action: string): Promise<ResponseIf> => {
+    const cache = await DbApiUtil.getCache("kv");
+    return { s: 200, j: { response: cache, action } };
+  };
+
+  const getCacheFromFile = async (action: string): Promise<ResponseIf> => {
+    const cache = await DbApiUtil.getCache("file");
+    return { s: 200, j: { response: cache, action } };
   };
 
   const apiResponseToResponseIf = (
@@ -136,7 +143,8 @@ async function admin(req: NextApiRequest, res: NextApiResponse) {
   if (
     action !== DbActionsViaApi.connectiontest &&
     action !== DbActionsViaApi.flushdb &&
-    action !== DbActionsViaApi.getcache &&
+    action !== DbActionsViaApi.getcachefromkv &&
+    action !== DbActionsViaApi.getcachefromfile &&
     action !== DbActionsViaApi.set //TODO: && 'del' but 'del' not used yet
   ) {
     //TODO
@@ -160,9 +168,13 @@ async function admin(req: NextApiRequest, res: NextApiResponse) {
       const flushDbRes: ResponseIf = await flushDb(act);
       ({ s, j } = flushDbRes);
       break;
-    case DbActionsViaApi.getcache:
-      const getCacheRes: ResponseIf = await getCache(act);
-      ({ s, j } = getCacheRes);
+    case DbActionsViaApi.getcachefromkv:
+      const getCacheKVRes: ResponseIf = await getCacheFromKV(act);
+      ({ s, j } = getCacheKVRes);
+      break;
+    case DbActionsViaApi.getcachefromfile:
+      const getCacheFileRes: ResponseIf = await getCacheFromFile(act);
+      ({ s, j } = getCacheFileRes);
       break;
     case DbActionsViaApi.set:
       ({ s, j } = await dbOp(act.toLowerCase(), key as string, value));
