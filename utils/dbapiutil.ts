@@ -29,27 +29,56 @@ class DbApiUtil {
     let cursor: string = "0";
 
     do {
-      const [nextCursor, keys] = await kv.scan(cursor);
+      console.log("cursor: " + cursor);
+
+      const scanRes = await this.scan(cursor);
+      if (!scanRes.ok || !Array.isArray(scanRes.response)) {
+        throw new Error("Failed to scan keys.");
+      }
+
+      const [nextCursor, keys] = scanRes.response;
       cursor = nextCursor;
 
       for (const key of keys) {
         try {
-          // Get the type of the key
-          const type = await kv.type(key);
+          const typeRes = await this.type(key);
+          const type = typeRes.ok ? typeRes.response : null;
 
-          // Fetch data based on the type
-          if (type === "string") {
-            cache[key] = await kv.get(key);
-          } else if (type === "hash") {
-            cache[key] = await kv.hgetall(key); // Fetch all fields in the hash
-          } else if (type === "list") {
-            cache[key] = await kv.lrange(key, 0, -1); // Fetch all elements in the list
-          } else if (type === "set") {
-            cache[key] = await kv.smembers(key); // Fetch all members of the set
-          } else if (type === "zset") {
-            cache[key] = await kv.zrange(key, 0, -1, { withScores: true }); // Fetch all members of the sorted set
+          if (!type) {
+            console.warn(`Could not determine type for key "${key}"`);
+            continue;
+          }
+
+          let valueRes: ApiResponse;
+
+          switch (type) {
+            case "string":
+              valueRes = await this.get(key);
+              break;
+            case "hash":
+              valueRes = await this.hgetall(key as KVRoot);
+              break;
+            case "list":
+              valueRes = await this.lrange(key, 0, -1);
+              break;
+            case "set":
+              valueRes = await this.smembers(key as KVRoot);
+              break;
+            case "zset":
+              valueRes = await this.zrange(key, 0, -1, { withScores: true });
+              break;
+            default:
+              console.warn(`Unknown type for key "${key}": ${type}`);
+              continue;
+          }
+
+          if (valueRes.ok) {
+            cache[key] = valueRes.response;
           } else {
-            console.warn(`Unknown type for key "${key}": ${type}`);
+            console.warn(
+              `Failed to get value for key "${key}":`,
+              valueRes.error
+            );
           }
         } catch (error) {
           console.error(`Error processing key "${key}":`, error);
@@ -67,11 +96,30 @@ class DbApiUtil {
     throw new Error("Invalid KVRoot: " + value);
   }
 
+  private static async retryOperation<T>(
+    operation: () => Promise<T>,
+    retries: number = 3,
+    delayMs: number = 500
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (err) {
+      if (retries <= 0) {
+        throw err;
+      }
+      await new Promise((res) => setTimeout(res, delayMs));
+      console.log("DB connect retry: " + retries);
+      return this.retryOperation(operation, retries - 1, delayMs * 3); // triple delay: exponential backoff
+    }
+  }
+
   private static async handleOperation<T>(
-    operation: () => Promise<T>
+    operation: () => Promise<T>,
+    retries = 3,
+    delayMs = 300
   ): Promise<ApiResponse> {
     try {
-      const res = await operation();
+      const res = await this.retryOperation(operation, retries, delayMs);
       return { ok: true, code: 200, response: res, error: null };
     } catch (e: any) {
       return {
@@ -141,6 +189,33 @@ class DbApiUtil {
 
   public static async flushdb(): Promise<ApiResponse> {
     return this.handleOperation(() => kv.flushdb());
+  }
+
+  // PRIVATE
+
+  private static async scan(cursor: string): Promise<ApiResponse> {
+    return this.handleOperation(() => kv.scan(cursor));
+  }
+
+  private static async type(key: string): Promise<ApiResponse> {
+    return this.handleOperation(() => kv.type(key));
+  }
+
+  private static async lrange(
+    key: string,
+    start: number,
+    stop: number
+  ): Promise<ApiResponse> {
+    return this.handleOperation(() => kv.lrange(key, start, stop));
+  }
+
+  private static async zrange(
+    key: string,
+    start: number,
+    stop: number,
+    options?: { withScores: boolean }
+  ): Promise<ApiResponse> {
+    return this.handleOperation(() => kv.zrange(key, start, stop, options));
   }
 }
 

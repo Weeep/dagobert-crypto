@@ -41,7 +41,7 @@ class ClientSideDbCache {
     this.isInitialized = false;
     try {
       const response = await fetch(
-        `/api/dbapi/admin?action=${DbActionsViaApi.getcachefromfile}`
+        `/api/dbapi/admin?action=${DbActionsViaApi.getcachefromkv}`
       );
 
       if (response.ok) {
