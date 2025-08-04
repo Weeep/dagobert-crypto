@@ -47,8 +47,8 @@ const DTransactionCard: React.FC<Props> = ({
   className = "",
 }) => {
   const [isMarked, setIsMarked] = useState(false);
-  const [number, setNumber] = useState(
-    dtransaction.tradeType === TradeType.Margin ? -10 : 10
+  const [numberStr, setNumberStr] = useState<string>(
+    dtransaction.tradeType === TradeType.Margin ? "-10" : "10"
   );
   const [note, setNote] = useState<string>(dtransaction.note);
   const [inputValue, setInputValue] = useState("");
@@ -100,14 +100,16 @@ const DTransactionCard: React.FC<Props> = ({
     clickOnPair(pair);
   };
 
-  const handleSellPctChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setNumber(Number(event.target.value));
-  };
-
   const handleNewTpBuyOrderClicked = async (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     event.stopPropagation();
+
+    const number = Number(numberStr);
+    if (isNaN(number)) {
+      return;
+    }
+
     const price = getTargetPrices(dtransaction.price, [number])[0];
 
     let order: NewOrderLimit | NewOrderSL = {
@@ -141,6 +143,12 @@ const DTransactionCard: React.FC<Props> = ({
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     event.stopPropagation();
+
+    const number = Number(numberStr);
+    if (isNaN(number)) {
+      return;
+    }
+
     const price = getTargetPrices(dtransaction.price, [number])[0];
 
     let order: NewOrderLimit | NewOrderSL = {
@@ -194,7 +202,7 @@ const DTransactionCard: React.FC<Props> = ({
 
     if (response.ok) {
       const newNote = {
-        note: `${order.side} set to ${order.price} (${number}%)`,
+        note: `${order.side} set to ${order.price} (${numberStr}%)`,
       };
       const newOtherSideOrderId = {
         otherSideOrderId: rjson?.orderId ?? "",
@@ -568,16 +576,31 @@ const DTransactionCard: React.FC<Props> = ({
               </button>
               <span className="text-white pr-2">
                 {dtransaction.side === "BUY" ? "Sell" : "Buy"} on{" "}
-                {getTargetPrices(dtransaction.price, [number])[0]}$
+                {isNaN(Number(numberStr))
+                  ? ""
+                  : getTargetPrices(dtransaction.price, [Number(numberStr)])[0]}
+                $
               </span>
 
               <input
-                type="number"
-                value={number}
-                onChange={handleSellPctChanged}
+                type="text"
+                inputMode="decimal"
+                pattern="-?[0-9]*\.?[0-9]*"
+                value={numberStr}
+                onChange={(e) => {
+                  const newVal = e.target.value;
+                  if (
+                    /^-?\d+(\.\d*)?$/.test(newVal) ||
+                    newVal === "-" ||
+                    newVal === ""
+                  ) {
+                    setNumberStr(newVal);
+                  }
+                }}
                 onClick={(event) => event.stopPropagation()}
                 className="w-14 px-2 py-1 text-black border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+
               {dtransaction.tradeType === TradeType.Spot && (
                 <button
                   onClick={(event) => handleNewSlSellOrderClicked(event)}
