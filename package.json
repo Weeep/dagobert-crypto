@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "export-kv-db": "ts-node scripts/exportKvDb.ts",
+    "export-kv-db": "ts-node --require tsconfig-paths/register scripts/exportKvDb.ts",
     "import-kv-db": "ts-node scripts/importKvDb.ts"
   },
   "dependencies": {
@@ -50,6 +50,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5"
   }
 }

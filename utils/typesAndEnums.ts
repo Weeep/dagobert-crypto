@@ -65,8 +65,7 @@ export enum KVRoot {
 export enum DbActionsViaApi {
   connectiontest = "connectiontest",
   flushdb = "flushdb",
-  getcachefromkv = "getcachefromkv",
-  getcachefromfile = "getcachefromfile",
+  getcache = "getcache",
   set = "set",
   hset = "hset",
   sadd = "sadd",

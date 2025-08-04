@@ -143,8 +143,7 @@ async function admin(req: NextApiRequest, res: NextApiResponse) {
   if (
     action !== DbActionsViaApi.connectiontest &&
     action !== DbActionsViaApi.flushdb &&
-    action !== DbActionsViaApi.getcachefromkv &&
-    action !== DbActionsViaApi.getcachefromfile &&
+    action !== DbActionsViaApi.getcache &&
     action !== DbActionsViaApi.set //TODO: && 'del' but 'del' not used yet
   ) {
     //TODO
@@ -168,13 +167,13 @@ async function admin(req: NextApiRequest, res: NextApiResponse) {
       const flushDbRes: ResponseIf = await flushDb(act);
       ({ s, j } = flushDbRes);
       break;
-    case DbActionsViaApi.getcachefromkv:
-      const getCacheKVRes: ResponseIf = await getCacheFromKV(act);
+    case DbActionsViaApi.getcache:
+      console.log(process.env.CACHE_SOURCE);
+      const getCacheKVRes: ResponseIf =
+        (process.env.CACHE_SOURCE as string) === "file"
+          ? await getCacheFromFile(act)
+          : await getCacheFromKV(act);
       ({ s, j } = getCacheKVRes);
-      break;
-    case DbActionsViaApi.getcachefromfile:
-      const getCacheFileRes: ResponseIf = await getCacheFromFile(act);
-      ({ s, j } = getCacheFileRes);
       break;
     case DbActionsViaApi.set:
       ({ s, j } = await dbOp(act.toLowerCase(), key as string, value));
