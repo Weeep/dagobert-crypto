@@ -9,8 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "export-kv-db": "ts-node --require tsconfig-paths/register scripts/exportKvDb.ts",
-    "import-kv-db": "ts-node scripts/importKvDb.ts"
+    "export-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/exportKvDb.ts",
+    "import-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/importKvDb.ts"
   },
   "dependencies": {
     "@binance/connector": "^3.6.1",
