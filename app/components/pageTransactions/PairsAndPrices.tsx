@@ -1,5 +1,5 @@
 import { ReactElement, useEffect, useState } from "react";
-import { PairPriceIf } from "../lib/Interfaces";
+import { PairPriceIf } from "../../lib/Interfaces";
 import Image from "next/image";
 import {
   convertArrayToObject as arrayToObject,
@@ -8,13 +8,10 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
-import Dtransactions from "../lib/Dtransactions";
-import ClientSideDbCache from "../lib/ClientSideDbCache";
+import Dtransactions from "../../lib/Dtransactions";
+import ClientSideDbCache from "../../lib/ClientSideDbCache";
 import { faRefresh } from "@fortawesome/free-solid-svg-icons";
-import CandlestickChart from "./CandlestickChart";
-import { CandleChartResult } from "binance-api-node";
-import { DCandle, TradingAnalysis } from "../lib/TradingAnalysis";
-import Foldable from "./Foldable";
+import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
 
 type Indicators = {
   ema100: number;

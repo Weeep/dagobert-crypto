@@ -4,7 +4,7 @@ import {
   DagobertTransactionGroup,
 } from "@/utils/typesAndEnums";
 import { formatDate, getTradeTypeColor, redCross } from "@/utils/helper";
-import DtransactionGroups from "../lib/DtransactionGroups";
+import DtransactionGroups from "../../lib/DtransactionGroups";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 

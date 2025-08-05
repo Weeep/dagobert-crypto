@@ -2,7 +2,7 @@
 
 import "./globals.css";
 import { useEffect, useState } from "react";
-import PageTransactions from "./components/PageTransactions";
+import PageTransactions from "./components/pageTransactions/PageTransactions";
 import Charts from "./components/Charts";
 import PageConfig from "./components/pageConfig/PageConfig";
 import ClientSideDbCache from "./lib/ClientSideDbCache";

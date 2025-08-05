@@ -14,7 +14,7 @@ import {
   getTradeTypeColor,
   modifyLastDigit,
 } from "@/utils/helper";
-import ClientSideDbCache from "../lib/ClientSideDbCache";
+import ClientSideDbCache from "../../lib/ClientSideDbCache";
 import {
   CancelOrderOptions,
   CandleChartResult,
@@ -23,13 +23,13 @@ import {
   OrderSide_LT,
   OrderType,
 } from "binance-api-node";
-import DFrame from "./DFrame";
+import DFrame from "../DFrame";
 import { m } from "framer-motion";
 import * as d3 from "d3";
-import CandlestickChart from "./CandlestickChart";
+import CandlestickChart from "../CandlestickChart";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
-import { DCandle, TradingAnalysis } from "../lib/TradingAnalysis";
+import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
 
 interface Props {
   dtransaction: DagobertTransaction;
