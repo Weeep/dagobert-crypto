@@ -10,11 +10,13 @@ import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 import { Color } from "@/utils/typesAndEnums";
+import PageBot from "./components/pageBot/PageBot";
 
 const pages = {
   Transactions: PageTransactions,
   Charts: Charts,
   Config: PageConfig,
+  Bot: PageBot,
 };
 
 export default function Home() {
