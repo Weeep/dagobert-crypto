@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import DFrame from "../components/DFrame";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [errorEpoch, setErrorEpoch] = useState<number>(0);
+
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,12 +25,17 @@ export default function LoginPage() {
       router.push("/");
     } else {
       const data = await res.json();
-      setError(data.error);
+      setErrorMessage(data.error);
+      setErrorEpoch(new Date().getTime());
     }
   };
 
   return (
-    <div className="flex justify-center items-center w-screen h-screen">
+    <DFrame
+      errorMessage={errorMessage}
+      errorEpoch={errorEpoch}
+      className="flex justify-center items-center w-screen h-screen"
+    >
       <div>
         <h1 className="text-center text-4xl p-2">Welcome</h1>
         <form
@@ -54,7 +62,6 @@ export default function LoginPage() {
               required
             />
           </div>
-          {error && <p style={{ color: "red" }}>{error}</p>}
           <button
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline-blue active:bg-blue-800"
             type="submit"
@@ -63,6 +70,6 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
-    </div>
+    </DFrame>
   );
 }

@@ -17,10 +17,10 @@ export default async function handler(
     return res.status(400).json({ error: "Missing email or password" });
   }
 
-  const storedPassword = await kv.hget("users", email);
+  try {
+    const storedPassword = await kv.hget("users", email);
 
-  if (storedPassword && storedPassword === password) {
-    try {
+    if (storedPassword && storedPassword === password) {
       const token = generateToken(email);
 
       res.setHeader(
@@ -33,14 +33,14 @@ export default async function handler(
           path: "/",
         })
       );
-    } catch (error) {
-      return res
-        .status(500)
-        .json({ error: `Error: ${(error as Error).message}` });
+
+      return res.status(200).json({ success: true });
+    } else {
+      return res.status(401).json({ error: "Invalid credentials" });
     }
-
-    return res.status(200).json({ success: true });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ error: `Error: ${(error as Error).message}` });
   }
-
-  return res.status(401).json({ error: "Invalid credentials" });
 }
