@@ -27,6 +27,7 @@ export default async function handler(
 
     console.log(storedPassword);
     console.log(password);
+    console.log(process.env.NODE_ENV);
 
     if (storedPassword && storedPassword === password) {
       const token = generateToken(email);
@@ -35,7 +36,7 @@ export default async function handler(
         "Set-Cookie",
         serialize("token", token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: false, //process.env.NODE_ENV === "production",
           sameSite: "strict",
           maxAge: 36000,
           path: "/",
