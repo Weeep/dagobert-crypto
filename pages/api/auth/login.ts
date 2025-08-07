@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { serialize } from "cookie";
-import kv from "@vercel/kv";
+import DbApiUtil from "@/utils/dbapiutil";
 import { generateToken } from "@/utils/auth";
+import { ApiResponse, KVRoot } from "@/utils/typesAndEnums";
 
 export default async function handler(
   req: NextApiRequest,
@@ -18,7 +19,14 @@ export default async function handler(
   }
 
   try {
-    const storedPassword = await kv.hget("users", email);
+    const response: ApiResponse = await DbApiUtil.hget(KVRoot.users, email);
+    if (!response.ok) {
+      throw new Error(`${response.error} (${response.code})`);
+    }
+    const storedPassword = response.response;
+
+    console.log(storedPassword);
+    console.log(password);
 
     if (storedPassword && storedPassword === password) {
       const token = generateToken(email);

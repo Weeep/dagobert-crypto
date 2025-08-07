@@ -2,7 +2,6 @@
 
 const DbApiUtil = require("../utils/dbapiutil").default;
 const fse = require("fs");
-const { kv: kve } = require("@vercel/kv");
 const dotenve = require("dotenv");
 
 dotenve.config({ path: ".env.local" });

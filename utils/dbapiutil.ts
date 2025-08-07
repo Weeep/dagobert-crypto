@@ -1,4 +1,5 @@
-import { kv } from "@vercel/kv";
+import { kv } from "./kv";
+//import { kv } from "@vercel/kv";
 import { ApiResponse, KVRoot } from "./typesAndEnums";
 import fs from "fs/promises";
 
@@ -65,7 +66,7 @@ class DbApiUtil {
               valueRes = await this.smembers(key as KVRoot);
               break;
             case "zset":
-              valueRes = await this.zrange(key, 0, -1, { withScores: true });
+              valueRes = await this.zrange(key, 0, -1); //, { withScores: true });
               break;
             default:
               console.warn(`Unknown type for key "${key}": ${type}`);
@@ -167,7 +168,7 @@ class DbApiUtil {
     return this.handleOperation(() => kv.hgetall(key));
   }
 
-  public static async smembers(key: KVRoot): Promise<ApiResponse> {
+  private static async smembers(key: KVRoot): Promise<ApiResponse> {
     return this.handleOperation(() => kv.smembers(key));
   }
 
@@ -212,10 +213,10 @@ class DbApiUtil {
   private static async zrange(
     key: string,
     start: number,
-    stop: number,
-    options?: { withScores: boolean }
+    stop: number /*,
+    options?: { withScores: boolean }*/
   ): Promise<ApiResponse> {
-    return this.handleOperation(() => kv.zrange(key, start, stop, options));
+    return this.handleOperation(() => kv.zrange(key, start, stop)); //, options));
   }
 }
 
