@@ -35,7 +35,7 @@ export default async function handler(
         "Set-Cookie",
         serialize("token", token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: false, //TODO!!! https , process.env.NODE_ENV === "production",
           sameSite: "strict",
           maxAge: 36000,
           path: "/",
