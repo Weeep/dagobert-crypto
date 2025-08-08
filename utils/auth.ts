@@ -5,11 +5,14 @@ import { parse } from "cookie";
 const secretKey: string = process.env.SECRET_KEY as string;
 
 export function generateToken(email: string): string {
-  return jwt.sign({ email }, secretKey, { expiresIn: "10h" });
+	const s = jwt.sign({ email }, secretKey, { expiresIn: "10h" });
+	console.log("gtttt: " + s);
+	return s;
 }
 
 export function verifyToken(token: string): string | null {
-  try {
+  console.log("ssssssecret: " + secretKey);
+      	try {
     const decoded = jwt.verify(token, secretKey) as { email: string };
     return decoded.email;
   } catch (err) {
