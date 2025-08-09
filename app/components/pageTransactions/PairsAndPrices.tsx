@@ -255,12 +255,21 @@ const PairsAndPrices: React.FC<Props> = ({
 
     return (
       <>
-        <div className="text-xs flex items-center space-x-1">
+        <div className="text-xs flex flex-col items-center space-x-1 border border-dotted p-1">
           <span>
             {interval} RSI(6): <span className={rsiColor}>{rsi}</span>
           </span>
           <span>
             Ema100: <span className={emaColor}>{ema}</span>
+          </span>
+          <span
+            className={
+              Number(diffMin) - Number(diffMax) > 10 && interval === "60"
+                ? "text-yellow-100"
+                : "text-white-100"
+            }
+          >
+            {diffMin}% {diffMax}%
           </span>
           <span>
             <a
@@ -322,8 +331,10 @@ const PairsAndPrices: React.FC<Props> = ({
                 />
                 {pair} ${pairsPrices[pair].price}
               </label>
-              {emaRsiElement(pair, "60", emaRsis1h, emaRsis1hColor)}
-              {emaRsiElement(pair, "D", emaRsis1d, emaRsis1dColor)}
+              <div className="flex gap-2">
+                {emaRsiElement(pair, "60", emaRsis1h, emaRsis1hColor)}
+                {emaRsiElement(pair, "D", emaRsis1d, emaRsis1dColor)}
+              </div>
 
               {/* <div className="bg-black border border-white rounded p-1 ml-2 w-36">
                 {/* Row 1 * /}
