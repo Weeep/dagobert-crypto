@@ -14,6 +14,8 @@ import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
 
 type Indicators = {
+  ema7: number;
+  ema25: number;
   ema100: number;
   rsi6: number;
   min: number;
@@ -115,6 +117,8 @@ const PairsAndPrices: React.FC<Props> = ({
       const minMax = ta.getMinMax(30);
       const pairEmaRsi: Indicators = {
         rsi6: ta.getRsi(6) ?? -1,
+        ema7: ta.getEma(7).emaDiffPct ?? -202,
+        ema25: ta.getEma(25).emaDiffPct ?? -202,
         ema100: ta.getEma(100).emaDiffPct ?? -202,
         min: minMax.min,
         max: minMax.max,
@@ -246,7 +250,9 @@ const PairsAndPrices: React.FC<Props> = ({
     const rsiColor = emaRsiDataColor[pair]?.rsi6 ?? "text-gray-700";
     const rsi = emaRsiData[pair]?.rsi6.toFixed(2) ?? "...";
     const emaColor = emaRsiDataColor[pair]?.ema100 ?? "text-gray-700";
-    const ema = emaRsiData[pair]?.ema100.toFixed(2) ?? "...";
+    const ema7 = emaRsiData[pair]?.ema7.toFixed(2) ?? "...";
+    const ema25 = emaRsiData[pair]?.ema25.toFixed(2) ?? "...";
+    const ema100 = emaRsiData[pair]?.ema100.toFixed(2) ?? "...";
 
     const min = emaRsiData[pair]?.min ?? "...";
     const max = emaRsiData[pair]?.max ?? "...";
@@ -260,7 +266,13 @@ const PairsAndPrices: React.FC<Props> = ({
             {interval} RSI(6): <span className={rsiColor}>{rsi}</span>
           </span>
           <span>
-            Ema100: <span className={emaColor}>{ema}</span>
+            Ema7: <span>{ema7}</span>
+          </span>
+          <span>
+            Ema25: <span>{ema25}</span>
+          </span>
+          <span>
+            Ema100: <span className={emaColor}>{ema100}</span>
           </span>
           <span
             className={
