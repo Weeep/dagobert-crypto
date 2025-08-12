@@ -195,15 +195,85 @@ export class TradingAnalysis {
     return res;
   }
 
-  // getEmaDiff(currentPrice: number, period: number): number | null {
-  //   const ema = this.getEma(period);
-  //   if (ema === null) return null;
-  //   return Number(new Big(currentPrice).minus(ema));
-  // }
+  isBull(
+    ema7DiffPct: number,
+    ema25DiffPct: number,
+    ema100DiffPct: number
+  ): boolean {
+    return (
+      ema7DiffPct > 0 &&
+      ema7DiffPct < ema25DiffPct &&
+      ema25DiffPct < ema100DiffPct
+    );
+  }
 
-  // getEmaDiffPct(currentPrice: number, period: number): number | null {
-  //   const ema = this.getEma(period);
-  //   if (ema === null) return null;
-  //   return Number(new Big(currentPrice).minus(ema).div(ema).times(100));
-  // }
+  isBear(
+    ema7DiffPct: number,
+    ema25DiffPct: number,
+    ema100DiffPct: number
+  ): boolean {
+    return (
+      ema7DiffPct < 0 &&
+      ema25DiffPct < 0 &&
+      ema100DiffPct < 0 &&
+      ema7DiffPct < ema25DiffPct &&
+      ema25DiffPct < ema100DiffPct
+    );
+  }
+
+  //// ---- NOT USED RSI CALCULATION
+
+  calculateRsi(period: number): number | null {
+    const closes: number[] = this.candles.map((c) => Number(c.close));
+    const rsiValues = new Array(closes.length).fill(null);
+
+    for (let i = period; i < closes.length; i++) {
+      const slice: number[] = closes.slice(i - period, i + 1);
+      let gains = 0;
+      let losses = 0;
+
+      for (let j = 1; j < slice.length; j++) {
+        const diff = slice[j] - slice[j - 1];
+        if (diff > 0) {
+          gains += diff;
+        } else {
+          losses -= diff; // diff negatív, ezért kivonjuk
+        }
+      }
+
+      const avgGain = gains / period;
+      const avgLoss = losses / period;
+
+      let rsi;
+      if (avgLoss === 0) {
+        rsi = 100;
+      } else {
+        const rs = avgGain / avgLoss;
+        rsi = 100 - 100 / (1 + rs);
+      }
+
+      rsiValues[i] = rsi;
+    }
+
+    const s = this.SMA(rsiValues, 14);
+    return s[s.length - 1];
+  }
+
+  SMA(values: number[], length: number): (number | null)[] {
+    let result = [];
+    for (let i = 0; i < values.length; i++) {
+      if (i + 1 < length) {
+        result.push(null); // nincs elég adat
+      } else {
+        let sum = 0;
+        for (let j = 0; j < length; j++) {
+          sum += values[i - j];
+        }
+        result.push(sum / length);
+      }
+    }
+    return result;
+  }
+
+  /////
 }

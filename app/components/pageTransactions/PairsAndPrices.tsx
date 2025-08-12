@@ -22,6 +22,8 @@ type Indicators = {
   max: number;
   diffPctMin: number;
   diffPctMax: number;
+  isBull: boolean;
+  isBear: boolean;
 };
 
 interface Props {
@@ -115,15 +117,20 @@ const PairsAndPrices: React.FC<Props> = ({
     } else {
       const ta = new TradingAnalysis(data, price);
       const minMax = ta.getMinMax(30);
+      const ema7DiffPct = ta.getEma(7).emaDiffPct ?? -400;
+      const ema25DiffPct = ta.getEma(25).emaDiffPct ?? -400;
+      const ema100DiffPct = ta.getEma(100).emaDiffPct ?? -400;
       const pairEmaRsi: Indicators = {
         rsi6: ta.getRsi(6) ?? -1,
-        ema7: ta.getEma(7).emaDiffPct ?? -202,
-        ema25: ta.getEma(25).emaDiffPct ?? -202,
-        ema100: ta.getEma(100).emaDiffPct ?? -202,
+        ema7: ema7DiffPct,
+        ema25: ema25DiffPct,
+        ema100: ema100DiffPct,
         min: minMax.min,
         max: minMax.max,
         diffPctMin: minMax.currentPriceMinDiffPct,
         diffPctMax: minMax.currentPriceMaxDiffPct,
+        isBull: ta.isBull(ema7DiffPct, ema25DiffPct, ema100DiffPct),
+        isBear: ta.isBear(ema7DiffPct, ema25DiffPct, ema100DiffPct),
       };
       const pairEmaRsiColor = {
         rsi6: getRsiColor(ta.getRsi(6) ?? 0),
@@ -258,6 +265,8 @@ const PairsAndPrices: React.FC<Props> = ({
     const max = emaRsiData[pair]?.max ?? "...";
     const diffMin = emaRsiData[pair]?.diffPctMin.toFixed(2) ?? "...";
     const diffMax = emaRsiData[pair]?.diffPctMax.toFixed(2) ?? "...";
+    const isBull = emaRsiData[pair]?.isBull;
+    const isBear = emaRsiData[pair]?.isBear;
 
     return (
       <>
@@ -283,7 +292,7 @@ const PairsAndPrices: React.FC<Props> = ({
           >
             {diffMin}% {diffMax}%
           </span>
-          <span>
+          <div className="flex">
             <a
               href={`https://www.tradingview.com/chart/hwbr0Mgr/?symbol=BINANCE%3A${pair}&interval=${interval}`}
               target="_blank"
@@ -295,7 +304,35 @@ const PairsAndPrices: React.FC<Props> = ({
                 height={22}
               />
             </a>
-          </span>
+            {isBull && (
+              <div
+                className="size-[22px] inline-block 
+                  bg-[#00FF7F]                       
+                  [mask-image:url('/images/bull.png')]
+                  [mask-size:contain]
+                  [mask-repeat:no-repeat]
+                  [mask-position:center]
+                  [-webkit-mask-image:url('/images/bull.png')]
+                  [-webkit-mask-size:contain]
+                  [-webkit-mask-repeat:no-repeat]
+                  [-webkit-mask-position:center]"
+              ></div>
+            )}
+            {isBear && (
+              <div
+                className="size-[22px] inline-block 
+                  bg-[#EB4253]                       
+                  [mask-image:url('/images/bear.png')]
+                  [mask-size:contain]
+                  [mask-repeat:no-repeat]
+                  [mask-position:center]
+                  [-webkit-mask-image:url('/images/bear.png')]
+                  [-webkit-mask-size:contain]
+                  [-webkit-mask-repeat:no-repeat]
+                  [-webkit-mask-position:center]"
+              ></div>
+            )}
+          </div>
         </div>
         {/*<span className="text-xs">
           {min} ({diffMin}%) | {max} ({diffMax}%)
