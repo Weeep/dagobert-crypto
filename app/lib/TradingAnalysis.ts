@@ -214,10 +214,10 @@ export class TradingAnalysis {
   ): boolean {
     return (
       ema7DiffPct < 0 &&
-      ema25DiffPct < 0 &&
-      ema100DiffPct < 0 &&
-      ema7DiffPct < ema25DiffPct &&
-      ema25DiffPct < ema100DiffPct
+      //ema25DiffPct < 0 &&
+      //ema100DiffPct < 0 &&
+      ema7DiffPct > ema25DiffPct &&
+      ema25DiffPct > ema100DiffPct
     );
   }
 
