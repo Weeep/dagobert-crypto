@@ -32,6 +32,7 @@ export type DagobertTransactionGroup = {
 export type DagobertPair = {
   pair: string;
   decimals: number;
+  keyLevels: [];
 };
 
 export type ApiResponse = {

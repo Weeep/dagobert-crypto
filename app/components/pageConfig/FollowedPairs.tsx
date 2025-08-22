@@ -54,8 +54,13 @@ const FollowedPairs: React.FC<Props> = ({
   const handleAdd = async () => {
     const formattedInputValue = inputValue.trim().toUpperCase();
     if (formattedInputValue) {
+      const dpair: DagobertPair = {
+        pair: formattedInputValue,
+        decimals: 4,
+        keyLevels: [],
+      };
       const success = await ClientSideDbCache.hset(KVRoot.pairs, {
-        [formattedInputValue]: { pair: formattedInputValue, decimals: 4 },
+        [formattedInputValue]: dpair,
       });
 
       if (success) {

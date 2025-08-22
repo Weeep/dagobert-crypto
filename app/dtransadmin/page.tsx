@@ -4,7 +4,12 @@ import React, { useState, useEffect } from "react";
 import { isTransactionIf } from "@/utils/helper";
 import Dtransactions from "../lib/Dtransactions";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
-import { KVRoot, TradeStyle, TradeType } from "@/utils/typesAndEnums";
+import {
+  DagobertPair,
+  KVRoot,
+  TradeStyle,
+  TradeType,
+} from "@/utils/typesAndEnums";
 import DtransactionGroups from "../lib/DtransactionGroups";
 import { DailyStatsResult } from "binance-api-node";
 import DIndicator from "../components/DIndicator";
@@ -20,9 +25,14 @@ const Test3Page: React.FC = () => {
       if (await ClientSideDbCache.initializeCache()) {
         //     //init();
         //     //init2();
-        changeDtransaction("64676df3-3997-45e1-8f26-8148b54b278b", {
-          price: 0.00014556,
-        });
+
+        addNewParamToKVRoot(KVRoot.pairs, "keyLevels", []);
+
+        //ClientSideDbCache.hdel(KVRoot.pairs, "ARBUSDC");
+
+        // changeDtransaction("64676df3-3997-45e1-8f26-8148b54b278b", {
+        //   price: 0.00014556,
+        // });
       }
     };
     a();
@@ -79,21 +89,60 @@ const Test3Page: React.FC = () => {
     setInfoStr(JSON.stringify(g2, null, 4));
   };
 
-  const init = async (): Promise<void> => {
-    const dts = Dtransactions.getAll();
-    if (dts !== null) {
-      for (const dtg of dts) {
-        const n = { tradeStyle: TradeStyle.Swing };
-        await ClientSideDbCache.hset(KVRoot.dtransactions, {
-          [dtg.orderId as string]: {
-            ...dtg,
-            ...n,
-          },
-        });
+  const addNewParamToKVRoot = async (
+    root: KVRoot,
+    key: string,
+    value: any
+  ): Promise<void> => {
+    let rootValues = null;
+    let id = null;
+    switch (root) {
+      case KVRoot.dtransactionGroups:
+        rootValues = DtransactionGroups.getAll();
+        id = "groupId";
+        break;
+      case KVRoot.dtransactions:
+        rootValues = Dtransactions.getAll();
+        id = "orderId";
+        break;
+      case KVRoot.pairs:
+        const aaaa = ClientSideDbCache.hgetall(KVRoot.pairs);
+        console.log(aaaa);
+        console.log("------------");
 
-        setInfoNum((prev) => {
-          return (prev += 1);
-        });
+        rootValues = Object.values(
+          ClientSideDbCache.hgetall(KVRoot.pairs)
+        ) as DagobertPair[];
+        console.log(rootValues);
+        id = "pair";
+        break;
+      case KVRoot.users:
+        rootValues = Object.values(ClientSideDbCache.hgetall(KVRoot.users));
+        id = ""; //TODO fix, or delete
+        break;
+      default:
+        return;
+    }
+
+    if (rootValues !== null) {
+      for (const rootValue of rootValues) {
+        if (typeof rootValue === "object" && rootValue !== null) {
+          const rootValueObj = rootValue as Record<string, unknown>;
+          const n = { [key]: value };
+          setInfoStr((prev) => {
+            return prev + " " + rootValueObj[id];
+          });
+          await ClientSideDbCache.hset(root, {
+            [String(rootValueObj[id])]: {
+              ...rootValue,
+              ...n,
+            },
+          });
+
+          setInfoNum((prev) => {
+            return (prev += 1);
+          });
+        }
       }
     }
   };
