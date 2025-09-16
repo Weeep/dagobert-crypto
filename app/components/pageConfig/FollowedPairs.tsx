@@ -4,12 +4,13 @@ import Dtransactions from "@/app/lib/Dtransactions";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRefresh } from "@fortawesome/free-solid-svg-icons";
+import { faRefresh, faGear } from "@fortawesome/free-solid-svg-icons";
 
 export type PairsInfo = {
   [pair: string]: {
     pair: string;
     decimals: number;
+    keyLevels: number[];
     newTransactions: number;
   };
 };
@@ -35,11 +36,16 @@ const FollowedPairs: React.FC<Props> = ({
 }) => {
   const [pairs, setPairs] = useState<PairsInfo>({});
   const [inputValue, setInputValue] = useState<string>("");
-  const [newDecimal, setNewDecimal] = useState<number>(0);
-  const [decimalPopup, setDecimalPopup] = useState<ReactElement>(<></>);
+  //const [newDecimal, setNewDecimal] = useState<number>(0);
+  //const [decimalPopup, setDecimalPopup] = useState<ReactElement>(<></>);
+
   const [popupPair, setPopupPair] = useState<string>("");
   const [popupDecimal, setPopupDecimal] = useState<number>(0);
-  const [showDecimalPopup, setShowDecimalPopup] = useState<boolean>(false);
+  const [popupKeyLevels, setPopupKeyLevels] = useState<number[]>([]);
+  const [newLimit, setNewLimit] = useState<number>(0);
+
+  const [showPairSettingsPopup, setShowPairSettingsPopup] =
+    useState<boolean>(false);
 
   const defaultInfoMessage =
     "e.g.: BTCUSDT, ETHUSDT, ADAUSDT, DOTUSDT, BNBUSDT, XRPUSDT, SOLUSDT, " +
@@ -109,21 +115,31 @@ const FollowedPairs: React.FC<Props> = ({
     );
   };
 
-  const decimalClicked = (pair: string, decimal: number): void => {
-    setPopupPair(pair);
-    setPopupDecimal(decimal);
-    setShowDecimalPopup(true);
+  const addNewLimitClicked = (): void => {
+    setPopupKeyLevels((prev) => [...prev, newLimit]);
   };
 
-  const setDecimalClicked = async () => {
+  const pairSettingsClicked = (
+    pair: string,
+    decimal: number,
+    keyLevels: number[]
+  ): void => {
+    setPopupPair(pair);
+    setPopupDecimal(decimal);
+    setPopupKeyLevels(keyLevels);
+    setShowPairSettingsPopup(true);
+  };
+
+  const setPairSettingsClicked = async () => {
     const success = await ClientSideDbCache.hset(KVRoot.pairs, {
       [popupPair]: {
         pair: popupPair,
         decimals: popupDecimal,
+        keyLevels: popupKeyLevels,
       } as DagobertPair,
     });
     if (success) {
-      setShowDecimalPopup(false);
+      setShowPairSettingsPopup(false);
       fetchPairs();
     }
   };
@@ -131,9 +147,11 @@ const FollowedPairs: React.FC<Props> = ({
   return (
     <>
       <div className="relative ml-8 flex flex-wrap">
-        {showDecimalPopup && (
-          <div className="z-50 absolute flex flex-col space-y-2 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-black items-center p-4 rounded">
-            <div>Decimals of {popupPair}</div>
+        {showPairSettingsPopup && (
+          <div className="w-[300px] z-50 absolute flex flex-col space-y-2 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-black items-center p-4 rounded">
+            <div className="text-xl font-bold bg-blue">{popupPair}</div>
+
+            <div className="pt-2 font-bold">Decimals</div>
             <input
               type="text"
               value={popupDecimal}
@@ -142,16 +160,45 @@ const FollowedPairs: React.FC<Props> = ({
               }}
               className="w-14 px-2 py-1 text-black border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <button className="dbutton" onClick={setDecimalClicked}>
-              SET
-            </button>
+
+            <div className="pt-2 font-bold">Key limits</div>
+            <div>
+              <div className="text-center">
+                {!popupKeyLevels.length
+                  ? "No key limit set"
+                  : popupKeyLevels.join(", ")}
+              </div>
+              <input
+                type="number"
+                value={newLimit}
+                onChange={(event) => {
+                  setNewLimit(Number(event.target.value));
+                }}
+                className="w-14 px-2 py-1 text-black border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button className="dbutton" onClick={addNewLimitClicked}>
+                Add
+              </button>
+            </div>
+
+            <div className="flex pt-4">
+              <button className="dbutton" onClick={setPairSettingsClicked}>
+                SET
+              </button>
+              <button
+                className="dbutton"
+                onClick={() => setShowPairSettingsPopup(false)}
+              >
+                CANCEL
+              </button>
+            </div>
           </div>
         )}
         {pairs &&
           Object.values(pairs).map((pair, index) => (
             <div
               key={pair.pair + "_" + index}
-              className="relative w-36 bg-gray-300 text-gray-800 flex justify-between items-center space-x-1 rounded-full p-2 mr-2 mb-2"
+              className="relative w-40 bg-gray-300 text-gray-800 flex justify-between items-center space-x-1 rounded-full p-2 mr-2 mb-2"
             >
               <div
                 className={`${
@@ -160,15 +207,16 @@ const FollowedPairs: React.FC<Props> = ({
               >
                 {pair.newTransactions}
               </div>
-              <div className="text-xs">
-                {pair.pair}{" "}
-                <span
-                  className="cursor-pointer"
-                  onClick={() => decimalClicked(pair.pair, pair.decimals)}
-                >
-                  .{pair.decimals}
-                </span>
-              </div>
+              <span className="text-xs">
+                {pair.pair} .{pair.decimals}
+              </span>
+              <button
+                onClick={() =>
+                  pairSettingsClicked(pair.pair, pair.decimals, pair.keyLevels)
+                }
+              >
+                <FontAwesomeIcon icon={faGear} />
+              </button>
               <button onClick={() => handleRefresh(pair.pair)}>
                 <FontAwesomeIcon icon={faRefresh} />
               </button>

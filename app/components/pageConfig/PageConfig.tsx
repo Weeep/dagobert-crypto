@@ -7,6 +7,7 @@ import {
   DagobertTransaction,
   KVRoot,
   TradeType,
+  DagobertPair,
 } from "@/utils/typesAndEnums";
 import Dtransactions from "@/app/lib/Dtransactions";
 import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
@@ -44,7 +45,7 @@ export default function PageConfig() {
 
   const fetchPairs = () => {
     const ps = ClientSideDbCache.hgetall(KVRoot.pairs) as {
-      [pair: string]: { pair: string; decimals: number };
+      [pair: string]: DagobertPair;
     };
 
     if (ps) {
@@ -53,6 +54,7 @@ export default function PageConfig() {
         initNums[p] = {
           pair: ps[p].pair,
           decimals: ps[p].decimals,
+          keyLevels: ps[p].keyLevels,
           newTransactions: 0,
         };
       }
