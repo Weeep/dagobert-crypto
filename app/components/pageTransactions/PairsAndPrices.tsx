@@ -164,13 +164,11 @@ const PairsAndPrices: React.FC<Props> = ({
   const fetchPrices = async (): Promise<{
     [key: string]: PairPriceIf;
   } | null> => {
-    const pairs = ClientSideDbCache.smembers(KVRoot.pairs); //await fetchh(`/api/dbapi/pairs`);
+    const pairs = ClientSideDbCache.smembers(KVRoot.pairs);
     if (!pairs) {
       setPairInfo("No any pair defined. Go to Config and add some.");
       return null;
     }
-    //if (pairsResponse.ok) {
-    //const pairs = await pairsResponse.json();
 
     if ((pairs as string[]).length === 0) return null;
 
@@ -178,7 +176,6 @@ const PairsAndPrices: React.FC<Props> = ({
       `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(
         Object.keys(pairs)
       )}`
-      // ["ADAUSDT","ARBUSDT","AVAXUSDT","BNBUSDT","BTCUSDT","DOTUSDT","ETHUSDT","ICPUSDT","MATICUSDT","SHIBUSDT","SOLUSDT","TRXUSDT","XRPUSDT"]
     );
 
     const rjson = await response.json();

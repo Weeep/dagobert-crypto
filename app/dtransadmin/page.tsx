@@ -26,13 +26,13 @@ const Test3Page: React.FC = () => {
         //     //init();
         //     //init2();
 
-        addNewParamToKVRoot(KVRoot.pairs, "keyLevels", []);
+        //addNewParamToKVRoot(KVRoot.pairs, "keyLevels", []);
 
         //ClientSideDbCache.hdel(KVRoot.pairs, "ARBUSDC");
 
-        // changeDtransaction("64676df3-3997-45e1-8f26-8148b54b278b", {
-        //   price: 0.00014556,
-        // });
+        changeDtransaction("086e18de-3b50-4e9a-85ca-035138720e4c", {
+          executed: 14.97,
+        });
       }
     };
     a();

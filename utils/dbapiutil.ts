@@ -110,6 +110,7 @@ class DbApiUtil {
       }
       await new Promise((res) => setTimeout(res, delayMs));
       console.log("DB connect retry: " + retries);
+      kv.reconnect();
       return this.retryOperation(operation, retries - 1, delayMs * 3); // triple delay: exponential backoff
     }
   }

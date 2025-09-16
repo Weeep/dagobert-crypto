@@ -9,10 +9,10 @@ const dotenvi = require("dotenv");
 dotenvi.config({ path: ".env.local" });
 
 async function importDatabase() {
+  kvi.reconnect();
+
   // Read the JSON file
-  const data = JSON.parse(
-    fsi.readFileSync("vercel_kv_export_GOOD.json", "utf8")
-  );
+  const data = JSON.parse(fsi.readFileSync("vercel_kv_export.json", "utf8"));
 
   // Import each key-value pair into the database
   for (const [key, value] of Object.entries(data)) {

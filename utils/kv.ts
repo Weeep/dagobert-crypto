@@ -1,19 +1,34 @@
-import Redis, { RedisKey } from "ioredis";
-import { c } from "./debug";
-import { KVRoot, ApiResponse } from "./typesAndEnums";
+import Redis from "ioredis";
+import { KVRoot } from "./typesAndEnums";
 
-const redis = new Redis({
-  host: process.env.KV_HOST,
-  port: Number(process.env.KV_PORT),
-  password: process.env.KV_PASSWORD,
-});
+export class KV {
+  private redis: Redis;
 
-export const kv = {
-  //get: (key: string) => redis.get(key),
-  set: (key: string, value: string) => redis.set(key, value),
-  //del: (key: string) => redis.del(key),
+  constructor() {
+    this.redis = new Redis({
+      host: process.env.KV_HOST,
+      port: Number(process.env.KV_PORT),
+      password: process.env.KV_PASSWORD,
+    });
+  }
 
-  hset: (key: string, kvObject: { [field: string]: any }): Promise<number> => {
+  // for manual reinitialization
+  public reconnect() {
+    this.redis = new Redis({
+      host: process.env.KV_HOST,
+      port: Number(process.env.KV_PORT),
+      password: process.env.KV_PASSWORD,
+    });
+  }
+
+  public set(key: string, value: string) {
+    return this.redis.set(key, value);
+  }
+
+  public hset(
+    key: string,
+    kvObject: { [field: string]: any }
+  ): Promise<number> {
     const flatEntries: [string, string][] = Object.entries(kvObject).map(
       ([field, value]) => [
         field,
@@ -21,56 +36,39 @@ export const kv = {
       ]
     );
 
-    // flatten a [key1, val1, key2, val2, ...] alakra
     const args = flatEntries.flat();
+    return this.redis.hset(key, ...args);
+  }
 
-    return redis.hset(key, ...args);
-  },
+  public sadd(key: KVRoot, item: any) {
+    return this.redis.sadd(key, JSON.stringify(item));
+  }
 
-  // hset: async (
-  //   key: string,
-  //   kvObject: { [field: string]: any }
-  // ): Promise<number[]> => {
-  //   // Végigmegyünk az összes field-en
-  //   const result = [];
-  //   for (const field in kvObject) {
-  //     const value = JSON.stringify(kvObject[field]); // objektumokat stringgé alakítjuk
-  //     result.push(await redis.hset(key, field, value));
-  //   }
-  //   return result;
-  // },
+  public lpush(key: string, value: object) {
+    return this.redis.lpush(key, JSON.stringify(value));
+  }
 
-  sadd: (key: KVRoot, item: any) => redis.sadd(key, JSON.stringify(item)),
-
-  lpush: (key: string, value: object) =>
-    redis.lpush(key, JSON.stringify(value)),
-
-  // GET
-
-  get: async (key: string): Promise<string | number | null> => {
-    const raw = await redis.get(key);
+  public async get(key: string): Promise<string | number | null> {
+    const raw = await this.redis.get(key);
     if (raw === null) return null;
 
     const num = Number(raw);
     return isNaN(num) ? raw : num;
-  },
+  }
 
-  hget: async (key: KVRoot, field: string): Promise<any> => {
-    const raw = await redis.hget(key, field);
-
-    if (raw === null) {
-      return "null"; // TODO
-    }
+  public async hget(key: KVRoot, field: string): Promise<any> {
+    const raw = await this.redis.hget(key, field);
+    if (raw === null) return "null"; // TODO
 
     try {
       return JSON.parse(raw);
     } catch {
       return raw;
     }
-  },
+  }
 
-  hgetall: async (key: KVRoot): Promise<Record<string, any>> => {
-    const raw = await redis.hgetall(key);
+  public async hgetall(key: KVRoot): Promise<Record<string, any>> {
+    const raw = await this.redis.hgetall(key);
     const parsed: Record<string, any> = {};
 
     for (const [field, value] of Object.entries(raw)) {
@@ -82,10 +80,10 @@ export const kv = {
     }
 
     return parsed;
-  },
+  }
 
-  smembers: async (key: KVRoot): Promise<any[]> => {
-    const raw = await redis.smembers(key);
+  public async smembers(key: KVRoot): Promise<any[]> {
+    const raw = await this.redis.smembers(key);
     return raw.map((item) => {
       try {
         return JSON.parse(item);
@@ -93,33 +91,39 @@ export const kv = {
         return item;
       }
     });
-  },
+  }
 
-  // DEL
+  public del(key: string) {
+    return this.redis.del(key);
+  }
 
-  del: (key: string) => redis.del(key),
+  public hdel(key: string, fields: string) {
+    return this.redis.hdel(key, fields);
+  }
 
-  hdel: (key: string, fields: string) => redis.hdel(key, fields),
+  public srem(key: KVRoot, item: any) {
+    return this.redis.srem(key, item);
+  }
 
-  srem: (key: KVRoot, item: any) => redis.srem(key, item),
+  public flushdb() {
+    return this.redis.flushdb();
+  }
 
-  // FLUSH
+  public scan(cursor: string) {
+    return this.redis.scan(cursor);
+  }
 
-  flushdb: () => redis.flushdb(),
+  public type(key: string) {
+    return this.redis.type(key);
+  }
 
-  // PRIVATE
+  public lrange(key: string, start: number, stop: number) {
+    return this.redis.lrange(key, start, stop);
+  }
 
-  scan: (cursor: string) => redis.scan(cursor),
+  public zrange(key: string, start: number, stop: number) {
+    return this.redis.zrange(key, start, stop);
+  }
+}
 
-  type: (key: string) => redis.type(key),
-
-  lrange: (key: string, start: number, stop: number) =>
-    redis.lrange(key, start, stop),
-
-  zrange: (
-    key: string,
-    start: number,
-    stop: number /*,
-    options?: { withScores: boolean }*/
-  ) => redis.zrange(key, start, stop),
-};
+export const kv = new KV();
