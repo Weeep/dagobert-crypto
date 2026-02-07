@@ -36,6 +36,6 @@ yarn-error.log*
 next-env.d.ts
 
 # others
-vercel_kv_export*
+/old_db_files
 .vscode/
 pages/api/dbapi/pairs.ts
