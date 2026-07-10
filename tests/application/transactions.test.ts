@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import Dtransactions from "@/app/lib/Dtransactions";
-import DtransactionGroups from "@/app/lib/DtransactionGroups";
+import { Dtransactions } from "@/src/modules/transaction";
+import { DtransactionGroups } from "@/src/modules/transaction-group";
 import { TransactionIf } from "@/app/lib/Interfaces";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import {
