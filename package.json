@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start -p 3082",
     "export-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/exportKvDb.ts",
-    "import-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/importKvDb.ts"
+    "import-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/importKvDb.ts",
+    "test": "node --test tests/run-tests.cjs"
   },
   "dependencies": {
     "@binance/connector": "^3.6.1",

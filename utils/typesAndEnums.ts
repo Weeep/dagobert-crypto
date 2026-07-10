@@ -42,6 +42,10 @@ export type ApiResponse = {
   error: any;
 };
 
+/**
+ * @deprecated Binance CSV import is kept for backward compatibility only.
+ * Prefer importing orders through the Binance API flow.
+ */
 export type BnceTradeHisFromCsv = {
   "Date(UTC)": string; //"1/2/2025 7:34",
   Pair: string; //"POLUSDC",

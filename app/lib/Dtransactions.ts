@@ -156,13 +156,13 @@ class Dtransactions {
         const dtransaction: DagobertTransaction = dtransactions[i];
 
         if (
+          dtransaction.status === "FILLED" &&
           (await this.epochNewerThanStored(
             type,
             dtransaction.pair,
             tradeType,
             dtransaction.dateEpoch
-          )) &&
-          dtransaction.status === "FILLED"
+          ))
         ) {
           await ClientSideDbCache.hset(KVRoot.dtransactions, {
             [dtransaction.orderId]: dtransaction,
@@ -185,6 +185,10 @@ class Dtransactions {
     return info;
   }
 
+  /**
+   * @deprecated Binance CSV import is kept for backward compatibility only.
+   * Prefer the Binance API order import path.
+   */
   private static binanceCsvFileToDTransactions = (
     csvTransactions: BnceTradeHisFromCsv[],
     tradeType: TradeType
