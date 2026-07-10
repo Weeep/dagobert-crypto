@@ -5,13 +5,9 @@ import {
   isTransactionIfArray,
   stringToRoundedFloat,
 } from "@/utils/helper";
-import {
-  BnceTradeHisFromCsv,
-  DagobertTransaction,
-  KVRoot,
-  TradeStyle,
-  TradeType,
-} from "@/utils/typesAndEnums";
+import { BnceTradeHisFromCsv, KVRoot } from "@/utils/typesAndEnums";
+import type { DagobertTransaction } from "@/src/modules/transaction";
+import { TradeStyle, TradeType } from "@/src/modules/transaction";
 import { parse } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 

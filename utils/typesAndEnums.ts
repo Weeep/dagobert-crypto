@@ -1,22 +1,9 @@
 import { TransactionIf } from "@/app/lib/Interfaces";
+import type { DagobertTransaction } from "@/src/modules/transaction";
+import { TradeType } from "@/src/modules/transaction";
 
-export type DagobertTransaction = {
-  orderId: string;
-  binanceApiId: number;
-  pair: string; // SOLUSDC
-  amount: number; //incomeUsd 8.03
-  executed: number; //qty 0.041
-  date: Date; //24. 12. 29.
-  dateEpoch: number;
-  side: string; // SELL
-  price: number; // 195.94
-  status: string; //FILLED
-  grouped: boolean;
-  note: string;
-  otherSideOrderId: string;
-  tradeType: TradeType;
-  tradeStyle: TradeStyle;
-};
+export type { DagobertTransaction } from "@/src/modules/transaction";
+export { TradeStyle, TradeType } from "@/src/modules/transaction";
 
 export type DagobertTransactionGroup = {
   groupId: string | null;
@@ -78,18 +65,6 @@ export enum DbActionsViaApi {
   del = "del",
   srem = "srem",
   hdel = "hdel",
-}
-
-export enum TradeType {
-  Spot = "spot",
-  Margin = "margin",
-}
-
-export enum TradeStyle {
-  Day = "day",
-  Swing = "swing",
-  Hodling = "hodling",
-  Trash = "trash",
 }
 
 export enum Color {
