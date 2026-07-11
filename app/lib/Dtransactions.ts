@@ -6,8 +6,9 @@ import {
   stringToRoundedFloat,
 } from "@/utils/helper";
 import { BnceTradeHisFromCsv, KVRoot } from "@/utils/typesAndEnums";
-import type { DagobertTransaction } from "@/src/modules/transaction";
-import { TradeStyle, TradeType } from "@/src/modules/transaction";
+import type { DagobertTransaction } from "@/src/modules/transaction/domain/DagobertTransaction";
+import { TradeStyle } from "@/src/modules/transaction/domain/TradeStyle";
+import { TradeType } from "@/src/modules/transaction/domain/TradeType";
 import { parse } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 

@@ -1,11 +1,11 @@
 import {
   BnceTradeHisFromCsv,
-  DagobertPair,
-  DagobertTransaction,
-  DagobertTransactionGroup,
   DbActionsViaApi,
   KVRoot,
 } from "@/utils/typesAndEnums";
+import type { DagobertPair } from "@/src/modules/pair/domain/DagobertPair";
+import type { DagobertTransaction } from "@/src/modules/transaction/domain/DagobertTransaction";
+import type { DagobertTransactionGroup } from "@/src/modules/transaction-group/domain/DagobertTransactionGroup";
 
 type dbParams = {
   method: string;

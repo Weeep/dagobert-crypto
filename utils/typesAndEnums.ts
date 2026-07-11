@@ -1,26 +1,10 @@
 import { TransactionIf } from "@/app/lib/Interfaces";
-import type { DagobertTransaction } from "@/src/modules/transaction";
-import { TradeType } from "@/src/modules/transaction";
 
-export type { DagobertTransaction } from "@/src/modules/transaction";
-export { TradeStyle, TradeType } from "@/src/modules/transaction";
-
-export type DagobertTransactionGroup = {
-  groupId: string | null;
-  pair: string;
-  amount: number; //incomeUsd
-  executed: number; //qty
-  tradeType: TradeType;
-  lastTransDateEpoch: number;
-  groupedTrans: DagobertTransaction[];
-  note: string;
-};
-
-export type DagobertPair = {
-  pair: string;
-  decimals: number;
-  keyLevels: [];
-};
+export type { DagobertPair } from "@/src/modules/pair/domain/DagobertPair";
+export type { DagobertTransaction } from "@/src/modules/transaction/domain/DagobertTransaction";
+export type { DagobertTransactionGroup } from "@/src/modules/transaction-group/domain/DagobertTransactionGroup";
+export { TradeStyle } from "@/src/modules/transaction/domain/TradeStyle";
+export { TradeType } from "@/src/modules/transaction/domain/TradeType";
 
 export type ApiResponse = {
   ok: boolean;

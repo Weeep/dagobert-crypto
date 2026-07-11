@@ -1,1 +1,5 @@
-export type { DagobertPair } from "@/utils/typesAndEnums";
+export type DagobertPair = {
+  pair: string;
+  decimals: number;
+  keyLevels: number[];
+};
