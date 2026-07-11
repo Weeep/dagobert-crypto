@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from "react";
 import CandlestickChart from "../components/CandlestickChart";
 import { CandleChartResult } from "binance-api-node";
-import ClientSideDbCache from "../lib/ClientSideDbCache";
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import { KvPairRepository, ListPairsUseCase } from "@/src/modules/pair";
 import { DCandle, TradingAnalysis } from "../lib/TradingAnalysis";
-import { format } from "date-fns";
 import * as d3 from "d3";
+
+const pairRepository = new KvPairRepository();
+const listPairsUseCase = new ListPairsUseCase(pairRepository);
 
 const TestPage: React.FC = () => {
   const [klinesData, setKlinesData] = useState<{
@@ -15,8 +16,6 @@ const TestPage: React.FC = () => {
   }>({});
   const [info, setInfo] = useState<string>("");
   const [dCandles, setDCandles] = useState<DCandle[]>([]);
-
-  //const pairs = ClientSideDbCache.smembers(KVRoot.pairs); // ["SOLUSDC", "AVAXUSDC", "TRUMPUSDC", "XRPUSDC"];
 
   useEffect(() => {
     //fetchKlines(); //await fetchKlines());
@@ -68,8 +67,8 @@ const TestPage: React.FC = () => {
   };
 
   const fetchKlines = async (): Promise<void> => {
-    const pairs = (await (await fetch(`/api/dbapi/pairs`)).json()) as string[];
-    for (const pair of pairs) {
+    const pairs = await listPairsUseCase.execute();
+    for (const pair of pairs.map((dagobertPair) => dagobertPair.pair)) {
       const response = await fetch(
         `/api/binanceapi/klines?symbol=${pair}&interval=1h&limit=24`
         // ["ADAUSDT","ARBUSDT","AVAXUSDT","BNBUSDT","BTCUSDT","DOTUSDT","ETHUSDT","ICPUSDT","MATICUSDT","SHIBUSDT","SOLUSDT","TRXUSDT","XRPUSDT"]
