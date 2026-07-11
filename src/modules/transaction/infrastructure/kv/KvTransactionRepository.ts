@@ -1,10 +1,10 @@
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
-import type { DagobertTransaction } from "../domain/DagobertTransaction";
-import type { TransactionRepository } from "../domain/TransactionRepository";
-import type { TradeType } from "../domain/TradeType";
+import type { DagobertTransaction } from "../../domain/DagobertTransaction";
+import type { TransactionRepository } from "../../domain/TransactionRepository";
+import type { TradeType } from "../../domain/TradeType";
 
-export class ClientSideDbTransactionRepository implements TransactionRepository {
+export class KvTransactionRepository implements TransactionRepository {
   findAll(): Promise<DagobertTransaction[]> {
     return Promise.resolve(
       Object.values(ClientSideDbCache.hgetall(KVRoot.dtransactions) ?? {}) as DagobertTransaction[]

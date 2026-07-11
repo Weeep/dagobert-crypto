@@ -7,17 +7,17 @@ import type { DagobertTransaction } from "@/src/modules/transaction";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import { TradeType } from "@/src/modules/transaction";
 import type { DagobertPair } from "@/src/modules/pair";
-import { ClientSideDbPairRepository } from "@/src/modules/pair/infrastructure/ClientSideDbPairRepository";
+import { KvPairRepository } from "@/src/modules/pair/infrastructure/kv/KvPairRepository";
 import { ImportTransactionsFromBinanceUseCase } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsFromBinanceUseCase";
-import { ClientSideDbTransactionRepository } from "@/src/modules/transaction/infrastructure/ClientSideDbTransactionRepository";
+import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
 import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
 import FollowedPairs, { PairsInfo } from "./FollowedPairs";
 import { QueryOrderResult } from "binance-api-node";
 import { TransactionIf } from "@/app/lib/Interfaces";
 
 const importTransactionsFromBinanceUseCase = new ImportTransactionsFromBinanceUseCase(
-  new ClientSideDbTransactionRepository(),
-  new ClientSideDbPairRepository()
+  new KvTransactionRepository(),
+  new KvPairRepository()
 );
 
 export default function PageConfig() {

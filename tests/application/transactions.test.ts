@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { binanceOrdersToTransactionsByPair } from "@/src/modules/transaction/application/mappers/binanceOrderToTransaction";
-import { ClientSideDbPairRepository } from "@/src/modules/pair/infrastructure/ClientSideDbPairRepository";
+import { KvPairRepository } from "@/src/modules/pair/infrastructure/kv/KvPairRepository";
 import { ImportTransactionsStoreService } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsStoreService";
-import { ClientSideDbTransactionRepository } from "@/src/modules/transaction/infrastructure/ClientSideDbTransactionRepository";
+import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
 import { DtransactionGroups } from "@/src/modules/transaction-group";
 import { TransactionIf } from "@/app/lib/Interfaces";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
@@ -145,8 +145,8 @@ test("duplicate/newer-than-stored logika: Binance API importnál csak a korábbi
     });
 
     const storeService = new ImportTransactionsStoreService(
-      new ClientSideDbTransactionRepository(),
-      new ClientSideDbPairRepository()
+      new KvTransactionRepository(),
+      new KvPairRepository()
     );
 
     const result = await storeService.store(

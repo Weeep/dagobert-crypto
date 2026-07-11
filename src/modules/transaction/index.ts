@@ -9,3 +9,4 @@ export type { ImportTransactionsResult, ImportTransactionsStoreResult } from "./
 export { binanceOrderToTransaction, binanceOrdersToTransactionsByPair } from "./application/mappers/binanceOrderToTransaction";
 export { legacyCsvRowToTransaction, legacyCsvRowsToTransactionsByPair } from "./application/mappers/legacyCsvRowToTransaction";
 export { isTransactionNewerThanStored } from "./application/import-transactions/isTransactionNewerThanStored";
+export { KvTransactionRepository } from "./infrastructure/kv/KvTransactionRepository";

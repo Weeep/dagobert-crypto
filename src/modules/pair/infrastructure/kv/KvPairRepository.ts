@@ -1,9 +1,9 @@
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
-import type { DagobertPair } from "../domain/DagobertPair";
-import type { PairRepository } from "../domain/PairRepository";
+import type { DagobertPair } from "../../domain/DagobertPair";
+import type { PairRepository } from "../../domain/PairRepository";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 
-export class ClientSideDbPairRepository implements PairRepository {
+export class KvPairRepository implements PairRepository {
   findAll(): Promise<DagobertPair[]> {
     return Promise.resolve(
       Object.values(ClientSideDbCache.hgetall(KVRoot.pairs) ?? {}) as DagobertPair[]

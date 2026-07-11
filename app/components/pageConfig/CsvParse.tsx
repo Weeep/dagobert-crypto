@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import Papa from "papaparse";
 import type { BnceTradeHisFromCsv } from "@/src/modules/transaction/dto/legacy/BnceTradeHisFromCsv";
 import { TradeType } from "@/src/modules/transaction";
-import { ClientSideDbPairRepository } from "@/src/modules/pair/infrastructure/ClientSideDbPairRepository";
+import { KvPairRepository } from "@/src/modules/pair/infrastructure/kv/KvPairRepository";
 import { ImportTransactionsFromLegacyCsvUseCase } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsFromLegacyCsvUseCase";
-import { ClientSideDbTransactionRepository } from "@/src/modules/transaction/infrastructure/ClientSideDbTransactionRepository";
+import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
 import { isBnceTradeHisFromCsvArray } from "@/utils/helper";
 
 const importTransactionsFromLegacyCsvUseCase = new ImportTransactionsFromLegacyCsvUseCase(
-  new ClientSideDbTransactionRepository(),
-  new ClientSideDbPairRepository()
+  new KvTransactionRepository(),
+  new KvPairRepository()
 );
 
 //Record<string, string>; // Defines the type for each row in the CSV
