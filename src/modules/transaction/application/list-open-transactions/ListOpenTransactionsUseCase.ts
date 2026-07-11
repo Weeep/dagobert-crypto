@@ -16,6 +16,7 @@ export class ListOpenTransactionsUseCase {
     const transactions = await this.transactionRepository.findAll();
 
     return transactions
+      .filter((transaction) => transaction.status === "FILLED")
       .filter((transaction) => !transaction.grouped)
       .filter((transaction) => !query.pair || transaction.pair === query.pair)
       .filter(

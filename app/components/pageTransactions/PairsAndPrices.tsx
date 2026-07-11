@@ -219,12 +219,13 @@ const PairsAndPrices: React.FC<Props> = ({
   }> => {
     const openTransactions = await listOpenTransactionsUseCase.execute();
 
-    return openTransactions
-      .filter((transaction) => transaction.status === "FILLED")
-      .reduce<{ [pair: string]: number }>((acc, transaction) => {
+    return openTransactions.reduce<{ [pair: string]: number }>(
+      (acc, transaction) => {
         acc[transaction.pair] = (acc[transaction.pair] ?? 0) + 1;
         return acc;
-      }, {});
+      },
+      {}
+    );
   };
 
   const handleCheckboxChange = (pair: string, event: React.ChangeEvent) => {

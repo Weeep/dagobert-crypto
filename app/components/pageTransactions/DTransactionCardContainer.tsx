@@ -62,8 +62,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
     });
     const filteredTransactions = openTransactions.filter(
       (transaction) =>
-        transaction.status === "FILLED" &&
-        (selectedPairs.length === 0 || selectedPairs.includes(transaction.pair))
+        selectedPairs.length === 0 || selectedPairs.includes(transaction.pair)
     );
 
     setDtransactions(filteredTransactions);

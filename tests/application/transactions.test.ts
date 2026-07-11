@@ -221,10 +221,21 @@ test("tranzakciócsoport létrehozás use case menti a groupot és grouped=true-
   );
 });
 
-test("open tranzakciók listázása csak nem csoportosított tranzakciókat ad vissza, szűrve és dátum szerint csökkenően", async () => {
+test("open tranzakciók listázása csak FILLED és nem csoportosított tranzakciókat ad vissza, szűrve és dátum szerint csökkenően", async () => {
   const transactions = [
     makeTransaction({ orderId: "old-open", dateEpoch: 1000, pair: "SOLUSDC" }),
-    makeTransaction({ orderId: "grouped", dateEpoch: 4000, pair: "SOLUSDC", grouped: true }),
+    makeTransaction({
+      orderId: "grouped",
+      dateEpoch: 4000,
+      pair: "SOLUSDC",
+      grouped: true,
+    }),
+    makeTransaction({
+      orderId: "canceled",
+      dateEpoch: 5000,
+      pair: "SOLUSDC",
+      status: "CANCELED",
+    }),
     makeTransaction({ orderId: "other-pair", dateEpoch: 3000, pair: "BTCUSDC" }),
     makeTransaction({ orderId: "new-open", dateEpoch: 2000, pair: "SOLUSDC" }),
   ];
