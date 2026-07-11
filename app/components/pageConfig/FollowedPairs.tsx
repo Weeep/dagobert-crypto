@@ -1,8 +1,7 @@
 import { ReactElement, useEffect, useState } from "react";
 import type { DagobertPair } from "@/src/modules/pair";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
-import { TradeType } from "@/src/modules/transaction";
-import Dtransactions from "@/app/lib/Dtransactions";
+import { TradeType, type DagobertTransaction } from "@/src/modules/transaction";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -80,7 +79,9 @@ const FollowedPairs: React.FC<Props> = ({
 
   const handleFromTransactions = async () => {
     let pairs: { [key: string]: number } = {};
-    const dtransactions = Dtransactions.getAll();
+    const dtransactions = Object.values(
+      ClientSideDbCache.hgetall(KVRoot.dtransactions) ?? {}
+    ) as DagobertTransaction[];
 
     if (dtransactions) {
       //const dtransactions = Object.values(data) as DagobertTransaction[];

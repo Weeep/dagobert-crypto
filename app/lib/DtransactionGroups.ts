@@ -2,71 +2,29 @@ import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import type { DagobertTransaction } from "@/src/modules/transaction/domain/DagobertTransaction";
 import { TradeType } from "@/src/modules/transaction/domain/TradeType";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group/domain/DagobertTransactionGroup";
-import { v4 as uuidv4 } from "uuid";
+import { CreateTransactionGroupUseCase } from "@/src/modules/transaction-group/application/create-transaction-group/CreateTransactionGroupUseCase";
+import { DeleteTransactionGroupUseCase } from "@/src/modules/transaction-group/application/delete-transaction-group/DeleteTransactionGroupUseCase";
+import { KvTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/kv/KvTransactionGroupRepository";
+import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
 import ClientSideDbCache from "./ClientSideDbCache";
-import Dtransactions from "./Dtransactions";
 
 class DtransactionGroups {
-  static async post(transactionGroups: DagobertTransactionGroup[]): Promise<{
-    ok: boolean;
-    error: any;
-    response: {
-      groupedTransactions: DagobertTransactionGroup[];
-    } | null;
-  }> {
-    if (!transactionGroups || transactionGroups === undefined) {
-      //? TODO true even it is undefined ?
-      return { ok: false, error: "Missing data", response: null };
-    }
+  private static readonly transactionGroupRepository =
+    new KvTransactionGroupRepository();
+  private static readonly transactionRepository = new KvTransactionRepository();
+  private static readonly createTransactionGroupUseCase =
+    new CreateTransactionGroupUseCase(
+      DtransactionGroups.transactionGroupRepository,
+      DtransactionGroups.transactionRepository
+    );
+  private static readonly deleteTransactionGroupUseCase =
+    new DeleteTransactionGroupUseCase(
+      DtransactionGroups.transactionGroupRepository,
+      DtransactionGroups.transactionRepository
+    );
 
-    if (
-      transactionGroups.length > 0 &&
-      transactionGroups[0]?.pair &&
-      transactionGroups[0]?.groupedTrans
-    ) {
-      for (const transactionGroup of transactionGroups) {
-        const gid = uuidv4();
-        transactionGroup.groupId = gid;
-        const success: boolean = await ClientSideDbCache.hset(
-          KVRoot.dtransactionGroups,
-          {
-            [gid]: transactionGroup,
-          }
-        );
-
-        if (success) {
-          for (const dtransaction of transactionGroup.groupedTrans) {
-            const storedTransaction = ClientSideDbCache.hget(
-              KVRoot.dtransactions,
-              dtransaction.orderId.toString()
-            );
-
-            const newGroupedValue = { grouped: true };
-
-            await ClientSideDbCache.hset(KVRoot.dtransactions, {
-              [dtransaction.orderId]: {
-                ...storedTransaction,
-                ...newGroupedValue,
-              },
-            });
-          }
-        }
-      }
-    } else {
-      return {
-        ok: false,
-        error: "Invalid data: " + JSON.stringify(transactionGroups),
-        response: null,
-      };
-    }
-
-    return {
-      ok: true,
-      error: "",
-      response: {
-        groupedTransactions: transactionGroups,
-      },
-    };
+  static async post(transactionGroups: DagobertTransactionGroup[]) {
+    return this.createTransactionGroupUseCase.execute(transactionGroups);
   }
 
   static getAll(): DagobertTransactionGroup[] | null {
@@ -87,31 +45,7 @@ class DtransactionGroups {
   }
 
   static async del(groupId: string): Promise<boolean> {
-    const groupedDts = this.get(groupId)?.groupedTrans;
-
-    if (!groupedDts) {
-      console.error("No group with id: " + groupId);
-      return false;
-    }
-
-    const dTransIds = groupedDts.map((dt) => dt.orderId);
-    const dTranss = dTransIds.map((id) => Dtransactions.get(id));
-    for (const dt of dTranss) {
-      const newGroupedValue = { grouped: false };
-      await ClientSideDbCache.hset(KVRoot.dtransactions, {
-        [dt.orderId]: {
-          ...dt,
-          ...newGroupedValue,
-        },
-      });
-    }
-
-    const success = await ClientSideDbCache.hdel(
-      KVRoot.dtransactionGroups,
-      groupId
-    );
-
-    return success;
+    return this.deleteTransactionGroupUseCase.execute(groupId);
   }
 
   static group(dtransactions: DagobertTransaction[]): DagobertTransactionGroup {

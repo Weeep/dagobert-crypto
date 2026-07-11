@@ -1,11 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { Dtransactions } from "@/src/modules/transaction";
-import { DtransactionGroups } from "@/src/modules/transaction-group";
+import { binanceOrdersToTransactionsByPair } from "@/src/modules/transaction/application/mappers/binanceOrderToTransaction";
+import { KvPairRepository } from "@/src/modules/pair/infrastructure/kv/KvPairRepository";
+import { ImportTransactionsStoreService } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsStoreService";
+import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
+import {
+  CreateTransactionGroupUseCase,
+  DtransactionGroups,
+  type DagobertTransactionGroup,
+  type TransactionGroupRepository,
+} from "@/src/modules/transaction-group";
 import { TransactionIf } from "@/app/lib/Interfaces";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
-import type { DagobertTransaction } from "@/src/modules/transaction";
+import type { DagobertTransaction, TransactionRepository } from "@/src/modules/transaction";
 import { TradeStyle, TradeType } from "@/src/modules/transaction";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 
@@ -51,12 +59,10 @@ const makeTransaction = (
 });
 
 test("Binance API orderből DagobertTransactiont készít a belső üzleti szabályok szerint", () => {
-  const convert = (Dtransactions as any).binanceApiOrdersToDTransactions as (
-    orders: TransactionIf[],
-    tradeType: TradeType
-  ) => Record<string, DagobertTransaction[]>;
-
-  const result = convert([binanceBuyOrder, binanceSellOrder], TradeType.Spot);
+  const result = binanceOrdersToTransactionsByPair(
+    [binanceBuyOrder, binanceSellOrder],
+    TradeType.Spot
+  );
 
   assert.deepEqual(Object.keys(result), ["SOLUSDC"]);
   assert.equal(result.SOLUSDC.length, 2);
@@ -143,16 +149,12 @@ test("duplicate/newer-than-stored logika: Binance API importnál csak a korábbi
       status: "CANCELED",
     });
 
-    const store = ((Dtransactions as any).store as (
-      transactionsPerPair: Record<string, DagobertTransaction[]>,
-      tradeType: TradeType,
-      type: string
-    ) => Promise<{
-      pairInfo: Record<string, { processed: number; added: number; skipped: number }>;
-      addedTransactions: DagobertTransaction[];
-    }>).bind(Dtransactions);
+    const storeService = new ImportTransactionsStoreService(
+      new KvTransactionRepository(),
+      new KvPairRepository()
+    );
 
-    const result = await store(
+    const result = await storeService.store(
       { SOLUSDC: [oldFilled, newerButRejected, newFilled] },
       TradeType.Spot,
       "binanceapi"
@@ -172,4 +174,49 @@ test("duplicate/newer-than-stored logika: Binance API importnál csak a korábbi
     ClientSideDbCache.hget = originalHget;
     ClientSideDbCache.hset = originalHset;
   }
+});
+
+test("tranzakciócsoport létrehozás use case menti a groupot és grouped=true-re állítja a tranzakciókat", async () => {
+  const savedGroups: DagobertTransactionGroup[] = [];
+  const savedTransactions: DagobertTransaction[] = [];
+  const transactionGroupRepository: TransactionGroupRepository = {
+    findAll: async () => savedGroups,
+    findById: async (id: string) => savedGroups.find((group) => group.groupId === id) ?? null,
+    save: async (group: DagobertTransactionGroup) => {
+      savedGroups.push(group);
+    },
+    delete: async () => {},
+  };
+  const transactionRepository: TransactionRepository = {
+    findAll: async () => savedTransactions,
+    findById: async (id: string) =>
+      savedTransactions.find((transaction) => transaction.orderId === id) ?? null,
+    save: async (transaction: DagobertTransaction) => {
+      savedTransactions.push(transaction);
+    },
+    saveMany: async (transactions: DagobertTransaction[]) => {
+      savedTransactions.push(...transactions);
+    },
+    getLastProcessedEpoch: async () => null,
+    setLastProcessedEpoch: async () => {},
+  };
+  const useCase = new CreateTransactionGroupUseCase(
+    transactionGroupRepository,
+    transactionRepository
+  );
+  const transactionGroup = DtransactionGroups.group([
+    makeTransaction({ orderId: "buy-1" }),
+    makeTransaction({ orderId: "sell-1", side: "SELL", amount: 30 }),
+  ]);
+
+  const result = await useCase.execute([transactionGroup]);
+
+  assert.equal(result.ok, true);
+  assert.equal(savedGroups.length, 1);
+  assert.ok(savedGroups[0].groupId);
+  assert.equal(savedTransactions.length, 2);
+  assert.deepEqual(
+    savedTransactions.map((transaction) => transaction.grouped),
+    [true, true]
+  );
 });

@@ -2,8 +2,15 @@ import React, { useState } from "react";
 import Papa from "papaparse";
 import type { BnceTradeHisFromCsv } from "@/src/modules/transaction/dto/legacy/BnceTradeHisFromCsv";
 import { TradeType } from "@/src/modules/transaction";
-import Dtransactions from "@/app/lib/Dtransactions";
+import { KvPairRepository } from "@/src/modules/pair/infrastructure/kv/KvPairRepository";
+import { ImportTransactionsFromLegacyCsvUseCase } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsFromLegacyCsvUseCase";
+import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
 import { isBnceTradeHisFromCsvArray } from "@/utils/helper";
+
+const importTransactionsFromLegacyCsvUseCase = new ImportTransactionsFromLegacyCsvUseCase(
+  new KvTransactionRepository(),
+  new KvPairRepository()
+);
 
 //Record<string, string>; // Defines the type for each row in the CSV
 
@@ -30,7 +37,7 @@ const CsvParse: React.FC = () => {
         ) {
           setInfo("Error parsing CSV file.");
         } else {
-          Dtransactions.post(
+          await importTransactionsFromLegacyCsvUseCase.execute(
             result.data as BnceTradeHisFromCsv[],
             TradeType.Spot //TODO
           );
