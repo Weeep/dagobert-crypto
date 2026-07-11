@@ -1,10 +1,8 @@
 import { PairPriceIf, TransactionIf } from "@/app/lib/Interfaces";
-import {
-  BnceTradeHisFromCsv,
-  Color,
-  DagobertTransaction,
-  TradeType,
-} from "@/utils/typesAndEnums";
+import type { BnceTradeHisFromCsv } from "@/src/modules/transaction/dto/legacy/BnceTradeHisFromCsv";
+import { Color } from "@/src/shared/ui/Color";
+import type { DagobertTransaction } from "@/src/modules/transaction";
+import { TradeType } from "@/src/modules/transaction";
 import { parse } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 

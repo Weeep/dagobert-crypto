@@ -2,7 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { serialize } from "cookie";
 import DbApiUtil from "@/utils/dbapiutil";
 import { generateToken } from "@/utils/auth";
-import { ApiResponse, KVRoot } from "@/utils/typesAndEnums";
+import type { ApiResponse } from "@/src/shared/dto/ApiResponse";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 
 export default async function handler(
   req: NextApiRequest,

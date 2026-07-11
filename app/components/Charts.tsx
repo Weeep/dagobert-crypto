@@ -1,7 +1,7 @@
 import React from "react";
 import { format, getDaysInMonth } from "date-fns";
 import DtransactionGroups from "../lib/DtransactionGroups";
-import { DagobertTransactionGroup } from "@/utils/typesAndEnums";
+import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
 
 type Transaction = {
   groupId: string;

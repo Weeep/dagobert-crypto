@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import CandlestickChart from "../components/CandlestickChart";
 import { CandleChartResult } from "binance-api-node";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
-import { KVRoot } from "@/utils/typesAndEnums";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import { DCandle, TradingAnalysis } from "../lib/TradingAnalysis";
 import { format } from "date-fns";
 import * as d3 from "d3";

@@ -1,6 +1,7 @@
 import { kv } from "./kv";
 //import { kv } from "@vercel/kv";
-import { ApiResponse, KVRoot } from "./typesAndEnums";
+import type { ApiResponse } from "@/src/shared/dto/ApiResponse";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import fs from "fs/promises";
 
 class DbApiUtil {

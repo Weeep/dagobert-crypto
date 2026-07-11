@@ -1,4 +1,6 @@
-import { ApiResponse, DbActionsViaApi, KVRoot } from "@/utils/typesAndEnums";
+import type { ApiResponse } from "@/src/shared/dto/ApiResponse";
+import { DbActionsViaApi } from "@/src/shared/infrastructure/kv/DbActionsViaApi";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import DbApiUtil from "../../../utils/dbapiutil";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { withAuth } from "@/utils/auth";

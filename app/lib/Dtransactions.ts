@@ -5,13 +5,11 @@ import {
   isTransactionIfArray,
   stringToRoundedFloat,
 } from "@/utils/helper";
-import {
-  BnceTradeHisFromCsv,
-  DagobertTransaction,
-  KVRoot,
-  TradeStyle,
-  TradeType,
-} from "@/utils/typesAndEnums";
+import type { BnceTradeHisFromCsv } from "@/src/modules/transaction/dto/legacy/BnceTradeHisFromCsv";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import type { DagobertTransaction } from "@/src/modules/transaction/domain/DagobertTransaction";
+import { TradeStyle } from "@/src/modules/transaction/domain/TradeStyle";
+import { TradeType } from "@/src/modules/transaction/domain/TradeType";
 import { parse } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 
@@ -156,13 +154,13 @@ class Dtransactions {
         const dtransaction: DagobertTransaction = dtransactions[i];
 
         if (
+          dtransaction.status === "FILLED" &&
           (await this.epochNewerThanStored(
             type,
             dtransaction.pair,
             tradeType,
             dtransaction.dateEpoch
-          )) &&
-          dtransaction.status === "FILLED"
+          ))
         ) {
           await ClientSideDbCache.hset(KVRoot.dtransactions, {
             [dtransaction.orderId]: dtransaction,
@@ -185,6 +183,10 @@ class Dtransactions {
     return info;
   }
 
+  /**
+   * @deprecated Binance CSV import is kept for backward compatibility only.
+   * Prefer the Binance API order import path.
+   */
   private static binanceCsvFileToDTransactions = (
     csvTransactions: BnceTradeHisFromCsv[],
     tradeType: TradeType

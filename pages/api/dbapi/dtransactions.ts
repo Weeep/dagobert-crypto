@@ -1,10 +1,8 @@
 import { withAuth } from "@/utils/auth";
 import DbApiUtil from "@/utils/dbapiutil";
-import {
-  ApiResponse,
-  DagobertTransaction,
-  KVRoot,
-} from "@/utils/typesAndEnums";
+import type { ApiResponse } from "@/src/shared/dto/ApiResponse";
+import type { DagobertTransaction } from "@/src/modules/transaction";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Papa from "papaparse";
-import { BnceTradeHisFromCsv, TradeType } from "@/utils/typesAndEnums";
+import type { BnceTradeHisFromCsv } from "@/src/modules/transaction/dto/legacy/BnceTradeHisFromCsv";
+import { TradeType } from "@/src/modules/transaction";
 import Dtransactions from "@/app/lib/Dtransactions";
 import { isBnceTradeHisFromCsvArray } from "@/utils/helper";
 

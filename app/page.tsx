@@ -9,7 +9,7 @@ import ClientSideDbCache from "./lib/ClientSideDbCache";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
-import { Color } from "@/utils/typesAndEnums";
+import { Color } from "@/src/shared/ui/Color";
 import PageBot from "./components/pageBot/PageBot";
 
 const pages = {

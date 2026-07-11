@@ -2,13 +2,11 @@ import { useEffect, useState } from "react";
 import ProgressInfo from "../ProgressInfo";
 import CsvParse from "./CsvParse";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
-import {
-  Color,
-  DagobertTransaction,
-  KVRoot,
-  TradeType,
-  DagobertPair,
-} from "@/utils/typesAndEnums";
+import { Color } from "@/src/shared/ui/Color";
+import type { DagobertTransaction } from "@/src/modules/transaction";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import { TradeType } from "@/src/modules/transaction";
+import type { DagobertPair } from "@/src/modules/pair";
 import Dtransactions from "@/app/lib/Dtransactions";
 import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
 import FollowedPairs, { PairsInfo } from "./FollowedPairs";

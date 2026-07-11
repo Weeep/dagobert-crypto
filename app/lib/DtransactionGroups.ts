@@ -1,9 +1,7 @@
-import {
-  DagobertTransaction,
-  DagobertTransactionGroup,
-  KVRoot,
-  TradeType,
-} from "@/utils/typesAndEnums";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import type { DagobertTransaction } from "@/src/modules/transaction/domain/DagobertTransaction";
+import { TradeType } from "@/src/modules/transaction/domain/TradeType";
+import type { DagobertTransactionGroup } from "@/src/modules/transaction-group/domain/DagobertTransactionGroup";
 import { v4 as uuidv4 } from "uuid";
 import ClientSideDbCache from "./ClientSideDbCache";
 import Dtransactions from "./Dtransactions";

@@ -1,0 +1,4 @@
+process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({ module: 'commonjs' });
+require('ts-node/register');
+require('tsconfig-paths/register');
+require('./application/transactions.test.ts');

@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
-import {
-  DagobertTransaction,
-  DagobertTransactionGroup,
-} from "@/utils/typesAndEnums";
+import type { DagobertTransaction } from "@/src/modules/transaction";
+import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
 import { formatDate, getTradeTypeColor, redCross } from "@/utils/helper";
 import DtransactionGroups from "../../lib/DtransactionGroups";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
