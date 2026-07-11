@@ -20,11 +20,6 @@ const pages = {
 };
 
 export default function Home() {
-  //if (typeof window === "undefined") {
-  //  ukv.initializeCache();
-  //  //console.log("test");
-  //}
-
   const [activePage, setActivePage] =
     useState<keyof typeof pages>("Transactions");
   const [cacheInitialized, setCacheInitialized] = useState<boolean>(false);
@@ -35,25 +30,7 @@ export default function Home() {
 
   const ActivePageComponent = pages[activePage];
 
-  // const initializeCache = async () => {
-  //   setInfo("Initalizing cache...");
-  //   try {
-  //     const success = await ClientSideDbCache.initializeCache();
-  //     setCacheInitialized(success);
-  //   } catch (error) {
-  //     setCacheInitialized(false);
-  //     console.error("error", error);
-  //     setInfo(
-  //       "Exception during cache initialization: " + JSON.stringify(error)
-  //     );
-  //   }
-  // };
-
-  //let useEffectFirst = true;
   useEffect(() => {
-    //if (useEffectFirst) {
-    //useEffectFirst = false;
-
     fetch("/api/auth/protected")
       .then((res) => {
         if (res.ok) {
@@ -69,21 +46,6 @@ export default function Home() {
           }
         });
       });
-
-    // fetch("/api/auth/protected")
-    //   .then((res) => {
-    //     if (res.ok) {
-    //       setAuthorized(true);
-    //     } else {
-    //       router.push("/login");
-    //     }
-    //   })
-    //   .finally(() => {
-    //     setLoading(false);
-    //     initializeCache();
-    //   });
-
-    //}
   }, [router]);
 
   useEffect(() => {
@@ -95,10 +57,6 @@ export default function Home() {
   if (loading) {
     return <div className="p-8 text-xl">Loading...</div>;
   }
-
-  //if (!authorized) {
-  //  router.push("/login");
-  //}
 
   const logout = () => {
     fetch("/api/auth/logout", {

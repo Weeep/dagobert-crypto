@@ -1,11 +1,25 @@
-import { ReactElement, useEffect, useState } from "react";
-import type { DagobertPair } from "@/src/modules/pair";
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
-import { TradeType, type DagobertTransaction } from "@/src/modules/transaction";
-import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
+import { useEffect, useState } from "react";
+import {
+  CreatePairUseCase,
+  CreatePairsFromTransactionsUseCase,
+  DeletePairUseCase,
+  KvPairRepository,
+  UpdatePairSettingsUseCase,
+} from "@/src/modules/pair";
+import { KvTransactionRepository, TradeType } from "@/src/modules/transaction";
 import { redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRefresh, faGear } from "@fortawesome/free-solid-svg-icons";
+
+const pairRepository = new KvPairRepository();
+const transactionRepository = new KvTransactionRepository();
+const createPairUseCase = new CreatePairUseCase(pairRepository);
+const updatePairSettingsUseCase = new UpdatePairSettingsUseCase(pairRepository);
+const deletePairUseCase = new DeletePairUseCase(pairRepository);
+const createPairsFromTransactionsUseCase = new CreatePairsFromTransactionsUseCase(
+  pairRepository,
+  transactionRepository
+);
 
 export type PairsInfo = {
   [pair: string]: {
@@ -23,11 +37,8 @@ interface Props {
     tradeType: TradeType,
     infoFunc: (info: string) => void
   ) => void;
-  // numOfNewTransactionsUseStateFunc: (numOfNewTransactions: {
-  //   [pair: string]: number;
-  // }) => void;
   numOfNewTransactions: PairsInfo;
-  fetchPairs: () => void;
+  fetchPairs: () => Promise<void>;
 }
 
 const FollowedPairs: React.FC<Props> = ({
@@ -37,9 +48,6 @@ const FollowedPairs: React.FC<Props> = ({
 }) => {
   const [pairs, setPairs] = useState<PairsInfo>({});
   const [inputValue, setInputValue] = useState<string>("");
-  //const [newDecimal, setNewDecimal] = useState<number>(0);
-  //const [decimalPopup, setDecimalPopup] = useState<ReactElement>(<></>);
-
   const [popupPair, setPopupPair] = useState<string>("");
   const [popupDecimal, setPopupDecimal] = useState<number>(0);
   const [popupKeyLevels, setPopupKeyLevels] = useState<number[]>([]);
@@ -55,57 +63,42 @@ const FollowedPairs: React.FC<Props> = ({
   const [info, setInfo] = useState<string>(defaultInfoMessage);
 
   useEffect(() => {
-    setPairs(numOfNewTransactions); //Object.keys(numOfNewTransactions));
+    setPairs(numOfNewTransactions);
   }, [numOfNewTransactions]);
 
   const handleAdd = async () => {
-    const formattedInputValue = inputValue.trim().toUpperCase();
-    if (formattedInputValue) {
-      const dpair: DagobertPair = {
-        pair: formattedInputValue,
-        decimals: 4,
-        keyLevels: [],
-      };
-      const success = await ClientSideDbCache.hset(KVRoot.pairs, {
-        [formattedInputValue]: dpair,
-      });
+    const result = await createPairUseCase.execute({ pair: inputValue });
 
-      if (success) {
-        setInputValue("");
-        fetchPairs();
-      }
+    if (result.ok) {
+      setInputValue("");
+      await fetchPairs();
+      setInfo(defaultInfoMessage);
+    } else {
+      setInfo(result.error);
     }
   };
 
   const handleFromTransactions = async () => {
-    let pairs: { [key: string]: number } = {};
-    const dtransactions = Object.values(
-      ClientSideDbCache.hgetall(KVRoot.dtransactions) ?? {}
-    ) as DagobertTransaction[];
+    const result = await createPairsFromTransactionsUseCase.execute();
 
-    if (dtransactions) {
-      //const dtransactions = Object.values(data) as DagobertTransaction[];
-      for (const dtrans of dtransactions) {
-        pairs[dtrans.pair] = 0;
-        setInfo(dtrans.pair + " fetched from transactions.");
-      }
-
-      for (const pair of Object.keys(pairs)) {
-        await ClientSideDbCache.hset(KVRoot.pairs, {
-          [pair]: { pair: pair, decimals: 4 },
-        });
-        setInfo(pair + " added to followed pairs.");
-      }
-
-      fetchPairs();
-      setInfo(defaultInfoMessage);
+    if (result.ok) {
+      await fetchPairs();
+      setInfo(
+        `${result.createdPairs.length} pair(s) added from transactions, ` +
+          `${result.skippedPairs.length} already existed.`
+      );
+    } else {
+      setInfo(result.error);
     }
   };
 
   const handleDelete = async (pair: string) => {
-    const success = await ClientSideDbCache.hdel(KVRoot.pairs, pair);
-    if (success) {
-      fetchPairs();
+    const result = await deletePairUseCase.execute(pair);
+    if (result.ok) {
+      await fetchPairs();
+      setInfo(defaultInfoMessage);
+    } else {
+      setInfo(result.error);
     }
   };
 
@@ -134,16 +127,18 @@ const FollowedPairs: React.FC<Props> = ({
   };
 
   const setPairSettingsClicked = async () => {
-    const success = await ClientSideDbCache.hset(KVRoot.pairs, {
-      [popupPair]: {
-        pair: popupPair,
-        decimals: popupDecimal,
-        keyLevels: popupKeyLevels,
-      } as DagobertPair,
+    const result = await updatePairSettingsUseCase.execute({
+      pair: popupPair,
+      decimals: popupDecimal,
+      keyLevels: popupKeyLevels,
     });
-    if (success) {
+
+    if (result.ok) {
       setShowPairSettingsPopup(false);
-      fetchPairs();
+      await fetchPairs();
+      setInfo(defaultInfoMessage);
+    } else {
+      setInfo(result.error);
     }
   };
 
