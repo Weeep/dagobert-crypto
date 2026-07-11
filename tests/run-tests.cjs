@@ -3,3 +3,4 @@ require('ts-node/register');
 require('tsconfig-paths/register');
 require('./application/transactions.test.ts');
 require('./application/pairs.test.ts');
+require('./application/transaction-groups.test.ts');
