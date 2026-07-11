@@ -3,8 +3,14 @@ import Image from "next/image";
 import { Color } from "@/src/shared/ui/Color";
 import type { DagobertPair } from "@/src/modules/pair";
 import type { DagobertTransaction } from "@/src/modules/transaction";
+import {
+  ClearOtherSideOrderUseCase,
+  KvTransactionRepository,
+  SetOtherSideOrderUseCase,
+  TradeType,
+  UpdateTransactionNoteUseCase,
+} from "@/src/modules/transaction";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
-import { TradeType } from "@/src/modules/transaction";
 import {
   formatDate,
   getPrice,
@@ -28,6 +34,18 @@ import CandlestickChart from "../CandlestickChart";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
+
+
+const transactionRepository = new KvTransactionRepository();
+const updateTransactionNoteUseCase = new UpdateTransactionNoteUseCase(
+  transactionRepository
+);
+const setOtherSideOrderUseCase = new SetOtherSideOrderUseCase(
+  transactionRepository
+);
+const clearOtherSideOrderUseCase = new ClearOtherSideOrderUseCase(
+  transactionRepository
+);
 
 interface Props {
   dtransaction: DagobertTransaction;
@@ -55,26 +73,30 @@ const DTransactionCard: React.FC<Props> = ({
   const [isCandleChartLoading, setIsCandleChartLoading] =
     useState<boolean>(true);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isOtherSideOrder, setIsOtherSideOrder] = useState(false);
+  const [otherSideOrderId, setOtherSideOrderId] = useState(
+    dtransaction.otherSideOrderId
+  );
   const [errorMessage, setErrorMessage] = useState<[string, number]>(["", 0]);
+  const isOtherSideOrder = !!otherSideOrderId;
 
   useEffect(() => {
-    setIsOtherSideOrder(!!dtransaction.otherSideOrderId);
-  }, []);
+    setOtherSideOrderId(dtransaction.otherSideOrderId);
+  }, [dtransaction.otherSideOrderId]);
 
   const handleNoteEnterPressed = async () => {
-    const newNote = { note: inputValue.trim() };
+    const newNote = inputValue.trim();
+    const result = await updateTransactionNoteUseCase.execute(
+      dtransaction.orderId,
+      newNote
+    );
 
-    await ClientSideDbCache.hset(KVRoot.dtransactions, {
-      [dtransaction.orderId]: {
-        ...dtransaction,
-        ...newNote,
-      },
-    });
-
-    setNote(inputValue.trim());
-    setEditNote(false);
-    setInputValue("");
+    if (result.ok) {
+      setNote(result.transaction.note);
+      setEditNote(false);
+      setInputValue("");
+    } else {
+      setErrorMessage([result.error, new Date().getTime()]);
+    }
   };
 
   const handleNoteClicked = (
@@ -199,23 +221,19 @@ const DTransactionCard: React.FC<Props> = ({
     const rjson = await response.json();
 
     if (response.ok) {
-      const newNote = {
-        note: `${order.side} set to ${order.price} (${numberStr}%)`,
-      };
-      const newOtherSideOrderId = {
+      const newNote = `${order.side} set to ${order.price} (${numberStr}%)`;
+      const result = await setOtherSideOrderUseCase.execute({
+        orderId: dtransaction.orderId,
         otherSideOrderId: rjson?.orderId ?? "",
-      };
-      await ClientSideDbCache.hset(KVRoot.dtransactions, {
-        [dtransaction.orderId]: {
-          ...dtransaction,
-          ...newNote,
-          ...newOtherSideOrderId,
-        },
+        note: newNote,
       });
 
-      dtransaction.otherSideOrderId = newOtherSideOrderId.otherSideOrderId;
-      setIsOtherSideOrder(true);
-      setNote(newNote.note);
+      if (result.ok) {
+        setOtherSideOrderId(result.transaction.otherSideOrderId);
+        setNote(result.transaction.note);
+      } else {
+        setErrorMessage([result.error, new Date().getTime()]);
+      }
     } else {
       setNote("Failed to create order: " + rjson.error);
     }
@@ -239,18 +257,17 @@ const DTransactionCard: React.FC<Props> = ({
       const rjson = await response.json();
 
       if (response.ok || rjson?.error?.code === -2011) {
-        //"Unknown order sent" - TODO??
-        const newNote = { note: "" };
-        const newOtherSideOrderId = { otherSideOrderId: "" };
-        await ClientSideDbCache.hset(KVRoot.dtransactions, {
-          [dtransaction.orderId]: {
-            ...dtransaction,
-            ...newNote,
-            ...newOtherSideOrderId,
-          },
+        const result = await clearOtherSideOrderUseCase.execute({
+          orderId: dtransaction.orderId,
+          note: "",
         });
-        setIsOtherSideOrder(false);
-        setNote(newNote.note);
+
+        if (result.ok) {
+          setOtherSideOrderId(result.transaction.otherSideOrderId);
+          setNote(result.transaction.note);
+        } else {
+          setErrorMessage([result.error, new Date().getTime()]);
+        }
       } else {
         setErrorMessage([
           "failed to cancel sl order. Options: " +
@@ -663,7 +680,7 @@ const DTransactionCard: React.FC<Props> = ({
               <button
                 onClick={(event) =>
                   handleCancelClicked(event, {
-                    orderId: parseInt(dtransaction.otherSideOrderId),
+                    orderId: parseInt(otherSideOrderId),
                     symbol: dtransaction.pair,
                   })
                 }
