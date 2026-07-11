@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import PageTransactions from "./components/pageTransactions/PageTransactions";
 import Charts from "./components/Charts";
 import PageConfig from "./components/pageConfig/PageConfig";
-import ClientSideDbCache from "./lib/ClientSideDbCache";
+import { ClientDataBootstrapService } from "@/src/shared/application/client-data-bootstrap/ClientDataBootstrapService";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
@@ -62,10 +62,10 @@ export default function Home() {
       })
       .finally(() => {
         setLoading(false);
-        ClientSideDbCache.initializeCache().then((success) => {
-          setCacheInitialized(success);
-          if (!success) {
-            setInfo("Failed to initialize cache.");
+        new ClientDataBootstrapService().bootstrap().then((result) => {
+          setCacheInitialized(result.ok);
+          if (!result.ok) {
+            setInfo(result.error);
           }
         });
       });
