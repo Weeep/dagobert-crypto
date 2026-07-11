@@ -6,3 +6,6 @@ export type { TransactionDto } from "./dto/TransactionDto";
 export { ImportTransactionsFromBinanceUseCase } from "./application/import-transactions/ImportTransactionsFromBinanceUseCase";
 export { ImportTransactionsFromLegacyCsvUseCase } from "./application/import-transactions/ImportTransactionsFromLegacyCsvUseCase";
 export type { ImportTransactionsResult, ImportTransactionsStoreResult } from "./application/import-transactions/ImportTransactionsResult";
+export { binanceOrderToTransaction, binanceOrdersToTransactionsByPair } from "./application/mappers/binanceOrderToTransaction";
+export { legacyCsvRowToTransaction, legacyCsvRowsToTransactionsByPair } from "./application/mappers/legacyCsvRowToTransaction";
+export { isTransactionNewerThanStored } from "./application/import-transactions/isTransactionNewerThanStored";

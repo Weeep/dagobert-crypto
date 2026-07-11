@@ -3,6 +3,7 @@ import type { DagobertTransaction } from "../../domain/DagobertTransaction";
 import type { TransactionRepository } from "../../domain/TransactionRepository";
 import { TradeType } from "../../domain/TradeType";
 import type { ImportTransactionsStoreResult } from "./ImportTransactionsResult";
+import { isTransactionNewerThanStored } from "./isTransactionNewerThanStored";
 
 export type ImportSource = "binanceapi" | "binancecsv";
 
@@ -29,16 +30,25 @@ export class ImportTransactionsStoreService {
       dtransactions.sort((a, b) => (a.dateEpoch > b.dateEpoch ? 1 : -1));
 
       for (const dtransaction of dtransactions) {
+        const lastProcessedEpoch = await this.transactionRepository.getLastProcessedEpoch(
+          dtransaction.pair,
+          tradeType
+        );
+
         if (
           dtransaction.status === "FILLED" &&
-          (await this.epochNewerThanStored(
+          isTransactionNewerThanStored(
             source,
+            dtransaction.dateEpoch,
+            lastProcessedEpoch
+          )
+        ) {
+          await this.transactionRepository.save(dtransaction);
+          await this.transactionRepository.setLastProcessedEpoch(
             dtransaction.pair,
             tradeType,
             dtransaction.dateEpoch
-          ))
-        ) {
-          await this.transactionRepository.save(dtransaction);
+          );
           info.pairInfo[pair].added++;
           info.addedTransactions.push(dtransaction);
         } else {
@@ -54,44 +64,5 @@ export class ImportTransactionsStoreService {
     }
 
     return info;
-  }
-
-  private async epochNewerThanStored(
-    source: ImportSource,
-    pair: string,
-    tradeType: TradeType,
-    epoch: number
-  ): Promise<boolean> {
-    const lastTransEpoch = await this.transactionRepository.findLastImportedEpoch(
-      tradeType,
-      pair
-    );
-
-    let epochUpdateNeeded = lastTransEpoch === null;
-
-    if (
-      !epochUpdateNeeded &&
-      lastTransEpoch !== null &&
-      source === "binanceapi" &&
-      epoch > lastTransEpoch
-    ) {
-      epochUpdateNeeded = true;
-    }
-
-    if (
-      !epochUpdateNeeded &&
-      lastTransEpoch !== null &&
-      source !== "binanceapi" &&
-      epoch >= lastTransEpoch
-    ) {
-      epochUpdateNeeded = true;
-    }
-
-    if (epochUpdateNeeded) {
-      await this.transactionRepository.saveLastImportedEpoch(tradeType, pair, epoch);
-      return true;
-    }
-
-    return false;
   }
 }

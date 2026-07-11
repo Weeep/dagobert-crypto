@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { ImportTransactionsFromBinanceUseCase } from "@/src/modules/transaction";
+import { binanceOrdersToTransactionsByPair } from "@/src/modules/transaction/application/mappers/binanceOrderToTransaction";
 import { ClientSideDbPairRepository } from "@/src/modules/pair/infrastructure/ClientSideDbPairRepository";
 import { ImportTransactionsStoreService } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsStoreService";
 import { ClientSideDbTransactionRepository } from "@/src/modules/transaction/infrastructure/ClientSideDbTransactionRepository";
@@ -54,16 +54,10 @@ const makeTransaction = (
 });
 
 test("Binance API orderből DagobertTransactiont készít a belső üzleti szabályok szerint", () => {
-  const useCase = new ImportTransactionsFromBinanceUseCase(
-    new ClientSideDbTransactionRepository(),
-    new ClientSideDbPairRepository()
+  const result = binanceOrdersToTransactionsByPair(
+    [binanceBuyOrder, binanceSellOrder],
+    TradeType.Spot
   );
-  const convert = (useCase as any).binanceApiOrdersToDTransactions as (
-    orders: TransactionIf[],
-    tradeType: TradeType
-  ) => Record<string, DagobertTransaction[]>;
-
-  const result = convert([binanceBuyOrder, binanceSellOrder], TradeType.Spot);
 
   assert.deepEqual(Object.keys(result), ["SOLUSDC"]);
   assert.equal(result.SOLUSDC.length, 2);

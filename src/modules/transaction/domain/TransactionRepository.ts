@@ -6,6 +6,6 @@ export interface TransactionRepository {
   findById(id: string): Promise<DagobertTransaction | null>;
   save(transaction: DagobertTransaction): Promise<void>;
   saveMany(transactions: DagobertTransaction[]): Promise<void>;
-  findLastImportedEpoch(tradeType: TradeType, pair: string): Promise<number | null>;
-  saveLastImportedEpoch(tradeType: TradeType, pair: string, epoch: number): Promise<void>;
+  getLastProcessedEpoch(pair: string, tradeType: TradeType): Promise<number | null>;
+  setLastProcessedEpoch(pair: string, tradeType: TradeType, epoch: number): Promise<void>;
 }

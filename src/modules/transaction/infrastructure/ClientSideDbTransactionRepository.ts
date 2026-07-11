@@ -37,23 +37,23 @@ export class ClientSideDbTransactionRepository implements TransactionRepository 
     }
   }
 
-  findLastImportedEpoch(tradeType: TradeType, pair: string): Promise<number | null> {
-    const value = ClientSideDbCache.get(this.lastImportedEpochKey(tradeType, pair));
+  getLastProcessedEpoch(pair: string, tradeType: TradeType): Promise<number | null> {
+    const value = ClientSideDbCache.get(this.lastProcessedEpochKey(pair, tradeType));
     return Promise.resolve(value ? parseInt(value, 10) : null);
   }
 
-  async saveLastImportedEpoch(
-    tradeType: TradeType,
+  async setLastProcessedEpoch(
     pair: string,
+    tradeType: TradeType,
     epoch: number
   ): Promise<void> {
     await ClientSideDbCache.set(
-      this.lastImportedEpochKey(tradeType, pair),
+      this.lastProcessedEpochKey(pair, tradeType),
       epoch.toString()
     );
   }
 
-  private lastImportedEpochKey(tradeType: TradeType, pair: string): string {
+  private lastProcessedEpochKey(pair: string, tradeType: TradeType): string {
     return `last_transaction_epoch_${tradeType}_${pair}`;
   }
 }
