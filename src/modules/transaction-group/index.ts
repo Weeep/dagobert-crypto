@@ -6,3 +6,7 @@ export { KvTransactionGroupRepository } from "./infrastructure/kv/KvTransactionG
 export { CreateTransactionGroupUseCase } from "./application/create-transaction-group/CreateTransactionGroupUseCase";
 export type { CreateTransactionGroupResult } from "./application/create-transaction-group/CreateTransactionGroupUseCase";
 export { DeleteTransactionGroupUseCase } from "./application/delete-transaction-group/DeleteTransactionGroupUseCase";
+export { ListTransactionGroupsUseCase } from "./application/list-transaction-groups/ListTransactionGroupsUseCase";
+export type { ListTransactionGroupsQuery } from "./application/list-transaction-groups/ListTransactionGroupsUseCase";
+export { GetTransactionGroupUseCase } from "./application/get-transaction-group/GetTransactionGroupUseCase";
+export type { GetTransactionGroupResult } from "./application/get-transaction-group/GetTransactionGroupUseCase";

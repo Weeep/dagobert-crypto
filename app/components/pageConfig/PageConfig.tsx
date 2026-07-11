@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
 import ProgressInfo from "../ProgressInfo";
 import CsvParse from "./CsvParse";
-import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { Color } from "@/src/shared/ui/Color";
-import type { DagobertTransaction } from "@/src/modules/transaction";
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import { TradeType } from "@/src/modules/transaction";
-import type { DagobertPair } from "@/src/modules/pair";
-import { KvPairRepository } from "@/src/modules/pair/infrastructure/kv/KvPairRepository";
+import {
+  KvPairRepository,
+  ListPairsUseCase,
+  type DagobertPair,
+} from "@/src/modules/pair";
 import { ImportTransactionsFromBinanceUseCase } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsFromBinanceUseCase";
-import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
+import { KvTransactionRepository } from "@/src/modules/transaction";
 import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
 import FollowedPairs, { PairsInfo } from "./FollowedPairs";
-import { QueryOrderResult } from "binance-api-node";
 import { TransactionIf } from "@/app/lib/Interfaces";
 
+const pairRepository = new KvPairRepository();
+const transactionRepository = new KvTransactionRepository();
+const listPairsUseCase = new ListPairsUseCase(pairRepository);
 const importTransactionsFromBinanceUseCase = new ImportTransactionsFromBinanceUseCase(
-  new KvTransactionRepository(),
-  new KvPairRepository()
+  transactionRepository,
+  pairRepository
 );
 
 export default function PageConfig() {
@@ -38,42 +40,28 @@ export default function PageConfig() {
     setDbConnStatusStr(data.response);
   };
 
-  //let useEffectFirst = true;
   useEffect(() => {
-    //if (useEffectFirst) {
-    //  useEffectFirst = false;
     databaseConnectionCheck();
-
     fetchPairs();
-    //}
   }, []);
 
-  const fetchPairs = () => {
-    const ps = ClientSideDbCache.hgetall(KVRoot.pairs) as {
-      [pair: string]: DagobertPair;
-    };
+  const fetchPairs = async () => {
+    const pairs = await listPairsUseCase.execute();
 
-    if (ps) {
-      const initNums: PairsInfo = {};
-      for (const p of Object.keys(ps)) {
-        initNums[p] = {
-          pair: ps[p].pair,
-          decimals: ps[p].decimals,
-          keyLevels: ps[p].keyLevels,
-          newTransactions: 0,
-        };
-      }
-      setNumOfNewTransactions(initNums);
-    } else {
+    if (pairs.length === 0) {
+      setNumOfNewTransactions({});
       setOrdersUpdateInfo("No a single pair added.");
+      return;
     }
+
+    setNumOfNewTransactions(pairsToInfo(pairs));
   };
 
   const updateSpotBtnClicked = async () => {
-    const pairs = ClientSideDbCache.hgetall(KVRoot.pairs);
-    for (const pair of Object.keys(pairs)) {
+    const pairs = await listPairsUseCase.execute();
+    for (const pair of pairs) {
       updateOrdersViaBinanceApi(
-        pair,
+        pair.pair,
         "/api/binanceapi/spot?action=AllOrders",
         TradeType.Spot,
         setOrdersUpdateInfo
@@ -82,10 +70,10 @@ export default function PageConfig() {
   };
 
   const updateMarginBtnClicked = async () => {
-    const pairs = ClientSideDbCache.hgetall(KVRoot.pairs);
-    for (const pair of Object.keys(pairs)) {
+    const pairs = await listPairsUseCase.execute();
+    for (const pair of pairs) {
       updateOrdersViaBinanceApi(
-        pair,
+        pair.pair,
         "/api/binanceapi/margin?action=AllOrders",
         TradeType.Margin,
         setOrdersUpdateInfo
@@ -119,10 +107,13 @@ export default function PageConfig() {
       ).response?.pairInfo;
 
       if (pi && pi[pair] && pi[pair].added) {
-        setNumOfNewTransactions((prev) => {
-          prev[pair].newTransactions = pi[pair].added;
-          return prev;
-        });
+        setNumOfNewTransactions((prev) => ({
+          ...prev,
+          [pair]: {
+            ...prev[pair],
+            newTransactions: pi[pair].added,
+          },
+        }));
         infoFunc(JSON.stringify(pi));
       } else {
         infoFunc(
@@ -207,4 +198,17 @@ export default function PageConfig() {
         : ""}
     </>
   );
+}
+
+
+function pairsToInfo(pairs: DagobertPair[]): PairsInfo {
+  return pairs.reduce<PairsInfo>((acc, pair) => {
+    acc[pair.pair] = {
+      pair: pair.pair,
+      decimals: pair.decimals,
+      keyLevels: pair.keyLevels,
+      newTransactions: 0,
+    };
+    return acc;
+  }, {});
 }

@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from "react";
-import type { DagobertTransaction } from "@/src/modules/transaction";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
+import {
+  KvTransactionGroupRepository,
+  ListTransactionGroupsUseCase,
+} from "@/src/modules/transaction-group";
 import { formatDate, getTradeTypeColor, redCross } from "@/utils/helper";
 import DtransactionGroups from "../../lib/DtransactionGroups";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
+const transactionGroupRepository = new KvTransactionGroupRepository();
+const listTransactionGroupsUseCase = new ListTransactionGroupsUseCase(
+  transactionGroupRepository
+);
+
 interface Props {
   newDtransactionGroupEpoch: number;
-  //newDtransactionGroup: DagobertTransactionGroup | undefined;
 }
 
 type DtransactionGroupsInPairs = {
@@ -36,41 +43,50 @@ const DTransactionGroupContainer: React.FC<Props> = ({
     initData();
   }, [newDtransactionGroupEpoch]);
 
-  const initData = () => {
-    const transactionGroupsTemp = DtransactionGroups.getAll();
-    if (transactionGroupsTemp && transactionGroupsTemp.length !== 0) {
-      let prftTotal = 0;
-      let dtGroupsInPairs: {
-        [pair: string]: DtransactionGroupsInPairs;
-      } = {};
-      for (const tg of transactionGroupsTemp) {
-        setIsPairOpen((prev) => {
-          return { ...prev, [tg.pair]: { isOpen: false } };
-        });
-        prftTotal += tg.amount;
-        if (!(tg.pair in dtGroupsInPairs)) {
-          dtGroupsInPairs[tg.pair] = {
-            pair: tg.pair,
-            profitPair: tg.amount,
-            lastEpoch: tg.lastTransDateEpoch,
-            dtransactionGroups: [tg],
-          };
-        } else {
-          dtGroupsInPairs[tg.pair].profitPair += tg.amount;
-          dtGroupsInPairs[tg.pair].lastEpoch < tg.lastTransDateEpoch &&
-            (dtGroupsInPairs[tg.pair].lastEpoch = tg.lastTransDateEpoch);
-          dtGroupsInPairs[tg.pair].dtransactionGroups.push(tg);
-        }
-      }
-      setProfitTotal(prftTotal);
+  const initData = async () => {
+    const transactionGroups = await listTransactionGroupsUseCase.execute();
 
-      const sorted = Object.values(dtGroupsInPairs).sort((a, b) =>
-        a.lastEpoch > b.lastEpoch ? -1 : 1
-      );
-      setDtransactionGroupsInPairs(sorted);
-    } else {
-      console.error("No transactionGroups by DtransactionGroups.getAll()");
+    if (transactionGroups.length === 0) {
+      setProfitTotal(0);
+      setDtransactionGroupsInPairs([]);
+      return;
     }
+
+    let prftTotal = 0;
+    const dtGroupsInPairs: {
+      [pair: string]: DtransactionGroupsInPairs;
+    } = {};
+
+    for (const transactionGroup of transactionGroups) {
+      setIsPairOpen((prev) => ({
+        ...prev,
+        [transactionGroup.pair]: prev[transactionGroup.pair] ?? {
+          isOpen: false,
+        },
+      }));
+      prftTotal += transactionGroup.amount;
+      if (!(transactionGroup.pair in dtGroupsInPairs)) {
+        dtGroupsInPairs[transactionGroup.pair] = {
+          pair: transactionGroup.pair,
+          profitPair: transactionGroup.amount,
+          lastEpoch: transactionGroup.lastTransDateEpoch,
+          dtransactionGroups: [transactionGroup],
+        };
+      } else {
+        dtGroupsInPairs[transactionGroup.pair].profitPair +=
+          transactionGroup.amount;
+        dtGroupsInPairs[transactionGroup.pair].lastEpoch <
+          transactionGroup.lastTransDateEpoch &&
+          (dtGroupsInPairs[transactionGroup.pair].lastEpoch =
+            transactionGroup.lastTransDateEpoch);
+        dtGroupsInPairs[transactionGroup.pair].dtransactionGroups.push(
+          transactionGroup
+        );
+      }
+    }
+
+    setProfitTotal(prftTotal);
+    setDtransactionGroupsInPairs(Object.values(dtGroupsInPairs));
   };
 
   const deleteGroup = async (groupId: string) => {
@@ -80,7 +96,7 @@ const DTransactionGroupContainer: React.FC<Props> = ({
 
   const pairGroupClicked = (pair: string) => {
     setIsPairOpen((prev) => {
-      return { ...prev, [pair]: { isOpen: !prev[pair].isOpen } };
+      return { ...prev, [pair]: { isOpen: !prev[pair]?.isOpen } };
     });
   };
 
@@ -110,13 +126,13 @@ const DTransactionGroupContainer: React.FC<Props> = ({
                 <FontAwesomeIcon
                   icon={faChevronRight}
                   className={`transform transition-transform duration-300 ${
-                    isPairOpen[dtgip.pair].isOpen ? "rotate-90" : "rotate-0"
+                    isPairOpen[dtgip.pair]?.isOpen ? "rotate-90" : "rotate-0"
                   }`}
                 />{" "}
                 {dtgip.pair} (profit: {dtgip.profitPair.toFixed(2)})
               </div>
               <div
-                className={`${!isPairOpen[dtgip.pair].isOpen ? "hidden" : ""}`}
+                className={`${!isPairOpen[dtgip.pair]?.isOpen ? "hidden" : ""}`}
               >
                 {dtgip.dtransactionGroups
                   .sort((a, b) =>

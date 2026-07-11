@@ -1,7 +1,15 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { format, getDaysInMonth } from "date-fns";
-import DtransactionGroups from "../lib/DtransactionGroups";
-import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
+import {
+  KvTransactionGroupRepository,
+  ListTransactionGroupsUseCase,
+  type DagobertTransactionGroup,
+} from "@/src/modules/transaction-group";
+
+const transactionGroupRepository = new KvTransactionGroupRepository();
+const listTransactionGroupsUseCase = new ListTransactionGroupsUseCase(
+  transactionGroupRepository
+);
 
 type Transaction = {
   groupId: string;
@@ -19,7 +27,11 @@ type ProfitVisualizerProps = {
 
 const Charts: React.FC = () => {
   const pixelPerProfit = 10;
-  const data = DtransactionGroups.getAll() ?? [];
+  const [data, setData] = useState<DagobertTransactionGroup[]>([]);
+
+  useEffect(() => {
+    listTransactionGroupsUseCase.execute().then(setData);
+  }, []);
   const data2: { [id: string]: Transaction } = {
     "a0afeec2-e370-4089-8e35-bd0dd9a0755e": {
       groupId: "a0afeec2-e370-4089-8e35-bd0dd9a0755e",

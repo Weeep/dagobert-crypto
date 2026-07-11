@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from "react";
 import DTransactionCard from "./DTransactionCard";
 import type { DagobertTransaction } from "@/src/modules/transaction";
+import {
+  KvTransactionRepository,
+  ListOpenTransactionsUseCase,
+  TradeStyle,
+  UpdateTransactionTradeStyleUseCase,
+} from "@/src/modules/transaction";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
-import { TradeStyle, TradeType } from "@/src/modules/transaction";
 import DtransactionGroups from "../../lib/DtransactionGroups";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -11,32 +15,26 @@ import {
   faObjectGroup,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
-import ClientSideDbCache from "../../lib/ClientSideDbCache";
+
+const transactionRepository = new KvTransactionRepository();
+const listOpenTransactionsUseCase = new ListOpenTransactionsUseCase(
+  transactionRepository
+);
+const updateTransactionTradeStyleUseCase = new UpdateTransactionTradeStyleUseCase(
+  transactionRepository
+);
 
 interface Props {
-  //dtransactions: DagobertTransaction[];
   selectedPairsProp: string[];
   pairsAndPrices: {
     [key: string]: { price: number; numOfTransactions: number };
   };
-  //numOfTransactions: number;
-  //selectedPairs: string[];
-  //setDtransGroupContainer: (dtransGroupContainer: React.ReactNode) => void;
   newDtransactionGroupEpochCallback: (dTransactionGroupEpoch: number) => void;
 }
 
-//type MarkedDTransaction = {
-//  dtransaction: DagobertTransaction;
-//  visibilityFunc: (isVisible: boolean) => void;
-//};
-
 const DTransactionCardContainer: React.FC<Props> = ({
-  //dtransactions,
   selectedPairsProp,
   pairsAndPrices,
-  //numOfTransactions,
-  //selectedPairs,
-  //setDtransGroupContainer,
   newDtransactionGroupEpochCallback,
 }) => {
   const [dtransactions, setDtransactions] = useState<DagobertTransaction[]>([]);
@@ -58,34 +56,16 @@ const DTransactionCardContainer: React.FC<Props> = ({
     setSelectedPairs(selectedPairsProp);
   }, [selectedPairsProp]);
 
-  const fetchDtransactions = () => {
-    const data = ClientSideDbCache.hgetall(KVRoot.dtransactions);
-    let isTransactions: boolean = data;
-    let filteredTransactions: DagobertTransaction[] = [];
+  const fetchDtransactions = async () => {
+    const openTransactions = await listOpenTransactionsUseCase.execute({
+      tradeStyle: TradeStyle.Swing,
+    });
+    const filteredTransactions = openTransactions.filter(
+      (transaction) =>
+        selectedPairs.length === 0 || selectedPairs.includes(transaction.pair)
+    );
 
-    if (isTransactions) {
-      const dtransactions = Object.values(data) as DagobertTransaction[];
-      filteredTransactions = dtransactions.filter(
-        (obj) =>
-          obj &&
-          obj.status === "FILLED" &&
-          !obj.grouped &&
-          obj.tradeStyle === TradeStyle.Swing
-      );
-
-      filteredTransactions = filteredTransactions.filter(
-        (dt: DagobertTransaction) => {
-          return selectedPairs.length === 0 || selectedPairs.includes(dt.pair);
-        }
-      );
-
-      isTransactions = filteredTransactions.length > 0;
-    }
-
-    if (isTransactions) {
-      filteredTransactions.sort((a, b) => b.dateEpoch - a.dateEpoch);
-      setDtransactions(filteredTransactions);
-    }
+    setDtransactions(filteredTransactions);
   };
 
   const handleCardClicked = (dtransaction: DagobertTransaction) => {
@@ -109,21 +89,24 @@ const DTransactionCardContainer: React.FC<Props> = ({
 
   const handlePairOnCardClicked = (pair: string) => {
     if (selectedPairs.length !== 1) {
-      setSelectedPairs([pair]); //(prev) => [...prev, pair]);
+      setSelectedPairs([pair]);
     } else {
-      setSelectedPairs([]); //(prev) => prev.filter((p) => p !== pair));
+      setSelectedPairs([]);
     }
   };
 
-  const trash = () => {
-    for (const dt of markedForTrash) {
-      ClientSideDbCache.hset(KVRoot.dtransactions, {
-        [dt.orderId]: {
-          ...dt,
-          tradeStyle: TradeStyle.Trash,
-        },
-      });
-    }
+  const trash = async () => {
+    await Promise.all(
+      markedForTrash.map((transaction) =>
+        updateTransactionTradeStyleUseCase.execute(
+          transaction.orderId,
+          TradeStyle.Trash
+        )
+      )
+    );
+    setMarkedForMerge([]);
+    setMarkedForTrash([]);
+    await fetchDtransactions();
   };
 
   const mergePreview = (): React.ReactElement => {

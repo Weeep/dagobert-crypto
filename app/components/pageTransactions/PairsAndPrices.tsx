@@ -7,11 +7,21 @@ import {
 } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import type { DagobertTransaction } from "@/src/modules/transaction";
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
-import ClientSideDbCache from "../../lib/ClientSideDbCache";
+import {
+  KvTransactionRepository,
+  ListOpenTransactionsUseCase,
+} from "@/src/modules/transaction";
+import { KvPairRepository, ListPairsUseCase } from "@/src/modules/pair";
 import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
+
+
+const pairRepository = new KvPairRepository();
+const transactionRepository = new KvTransactionRepository();
+const listPairsUseCase = new ListPairsUseCase(pairRepository);
+const listOpenTransactionsUseCase = new ListOpenTransactionsUseCase(
+  transactionRepository
+);
 
 type Indicators = {
   ema7: number;
@@ -86,12 +96,6 @@ const PairsAndPrices: React.FC<Props> = ({
           fetchEmaRsi("1d", pair, pp[pair].price);
           //console.log(pair);
         }
-        // for (const pair of ClientSideDbCache.smembers(
-        //   KVRoot.pairs
-        // ) as string[]) {
-        //   fetchCandleData(pair, "1h", pp);
-        //   //fetchCandleData(pair, "1d", pp);
-        // }
       }
     } catch (error) {
       setPairInfo(
@@ -164,17 +168,15 @@ const PairsAndPrices: React.FC<Props> = ({
   const fetchPrices = async (): Promise<{
     [key: string]: PairPriceIf;
   } | null> => {
-    const pairs = ClientSideDbCache.smembers(KVRoot.pairs);
-    if (!pairs) {
+    const pairs = await listPairsUseCase.execute();
+    if (pairs.length === 0) {
       setPairInfo("No any pair defined. Go to Config and add some.");
       return null;
     }
 
-    if ((pairs as string[]).length === 0) return null;
-
     const response = await fetch(
       `/api/binanceapi/tickerPrice?symbols=${JSON.stringify(
-        Object.keys(pairs)
+        pairs.map((pair) => pair.pair)
       )}`
     );
 
@@ -196,32 +198,27 @@ const PairsAndPrices: React.FC<Props> = ({
       }
     );
 
-    /// Num of Trans calculation
-    let numOfTransactions: { [key: string]: number } = {};
-    const allDtransactions = Object.values(
-      ClientSideDbCache.hgetall(KVRoot.dtransactions) ?? {}
-    ) as DagobertTransaction[];
-    const dtranss = allDtransactions.filter(
-      (dtrans) => dtrans.status === "FILLED"
-    );
-
-    for (const dtrans of dtranss) {
-      if (!dtrans.grouped) {
-        if (!(dtrans.pair in numOfTransactions)) {
-          numOfTransactions[dtrans.pair] = 1;
-        } else {
-          numOfTransactions[dtrans.pair] += 1;
-        }
-      }
-    }
+    const numOfTransactions = await getOpenTransactionCountsByPair();
 
     for (const price of prices as PairPriceIf[]) {
-      price.numOfTransactions =
-        price.pair in numOfTransactions ? numOfTransactions[price.pair] : 0;
+      price.numOfTransactions = numOfTransactions[price.pair] ?? 0;
     }
-    ///
 
     return arrayToObject(prices as PairPriceIf[], "pair");
+  };
+
+  const getOpenTransactionCountsByPair = async (): Promise<{
+    [pair: string]: number;
+  }> => {
+    const openTransactions = await listOpenTransactionsUseCase.execute();
+
+    return openTransactions.reduce<{ [pair: string]: number }>(
+      (acc, transaction) => {
+        acc[transaction.pair] = (acc[transaction.pair] ?? 0) + 1;
+        return acc;
+      },
+      {}
+    );
   };
 
   const handleCheckboxChange = (pair: string, event: React.ChangeEvent) => {
