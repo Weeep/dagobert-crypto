@@ -4,7 +4,6 @@ import { TradeType } from "@/src/modules/transaction/domain/TradeType";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group/domain/DagobertTransactionGroup";
 import { v4 as uuidv4 } from "uuid";
 import ClientSideDbCache from "./ClientSideDbCache";
-import Dtransactions from "./Dtransactions";
 
 class DtransactionGroups {
   static async post(transactionGroups: DagobertTransactionGroup[]): Promise<{
@@ -95,7 +94,13 @@ class DtransactionGroups {
     }
 
     const dTransIds = groupedDts.map((dt) => dt.orderId);
-    const dTranss = dTransIds.map((id) => Dtransactions.get(id));
+    const dTranss = dTransIds.map(
+      (id) =>
+        ClientSideDbCache.hget(
+          KVRoot.dtransactions,
+          id
+        ) as DagobertTransaction
+    );
     for (const dt of dTranss) {
       const newGroupedValue = { grouped: false };
       await ClientSideDbCache.hset(KVRoot.dtransactions, {

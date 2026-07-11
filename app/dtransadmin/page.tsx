@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { isTransactionIf } from "@/utils/helper";
-import Dtransactions from "../lib/Dtransactions";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
 import type { DagobertPair } from "@/src/modules/pair";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
-import { TradeStyle, TradeType } from "@/src/modules/transaction";
+import { TradeStyle, TradeType, type DagobertTransaction } from "@/src/modules/transaction";
 import DtransactionGroups from "../lib/DtransactionGroups";
 import { DailyStatsResult } from "binance-api-node";
 import DIndicator from "../components/DIndicator";
@@ -55,7 +54,10 @@ const Test3Page: React.FC = () => {
   };
 
   const changeDtransaction = async (orderId: string, newParams: object) => {
-    const dt = Dtransactions.get(orderId);
+    const dt = ClientSideDbCache.hget(
+      KVRoot.dtransactions,
+      orderId
+    ) as DagobertTransaction | null;
     if (dt !== null) {
       //const n = { [key]: value };
       await ClientSideDbCache.hset(KVRoot.dtransactions, {
@@ -66,7 +68,10 @@ const Test3Page: React.FC = () => {
       });
     }
 
-    const dt2 = Dtransactions.get(orderId);
+    const dt2 = ClientSideDbCache.hget(
+      KVRoot.dtransactions,
+      orderId
+    ) as DagobertTransaction | null;
     setInfoStr(JSON.stringify(dt2, null, 4));
   };
 
@@ -99,7 +104,9 @@ const Test3Page: React.FC = () => {
         id = "groupId";
         break;
       case KVRoot.dtransactions:
-        rootValues = Dtransactions.getAll();
+        rootValues = Object.values(
+          ClientSideDbCache.hgetall(KVRoot.dtransactions) ?? {}
+        );
         id = "orderId";
         break;
       case KVRoot.pairs:

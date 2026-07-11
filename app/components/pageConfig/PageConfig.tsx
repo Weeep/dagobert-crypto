@@ -7,11 +7,18 @@ import type { DagobertTransaction } from "@/src/modules/transaction";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import { TradeType } from "@/src/modules/transaction";
 import type { DagobertPair } from "@/src/modules/pair";
-import Dtransactions from "@/app/lib/Dtransactions";
+import { ClientSideDbPairRepository } from "@/src/modules/pair/infrastructure/ClientSideDbPairRepository";
+import { ImportTransactionsFromBinanceUseCase } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsFromBinanceUseCase";
+import { ClientSideDbTransactionRepository } from "@/src/modules/transaction/infrastructure/ClientSideDbTransactionRepository";
 import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
 import FollowedPairs, { PairsInfo } from "./FollowedPairs";
 import { QueryOrderResult } from "binance-api-node";
 import { TransactionIf } from "@/app/lib/Interfaces";
+
+const importTransactionsFromBinanceUseCase = new ImportTransactionsFromBinanceUseCase(
+  new ClientSideDbTransactionRepository(),
+  new ClientSideDbPairRepository()
+);
 
 export default function PageConfig() {
   const [dbConnStatusStr, setDbConnStatusStr] = useState<string>("Checking...");
@@ -104,8 +111,12 @@ export default function PageConfig() {
 
       infoFunc(`${data.length} ${pair} orders fetched, update database...`);
 
-      const pi = (await Dtransactions.post(data as TransactionIf[], tradeType))
-        .response?.pairInfo;
+      const pi = (
+        await importTransactionsFromBinanceUseCase.execute(
+          data as TransactionIf[],
+          tradeType
+        )
+      ).response?.pairInfo;
 
       if (pi && pi[pair] && pi[pair].added) {
         setNumOfNewTransactions((prev) => {

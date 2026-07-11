@@ -9,7 +9,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import type { DagobertTransaction } from "@/src/modules/transaction";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
-import Dtransactions from "../../lib/Dtransactions";
 import ClientSideDbCache from "../../lib/ClientSideDbCache";
 import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
@@ -199,7 +198,12 @@ const PairsAndPrices: React.FC<Props> = ({
 
     /// Num of Trans calculation
     let numOfTransactions: { [key: string]: number } = {};
-    const dtranss: DagobertTransaction[] = Dtransactions.getAllFilled();
+    const allDtransactions = Object.values(
+      ClientSideDbCache.hgetall(KVRoot.dtransactions) ?? {}
+    ) as DagobertTransaction[];
+    const dtranss = allDtransactions.filter(
+      (dtrans) => dtrans.status === "FILLED"
+    );
 
     for (const dtrans of dtranss) {
       if (!dtrans.grouped) {

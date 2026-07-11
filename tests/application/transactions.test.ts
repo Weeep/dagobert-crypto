@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { Dtransactions } from "@/src/modules/transaction";
+import { ImportTransactionsFromBinanceUseCase } from "@/src/modules/transaction";
+import { ClientSideDbPairRepository } from "@/src/modules/pair/infrastructure/ClientSideDbPairRepository";
+import { ImportTransactionsStoreService } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsStoreService";
+import { ClientSideDbTransactionRepository } from "@/src/modules/transaction/infrastructure/ClientSideDbTransactionRepository";
 import { DtransactionGroups } from "@/src/modules/transaction-group";
 import { TransactionIf } from "@/app/lib/Interfaces";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
@@ -51,7 +54,11 @@ const makeTransaction = (
 });
 
 test("Binance API orderből DagobertTransactiont készít a belső üzleti szabályok szerint", () => {
-  const convert = (Dtransactions as any).binanceApiOrdersToDTransactions as (
+  const useCase = new ImportTransactionsFromBinanceUseCase(
+    new ClientSideDbTransactionRepository(),
+    new ClientSideDbPairRepository()
+  );
+  const convert = (useCase as any).binanceApiOrdersToDTransactions as (
     orders: TransactionIf[],
     tradeType: TradeType
   ) => Record<string, DagobertTransaction[]>;
@@ -143,16 +150,12 @@ test("duplicate/newer-than-stored logika: Binance API importnál csak a korábbi
       status: "CANCELED",
     });
 
-    const store = ((Dtransactions as any).store as (
-      transactionsPerPair: Record<string, DagobertTransaction[]>,
-      tradeType: TradeType,
-      type: string
-    ) => Promise<{
-      pairInfo: Record<string, { processed: number; added: number; skipped: number }>;
-      addedTransactions: DagobertTransaction[];
-    }>).bind(Dtransactions);
+    const storeService = new ImportTransactionsStoreService(
+      new ClientSideDbTransactionRepository(),
+      new ClientSideDbPairRepository()
+    );
 
-    const result = await store(
+    const result = await storeService.store(
       { SOLUSDC: [oldFilled, newerButRejected, newFilled] },
       TradeType.Spot,
       "binanceapi"

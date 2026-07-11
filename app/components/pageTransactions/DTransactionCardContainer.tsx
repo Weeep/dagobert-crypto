@@ -11,7 +11,6 @@ import {
   faObjectGroup,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
-import Dtransactions from "../../lib/Dtransactions";
 import ClientSideDbCache from "../../lib/ClientSideDbCache";
 
 interface Props {
@@ -118,7 +117,12 @@ const DTransactionCardContainer: React.FC<Props> = ({
 
   const trash = () => {
     for (const dt of markedForTrash) {
-      Dtransactions.setStyleProperty(dt.orderId, TradeStyle.Trash);
+      ClientSideDbCache.hset(KVRoot.dtransactions, {
+        [dt.orderId]: {
+          ...dt,
+          tradeStyle: TradeStyle.Trash,
+        },
+      });
     }
   };
 
