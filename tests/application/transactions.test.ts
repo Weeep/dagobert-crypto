@@ -220,3 +220,99 @@ test("tranzakciócsoport létrehozás use case menti a groupot és grouped=true-
     [true, true]
   );
 });
+
+test("open tranzakciók listázása csak nem csoportosított tranzakciókat ad vissza, szűrve és dátum szerint csökkenően", async () => {
+  const transactions = [
+    makeTransaction({ orderId: "old-open", dateEpoch: 1000, pair: "SOLUSDC" }),
+    makeTransaction({ orderId: "grouped", dateEpoch: 4000, pair: "SOLUSDC", grouped: true }),
+    makeTransaction({ orderId: "other-pair", dateEpoch: 3000, pair: "BTCUSDC" }),
+    makeTransaction({ orderId: "new-open", dateEpoch: 2000, pair: "SOLUSDC" }),
+  ];
+  const repository = makeInMemoryTransactionRepository(transactions);
+  const { ListOpenTransactionsUseCase } = await import("@/src/modules/transaction");
+
+  const result = await new ListOpenTransactionsUseCase(repository).execute({
+    pair: "SOLUSDC",
+  });
+
+  assert.deepEqual(
+    result.map((transaction) => transaction.orderId),
+    ["new-open", "old-open"]
+  );
+});
+
+test("tranzakció update use case-ek repository boundaryn keresztül módosítják a mezőket", async () => {
+  const transaction = makeTransaction({ orderId: "tx-update", note: "old" });
+  const repository = makeInMemoryTransactionRepository([transaction]);
+  const {
+    UpdateTransactionNoteUseCase,
+    UpdateTransactionTradeStyleUseCase,
+    SetOtherSideOrderUseCase,
+    ClearOtherSideOrderUseCase,
+  } = await import("@/src/modules/transaction");
+
+  const noteResult = await new UpdateTransactionNoteUseCase(repository).execute(
+    "tx-update",
+    "  new note  "
+  );
+  assert.equal(noteResult.ok, true);
+  assert.equal(noteResult.transaction?.note, "new note");
+
+  const tradeStyleResult = await new UpdateTransactionTradeStyleUseCase(repository).execute(
+    "tx-update",
+    TradeStyle.Day
+  );
+  assert.equal(tradeStyleResult.ok, true);
+  assert.equal(tradeStyleResult.transaction?.tradeStyle, TradeStyle.Day);
+
+  const setOrderResult = await new SetOtherSideOrderUseCase(repository).execute({
+    orderId: "tx-update",
+    otherSideOrderId: 98765,
+    note: "SELL set",
+  });
+  assert.equal(setOrderResult.ok, true);
+  assert.equal(setOrderResult.transaction?.otherSideOrderId, "98765");
+  assert.equal(setOrderResult.transaction?.note, "SELL set");
+
+  const clearOrderResult = await new ClearOtherSideOrderUseCase(repository).execute({
+    orderId: "tx-update",
+    note: "",
+  });
+  assert.equal(clearOrderResult.ok, true);
+  assert.equal(clearOrderResult.transaction?.otherSideOrderId, "");
+  assert.equal(clearOrderResult.transaction?.note, "");
+});
+
+test("tranzakció update use case hibát ad nem létező tranzakcióra", async () => {
+  const repository = makeInMemoryTransactionRepository([]);
+  const { UpdateTransactionNoteUseCase } = await import("@/src/modules/transaction");
+
+  const result = await new UpdateTransactionNoteUseCase(repository).execute("missing", "note");
+
+  assert.equal(result.ok, false);
+  assert.equal(result.transaction, null);
+  assert.match(result.error, /Transaction not found/);
+});
+
+function makeInMemoryTransactionRepository(
+  seed: DagobertTransaction[]
+): TransactionRepository {
+  const transactions = new Map(
+    seed.map((transaction) => [transaction.orderId, transaction])
+  );
+
+  return {
+    findAll: async () => Array.from(transactions.values()),
+    findById: async (id: string) => transactions.get(id) ?? null,
+    save: async (transaction: DagobertTransaction) => {
+      transactions.set(transaction.orderId, transaction);
+    },
+    saveMany: async (newTransactions: DagobertTransaction[]) => {
+      for (const transaction of newTransactions) {
+        transactions.set(transaction.orderId, transaction);
+      }
+    },
+    getLastProcessedEpoch: async () => null,
+    setLastProcessedEpoch: async () => {},
+  };
+}

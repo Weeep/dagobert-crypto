@@ -10,3 +10,12 @@ export { binanceOrderToTransaction, binanceOrdersToTransactionsByPair } from "./
 export { legacyCsvRowToTransaction, legacyCsvRowsToTransactionsByPair } from "./application/mappers/legacyCsvRowToTransaction";
 export { isTransactionNewerThanStored } from "./application/import-transactions/isTransactionNewerThanStored";
 export { KvTransactionRepository } from "./infrastructure/kv/KvTransactionRepository";
+export type { TransactionMutationResult } from "./application/updateTransactionResult";
+export { ListOpenTransactionsUseCase } from "./application/list-open-transactions/ListOpenTransactionsUseCase";
+export type { ListOpenTransactionsQuery } from "./application/list-open-transactions/ListOpenTransactionsUseCase";
+export { UpdateTransactionNoteUseCase } from "./application/update-transaction-note/UpdateTransactionNoteUseCase";
+export { UpdateTransactionTradeStyleUseCase } from "./application/update-transaction-trade-style/UpdateTransactionTradeStyleUseCase";
+export { SetOtherSideOrderUseCase } from "./application/set-other-side-order/SetOtherSideOrderUseCase";
+export type { SetOtherSideOrderInput } from "./application/set-other-side-order/SetOtherSideOrderUseCase";
+export { ClearOtherSideOrderUseCase } from "./application/clear-other-side-order/ClearOtherSideOrderUseCase";
+export type { ClearOtherSideOrderInput } from "./application/clear-other-side-order/ClearOtherSideOrderUseCase";
