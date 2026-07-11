@@ -6,6 +6,7 @@ import {
   CreatePairUseCase,
   CreatePairsFromTransactionsUseCase,
   DeletePairUseCase,
+  GetPairUseCase,
   ListPairsUseCase,
   UpdatePairSettingsUseCase,
 } from "@/src/modules/pair";
@@ -81,6 +82,28 @@ test("pair use case-ek listázzák, létrehozzák, módosítják és törlik a p
     pairsAfterDelete.map((pair) => pair.pair),
     ["SOLUSDC"]
   );
+});
+
+
+
+test("GetPairUseCase normalizált symbol alapján visszaadja a pairt vagy stabil hibát ad", async () => {
+  const repository = makeInMemoryPairRepository([
+    { pair: "SOLUSDC", decimals: 4, keyLevels: [100] },
+  ]);
+  const useCase = new GetPairUseCase(repository);
+
+  const successResult = await useCase.execute(" solusdc ");
+  assert.equal(successResult.ok, true);
+  assert.deepEqual(successResult.pair, {
+    pair: "SOLUSDC",
+    decimals: 4,
+    keyLevels: [100],
+  });
+
+  const missingResult = await useCase.execute("BTCUSDC");
+  assert.equal(missingResult.ok, false);
+  assert.equal(missingResult.pair, null);
+  assert.match(missingResult.error, /Pair not found/);
 });
 
 test("CreatePairsFromTransactionsUseCase hiányzó paireket hoz létre tranzakciók alapján, meglévőket kihagy", async () => {

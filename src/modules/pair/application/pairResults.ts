@@ -4,6 +4,10 @@ export type PairMutationResult =
   | { ok: true; error: ""; pair: DagobertPair }
   | { ok: false; error: string; pair: null };
 
+export type GetPairResult =
+  | { ok: true; error: ""; pair: DagobertPair }
+  | { ok: false; error: string; pair: null };
+
 export type DeletePairResult =
   | { ok: true; error: "" }
   | { ok: false; error: string };

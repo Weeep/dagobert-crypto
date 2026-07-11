@@ -1,12 +1,12 @@
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import type { DagobertTransaction } from "@/src/modules/transaction/domain/DagobertTransaction";
 import { TradeType } from "@/src/modules/transaction/domain/TradeType";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group/domain/DagobertTransactionGroup";
 import { CreateTransactionGroupUseCase } from "@/src/modules/transaction-group/application/create-transaction-group/CreateTransactionGroupUseCase";
 import { DeleteTransactionGroupUseCase } from "@/src/modules/transaction-group/application/delete-transaction-group/DeleteTransactionGroupUseCase";
+import { GetTransactionGroupUseCase } from "@/src/modules/transaction-group/application/get-transaction-group/GetTransactionGroupUseCase";
+import { ListTransactionGroupsUseCase } from "@/src/modules/transaction-group/application/list-transaction-groups/ListTransactionGroupsUseCase";
 import { KvTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/kv/KvTransactionGroupRepository";
 import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
-import ClientSideDbCache from "./ClientSideDbCache";
 
 class DtransactionGroups {
   private static readonly transactionGroupRepository =
@@ -22,26 +22,22 @@ class DtransactionGroups {
       DtransactionGroups.transactionGroupRepository,
       DtransactionGroups.transactionRepository
     );
+  private static readonly listTransactionGroupsUseCase =
+    new ListTransactionGroupsUseCase(DtransactionGroups.transactionGroupRepository);
+  private static readonly getTransactionGroupUseCase =
+    new GetTransactionGroupUseCase(DtransactionGroups.transactionGroupRepository);
 
   static async post(transactionGroups: DagobertTransactionGroup[]) {
     return this.createTransactionGroupUseCase.execute(transactionGroups);
   }
 
-  static getAll(): DagobertTransactionGroup[] | null {
-    let tranGroups = ClientSideDbCache.hgetall(KVRoot.dtransactionGroups);
-
-    if (tranGroups === null) return null;
-
-    return Object.values(tranGroups) as DagobertTransactionGroup[];
+  static async getAll(): Promise<DagobertTransactionGroup[]> {
+    return this.listTransactionGroupsUseCase.execute();
   }
 
-  static get(id: string): DagobertTransactionGroup | null {
-    if (!id) return null;
-
-    return ClientSideDbCache.hget(
-      KVRoot.dtransactionGroups,
-      id as string
-    ) as DagobertTransactionGroup;
+  static async get(id: string): Promise<DagobertTransactionGroup | null> {
+    const result = await this.getTransactionGroupUseCase.execute(id);
+    return result.ok ? result.transactionGroup : null;
   }
 
   static async del(groupId: string): Promise<boolean> {

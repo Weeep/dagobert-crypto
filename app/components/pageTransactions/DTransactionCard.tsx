@@ -1,7 +1,7 @@
 import React, { ReactElement, useEffect, useState } from "react";
 import Image from "next/image";
 import { Color } from "@/src/shared/ui/Color";
-import type { DagobertPair } from "@/src/modules/pair";
+import { GetPairUseCase, KvPairRepository } from "@/src/modules/pair";
 import type { DagobertTransaction } from "@/src/modules/transaction";
 import {
   ClearOtherSideOrderUseCase,
@@ -10,7 +10,6 @@ import {
   TradeType,
   UpdateTransactionNoteUseCase,
 } from "@/src/modules/transaction";
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import {
   formatDate,
   getPrice,
@@ -18,7 +17,6 @@ import {
   getTradeTypeColor,
   modifyLastDigit,
 } from "@/utils/helper";
-import ClientSideDbCache from "../../lib/ClientSideDbCache";
 import {
   CancelOrderOptions,
   CandleChartResult,
@@ -36,7 +34,9 @@ import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
 
 
+const pairRepository = new KvPairRepository();
 const transactionRepository = new KvTransactionRepository();
+const getPairUseCase = new GetPairUseCase(pairRepository);
 const updateTransactionNoteUseCase = new UpdateTransactionNoteUseCase(
   transactionRepository
 );
@@ -120,6 +120,17 @@ const DTransactionCard: React.FC<Props> = ({
     clickOnPair(pair);
   };
 
+
+  const getPairDecimals = async (pair: string): Promise<number | null> => {
+    const result = await getPairUseCase.execute(pair);
+    if (!result.ok) {
+      setErrorMessage([result.error, new Date().getTime()]);
+      return null;
+    }
+
+    return result.pair.decimals;
+  };
+
   const handleNewTpBuyOrderClicked = async (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
@@ -141,9 +152,10 @@ const DTransactionCard: React.FC<Props> = ({
     };
 
     if (price >= currentPrice) {
-      const decimals = (
-        ClientSideDbCache.hget(KVRoot.pairs, dtransaction.pair) as DagobertPair
-      ).decimals;
+      const decimals = await getPairDecimals(dtransaction.pair);
+      if (decimals === null) {
+        return;
+      }
       const stopPrice = (price * 0.9996).toFixed(decimals);
 
       order = {
@@ -180,9 +192,10 @@ const DTransactionCard: React.FC<Props> = ({
     };
 
     if (price < currentPrice) {
-      const decimals = (
-        ClientSideDbCache.hget(KVRoot.pairs, dtransaction.pair) as DagobertPair
-      ).decimals;
+      const decimals = await getPairDecimals(dtransaction.pair);
+      if (decimals === null) {
+        return;
+      }
       const stopPrice = (price * 1.0004).toFixed(decimals);
 
       order = {
