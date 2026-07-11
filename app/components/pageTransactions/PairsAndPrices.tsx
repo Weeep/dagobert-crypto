@@ -7,11 +7,20 @@ import {
 } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import type { DagobertTransaction } from "@/src/modules/transaction";
+import {
+  KvTransactionRepository,
+  ListOpenTransactionsUseCase,
+} from "@/src/modules/transaction";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import ClientSideDbCache from "../../lib/ClientSideDbCache";
 import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
+
+
+const transactionRepository = new KvTransactionRepository();
+const listOpenTransactionsUseCase = new ListOpenTransactionsUseCase(
+  transactionRepository
+);
 
 type Indicators = {
   ema7: number;
@@ -196,32 +205,26 @@ const PairsAndPrices: React.FC<Props> = ({
       }
     );
 
-    /// Num of Trans calculation
-    let numOfTransactions: { [key: string]: number } = {};
-    const allDtransactions = Object.values(
-      ClientSideDbCache.hgetall(KVRoot.dtransactions) ?? {}
-    ) as DagobertTransaction[];
-    const dtranss = allDtransactions.filter(
-      (dtrans) => dtrans.status === "FILLED"
-    );
-
-    for (const dtrans of dtranss) {
-      if (!dtrans.grouped) {
-        if (!(dtrans.pair in numOfTransactions)) {
-          numOfTransactions[dtrans.pair] = 1;
-        } else {
-          numOfTransactions[dtrans.pair] += 1;
-        }
-      }
-    }
+    const numOfTransactions = await getOpenTransactionCountsByPair();
 
     for (const price of prices as PairPriceIf[]) {
-      price.numOfTransactions =
-        price.pair in numOfTransactions ? numOfTransactions[price.pair] : 0;
+      price.numOfTransactions = numOfTransactions[price.pair] ?? 0;
     }
-    ///
 
     return arrayToObject(prices as PairPriceIf[], "pair");
+  };
+
+  const getOpenTransactionCountsByPair = async (): Promise<{
+    [pair: string]: number;
+  }> => {
+    const openTransactions = await listOpenTransactionsUseCase.execute();
+
+    return openTransactions
+      .filter((transaction) => transaction.status === "FILLED")
+      .reduce<{ [pair: string]: number }>((acc, transaction) => {
+        acc[transaction.pair] = (acc[transaction.pair] ?? 0) + 1;
+        return acc;
+      }, {});
   };
 
   const handleCheckboxChange = (pair: string, event: React.ChangeEvent) => {
