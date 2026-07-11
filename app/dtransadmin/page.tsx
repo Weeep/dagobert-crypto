@@ -4,12 +4,9 @@ import React, { useState, useEffect } from "react";
 import { isTransactionIf } from "@/utils/helper";
 import Dtransactions from "../lib/Dtransactions";
 import ClientSideDbCache from "../lib/ClientSideDbCache";
-import {
-  DagobertPair,
-  KVRoot,
-  TradeStyle,
-  TradeType,
-} from "@/utils/typesAndEnums";
+import type { DagobertPair } from "@/src/modules/pair";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import { TradeStyle, TradeType } from "@/src/modules/transaction";
 import DtransactionGroups from "../lib/DtransactionGroups";
 import { DailyStatsResult } from "binance-api-node";
 import DIndicator from "../components/DIndicator";

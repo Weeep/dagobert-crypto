@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from "react";
 import DTransactionCard from "./DTransactionCard";
-import {
-  DagobertTransaction,
-  DagobertTransactionGroup,
-  KVRoot,
-  TradeStyle,
-  TradeType,
-} from "@/utils/typesAndEnums";
+import type { DagobertTransaction } from "@/src/modules/transaction";
+import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import { TradeStyle, TradeType } from "@/src/modules/transaction";
 import DtransactionGroups from "../../lib/DtransactionGroups";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {

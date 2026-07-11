@@ -1,9 +1,7 @@
 import DbApiUtil from "@/utils/dbapiutil";
-import {
-  ApiResponse,
-  DagobertTransactionGroup,
-  KVRoot,
-} from "@/utils/typesAndEnums";
+import type { ApiResponse } from "@/src/shared/dto/ApiResponse";
+import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { withAuth } from "@/utils/auth";
 

@@ -5,7 +5,8 @@ import {
   isTransactionIfArray,
   stringToRoundedFloat,
 } from "@/utils/helper";
-import { BnceTradeHisFromCsv, KVRoot } from "@/utils/typesAndEnums";
+import type { BnceTradeHisFromCsv } from "@/src/modules/transaction/dto/legacy/BnceTradeHisFromCsv";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import type { DagobertTransaction } from "@/src/modules/transaction/domain/DagobertTransaction";
 import { TradeStyle } from "@/src/modules/transaction/domain/TradeStyle";
 import { TradeType } from "@/src/modules/transaction/domain/TradeType";

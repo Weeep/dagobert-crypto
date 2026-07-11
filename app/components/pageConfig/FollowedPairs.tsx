@@ -1,5 +1,7 @@
 import { ReactElement, useEffect, useState } from "react";
-import { DagobertPair, KVRoot, TradeType } from "@/utils/typesAndEnums";
+import type { DagobertPair } from "@/src/modules/pair";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import { TradeType } from "@/src/modules/transaction";
 import Dtransactions from "@/app/lib/Dtransactions";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { redCross } from "@/utils/helper";

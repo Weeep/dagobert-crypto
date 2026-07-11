@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { KVRoot } from "./typesAndEnums";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 
 export class KV {
   private redis: Redis;

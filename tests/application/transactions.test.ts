@@ -7,7 +7,7 @@ import { TransactionIf } from "@/app/lib/Interfaces";
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import type { DagobertTransaction } from "@/src/modules/transaction";
 import { TradeStyle, TradeType } from "@/src/modules/transaction";
-import { KVRoot } from "@/utils/typesAndEnums";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 
 const binanceBuyOrder: TransactionIf = {
   symbol: "SOLUSDC",

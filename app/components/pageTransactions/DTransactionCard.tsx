@@ -1,12 +1,10 @@
 import React, { ReactElement, useEffect, useState } from "react";
 import Image from "next/image";
-import {
-  Color,
-  DagobertPair,
-  DagobertTransaction,
-  KVRoot,
-  TradeType,
-} from "@/utils/typesAndEnums";
+import { Color } from "@/src/shared/ui/Color";
+import type { DagobertPair } from "@/src/modules/pair";
+import type { DagobertTransaction } from "@/src/modules/transaction";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import { TradeType } from "@/src/modules/transaction";
 import {
   formatDate,
   getPrice,

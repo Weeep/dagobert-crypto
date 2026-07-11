@@ -7,7 +7,8 @@ import {
 } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import { DagobertTransaction, KVRoot } from "@/utils/typesAndEnums";
+import type { DagobertTransaction } from "@/src/modules/transaction";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import Dtransactions from "../../lib/Dtransactions";
 import ClientSideDbCache from "../../lib/ClientSideDbCache";
 import { faRefresh } from "@fortawesome/free-solid-svg-icons";
