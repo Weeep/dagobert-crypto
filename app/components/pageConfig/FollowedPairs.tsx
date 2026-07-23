@@ -1,25 +1,15 @@
 import { useEffect, useState } from "react";
-import {
-  CreatePairUseCase,
-  CreatePairsFromTransactionsUseCase,
-  DeletePairUseCase,
-  KvPairRepository,
-  UpdatePairSettingsUseCase,
-} from "@/src/modules/pair";
-import { KvTransactionRepository, TradeType } from "@/src/modules/transaction";
+import { TradeType } from "@/src/modules/transaction";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import { redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRefresh, faGear } from "@fortawesome/free-solid-svg-icons";
 
-const pairRepository = new KvPairRepository();
-const transactionRepository = new KvTransactionRepository();
-const createPairUseCase = new CreatePairUseCase(pairRepository);
-const updatePairSettingsUseCase = new UpdatePairSettingsUseCase(pairRepository);
-const deletePairUseCase = new DeletePairUseCase(pairRepository);
-const createPairsFromTransactionsUseCase = new CreatePairsFromTransactionsUseCase(
-  pairRepository,
-  transactionRepository
-);
+const createPairUseCase = clientUseCasesSingleton.createPair;
+const updatePairSettingsUseCase = clientUseCasesSingleton.updatePairSettings;
+const deletePairUseCase = clientUseCasesSingleton.deletePair;
+const createPairsFromTransactionsUseCase =
+  clientUseCasesSingleton.createPairsFromTransactions;
 
 export type PairsInfo = {
   [pair: string]: {

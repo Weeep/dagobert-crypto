@@ -18,13 +18,9 @@ async function admin(req: NextApiRequest, res: NextApiResponse) {
       itemOne: "1",
       itemTwo: "2",
     });
-    console.log("1");
-    console.log(JSON.stringify(dbResponse));
     if (!dbResponse.ok) return getBadConnection(dbResponse, action);
 
     dbResponse = await DbApiUtil.del("listtest");
-    console.log("2");
-    console.log(JSON.stringify(dbResponse));
     if (!dbResponse.ok) return getBadConnection(dbResponse, action);
 
     return { s: 200, j: { response: "Database connection OK", action } };

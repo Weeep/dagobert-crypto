@@ -1,18 +1,12 @@
 import React, { useEffect, useState } from "react";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
-import {
-  KvTransactionGroupRepository,
-  ListTransactionGroupsUseCase,
-} from "@/src/modules/transaction-group";
+import { DtransactionGroups } from "@/src/modules/transaction-group";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import { formatDate, getTradeTypeColor, redCross } from "@/utils/helper";
-import DtransactionGroups from "../../lib/DtransactionGroups";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
-const transactionGroupRepository = new KvTransactionGroupRepository();
-const listTransactionGroupsUseCase = new ListTransactionGroupsUseCase(
-  transactionGroupRepository
-);
+const listTransactionGroupsUseCase = clientUseCasesSingleton.listTransactionGroups;
 
 interface Props {
   newDtransactionGroupEpoch: number;

@@ -1,15 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { format, getDaysInMonth } from "date-fns";
-import {
-  KvTransactionGroupRepository,
-  ListTransactionGroupsUseCase,
-  type DagobertTransactionGroup,
-} from "@/src/modules/transaction-group";
+import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 
-const transactionGroupRepository = new KvTransactionGroupRepository();
-const listTransactionGroupsUseCase = new ListTransactionGroupsUseCase(
-  transactionGroupRepository
-);
+const listTransactionGroupsUseCase = clientUseCasesSingleton.listTransactionGroups;
 
 type Transaction = {
   groupId: string;

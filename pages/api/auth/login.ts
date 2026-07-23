@@ -26,9 +26,6 @@ export default async function handler(
     }
     const storedPassword = response.response;
 
-    console.log(storedPassword);
-    console.log(password);
-
     if (storedPassword && storedPassword === password) {
       const token = generateToken(email);
 

@@ -3,24 +3,15 @@ import ProgressInfo from "../ProgressInfo";
 import CsvParse from "./CsvParse";
 import { Color } from "@/src/shared/ui/Color";
 import { TradeType } from "@/src/modules/transaction";
-import {
-  KvPairRepository,
-  ListPairsUseCase,
-  type DagobertPair,
-} from "@/src/modules/pair";
-import { ImportTransactionsFromBinanceUseCase } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsFromBinanceUseCase";
-import { KvTransactionRepository } from "@/src/modules/transaction";
+import type { DagobertPair } from "@/src/modules/pair";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
 import FollowedPairs, { PairsInfo } from "./FollowedPairs";
 import { TransactionIf } from "@/app/lib/Interfaces";
 
-const pairRepository = new KvPairRepository();
-const transactionRepository = new KvTransactionRepository();
-const listPairsUseCase = new ListPairsUseCase(pairRepository);
-const importTransactionsFromBinanceUseCase = new ImportTransactionsFromBinanceUseCase(
-  transactionRepository,
-  pairRepository
-);
+const listPairsUseCase = clientUseCasesSingleton.listPairs;
+const importTransactionsFromBinanceUseCase =
+  clientUseCasesSingleton.importTransactionsFromBinance;
 
 export default function PageConfig() {
   const [dbConnStatusStr, setDbConnStatusStr] = useState<string>("Checking...");

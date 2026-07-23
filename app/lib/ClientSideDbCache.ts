@@ -104,8 +104,6 @@ class ClientSideDbCache {
   ): DagobertTransaction | DagobertTransactionGroup | DagobertPair | null {
     switch (key) {
       case KVRoot.dtransactions:
-        console.log(this.cache[key] === undefined);
-        console.log(this.cache[key][field] === undefined);
         return (this.cache[key][field] as DagobertTransaction) ?? null;
       case KVRoot.dtransactionGroups:
         return (this.cache[key][field] as DagobertTransactionGroup) ?? null;
