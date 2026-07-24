@@ -3,7 +3,7 @@ import DTransactionCard from "./DTransactionCard";
 import type { DagobertTransaction } from "@/src/modules/transaction";
 import { TradeStyle } from "@/src/modules/transaction";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
-import { DtransactionGroups } from "@/src/modules/transaction-group";
+import { buildTransactionGroup } from "@/src/modules/transaction-group";
 import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -103,7 +103,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
 
   const mergePreview = (): React.ReactElement => {
     const dtransactionGroup: DagobertTransactionGroup =
-      DtransactionGroups.group(markedForMerge);
+      buildTransactionGroup(markedForMerge);
     let r: React.ReactElement = <></>;
     if (dtransactionGroup.groupedTrans.length > 1) {
       r = (
@@ -118,12 +118,14 @@ const DTransactionCardContainer: React.FC<Props> = ({
   };
 
   const merge = async () => {
-    let dtransactionGroup: DagobertTransactionGroup =
-      DtransactionGroups.group(markedForMerge);
+    const dtransactionGroup: DagobertTransactionGroup =
+      buildTransactionGroup(markedForMerge);
 
     if (dtransactionGroup.groupedTrans.length > 1) {
       try {
-        const r = await DtransactionGroups.post([dtransactionGroup]);
+        const r = await clientUseCasesSingleton.createTransactionGroup.execute([
+          dtransactionGroup,
+        ]);
         if (r.ok) {
           newDtransactionGroupEpochCallback(new Date().getTime());
         } else {

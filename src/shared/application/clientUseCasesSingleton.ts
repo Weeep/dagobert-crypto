@@ -14,6 +14,8 @@ import { SetOtherSideOrderUseCase } from "@/src/modules/transaction/application/
 import { UpdateTransactionNoteUseCase } from "@/src/modules/transaction/application/update-transaction-note/UpdateTransactionNoteUseCase";
 import { UpdateTransactionTradeStyleUseCase } from "@/src/modules/transaction/application/update-transaction-trade-style/UpdateTransactionTradeStyleUseCase";
 import { KvTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/kv/KvTransactionGroupRepository";
+import { CreateTransactionGroupUseCase } from "@/src/modules/transaction-group/application/create-transaction-group/CreateTransactionGroupUseCase";
+import { DeleteTransactionGroupUseCase } from "@/src/modules/transaction-group/application/delete-transaction-group/DeleteTransactionGroupUseCase";
 import { ListTransactionGroupsUseCase } from "@/src/modules/transaction-group/application/list-transaction-groups/ListTransactionGroupsUseCase";
 
 const pairRepository = new KvPairRepository();
@@ -27,7 +29,15 @@ export const clientUseCasesSingleton = {
     pairRepository,
     transactionRepository
   ),
+  createTransactionGroup: new CreateTransactionGroupUseCase(
+    transactionGroupRepository,
+    transactionRepository
+  ),
   deletePair: new DeletePairUseCase(pairRepository),
+  deleteTransactionGroup: new DeleteTransactionGroupUseCase(
+    transactionGroupRepository,
+    transactionRepository
+  ),
   getPair: new GetPairUseCase(pairRepository),
   importTransactionsFromBinance: new ImportTransactionsFromBinanceUseCase(
     transactionRepository,

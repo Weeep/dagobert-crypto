@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from "react";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
-import { DtransactionGroups } from "@/src/modules/transaction-group";
 import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import { formatDate, getTradeTypeColor, redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 const listTransactionGroupsUseCase = clientUseCasesSingleton.listTransactionGroups;
+const deleteTransactionGroupUseCase =
+  clientUseCasesSingleton.deleteTransactionGroup;
 
 interface Props {
   newDtransactionGroupEpoch: number;
 }
 
-type DtransactionGroupsInPairs = {
+type TransactionGroupsInPair = {
   pair: string;
   profitPair: number;
   lastEpoch: number;
@@ -29,8 +30,8 @@ const DTransactionGroupContainer: React.FC<Props> = ({
       isOpen: boolean;
     };
   }>({});
-  const [dtgips, setDtransactionGroupsInPairs] = useState<
-    DtransactionGroupsInPairs[]
+  const [transactionGroupsInPairs, setTransactionGroupsInPairs] = useState<
+    TransactionGroupsInPair[]
   >([]);
 
   useEffect(() => {
@@ -42,13 +43,13 @@ const DTransactionGroupContainer: React.FC<Props> = ({
 
     if (transactionGroups.length === 0) {
       setProfitTotal(0);
-      setDtransactionGroupsInPairs([]);
+      setTransactionGroupsInPairs([]);
       return;
     }
 
     let prftTotal = 0;
     const dtGroupsInPairs: {
-      [pair: string]: DtransactionGroupsInPairs;
+      [pair: string]: TransactionGroupsInPair;
     } = {};
 
     for (const transactionGroup of transactionGroups) {
@@ -80,11 +81,11 @@ const DTransactionGroupContainer: React.FC<Props> = ({
     }
 
     setProfitTotal(prftTotal);
-    setDtransactionGroupsInPairs(Object.values(dtGroupsInPairs));
+    setTransactionGroupsInPairs(Object.values(dtGroupsInPairs));
   };
 
   const deleteGroup = async (groupId: string) => {
-    await DtransactionGroups.del(groupId);
+    await deleteTransactionGroupUseCase.execute(groupId);
     initData();
   };
 
@@ -110,8 +111,8 @@ const DTransactionGroupContainer: React.FC<Props> = ({
         <span className="hidden text-xs">{newDtransactionGroupEpoch}</span>
       </div>
       <div className={`ml-8 ${!isOpen ? "hidden" : ""}`}>
-        {dtgips.length !== 0 &&
-          dtgips.map((dtgip) => (
+        {transactionGroupsInPairs.length !== 0 &&
+          transactionGroupsInPairs.map((dtgip) => (
             <div key={dtgip.pair + "_" + dtgip.lastEpoch}>
               <div
                 className="text-xl cursor-pointer mb-2"
