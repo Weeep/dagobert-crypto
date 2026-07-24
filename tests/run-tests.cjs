@@ -5,3 +5,5 @@ require('./application/transactions.test.ts');
 require('./application/pairs.test.ts');
 require('./application/transaction-groups.test.ts');
 require('./application/client-data-bootstrap.test.ts');
+require('./infrastructure/client-side-db-cache.test.ts');
+require('./infrastructure/client-cache-repositories.test.ts');
