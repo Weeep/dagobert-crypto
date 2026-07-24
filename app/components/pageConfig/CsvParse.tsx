@@ -2,15 +2,11 @@ import React, { useState } from "react";
 import Papa from "papaparse";
 import type { BnceTradeHisFromCsv } from "@/src/modules/transaction/dto/legacy/BnceTradeHisFromCsv";
 import { TradeType } from "@/src/modules/transaction";
-import { KvPairRepository } from "@/src/modules/pair/infrastructure/kv/KvPairRepository";
-import { ImportTransactionsFromLegacyCsvUseCase } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsFromLegacyCsvUseCase";
-import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import { isBnceTradeHisFromCsvArray } from "@/utils/helper";
 
-const importTransactionsFromLegacyCsvUseCase = new ImportTransactionsFromLegacyCsvUseCase(
-  new KvTransactionRepository(),
-  new KvPairRepository()
-);
+const importTransactionsFromLegacyCsvUseCase =
+  clientUseCasesSingleton.importTransactionsFromLegacyCsv;
 
 //Record<string, string>; // Defines the type for each row in the CSV
 

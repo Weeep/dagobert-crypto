@@ -2,27 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { ClientDataBootstrapService } from "@/src/shared/application/client-data-bootstrap/ClientDataBootstrapService";
-import { KvPairRepository, ListPairsUseCase } from "@/src/modules/pair";
-import {
-  KvTransactionRepository,
-  ListOpenTransactionsUseCase,
-} from "@/src/modules/transaction";
-import {
-  KvTransactionGroupRepository,
-  ListTransactionGroupsUseCase,
-} from "@/src/modules/transaction-group";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 
-const pairRepository = new KvPairRepository();
-const transactionRepository = new KvTransactionRepository();
-const transactionGroupRepository = new KvTransactionGroupRepository();
 const clientDataBootstrapService = new ClientDataBootstrapService();
-const listPairsUseCase = new ListPairsUseCase(pairRepository);
-const listOpenTransactionsUseCase = new ListOpenTransactionsUseCase(
-  transactionRepository
-);
-const listTransactionGroupsUseCase = new ListTransactionGroupsUseCase(
-  transactionGroupRepository
-);
+const listPairsUseCase = clientUseCasesSingleton.listPairs;
+const listOpenTransactionsUseCase = clientUseCasesSingleton.listOpenTransactions;
+const listTransactionGroupsUseCase = clientUseCasesSingleton.listTransactionGroups;
 
 const DTransAdminPage: React.FC = () => {
   const [infoStr, setInfoStr] = useState<string>("Loading admin diagnostics...");

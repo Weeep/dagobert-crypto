@@ -3,12 +3,11 @@
 import React, { useState, useEffect } from "react";
 import CandlestickChart from "../components/CandlestickChart";
 import { CandleChartResult } from "binance-api-node";
-import { KvPairRepository, ListPairsUseCase } from "@/src/modules/pair";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import { DCandle, TradingAnalysis } from "../lib/TradingAnalysis";
 import * as d3 from "d3";
 
-const pairRepository = new KvPairRepository();
-const listPairsUseCase = new ListPairsUseCase(pairRepository);
+const listPairsUseCase = clientUseCasesSingleton.listPairs;
 
 const TestPage: React.FC = () => {
   const [klinesData, setKlinesData] = useState<{

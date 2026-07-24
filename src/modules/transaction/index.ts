@@ -9,7 +9,6 @@ export type { ImportTransactionsResult, ImportTransactionsStoreResult } from "./
 export { binanceOrderToTransaction, binanceOrdersToTransactionsByPair } from "./application/mappers/binanceOrderToTransaction";
 export { legacyCsvRowToTransaction, legacyCsvRowsToTransactionsByPair } from "./application/mappers/legacyCsvRowToTransaction";
 export { isTransactionNewerThanStored } from "./application/import-transactions/isTransactionNewerThanStored";
-export { KvTransactionRepository } from "./infrastructure/kv/KvTransactionRepository";
 export type { TransactionMutationResult } from "./application/updateTransactionResult";
 export { ListOpenTransactionsUseCase } from "./application/list-open-transactions/ListOpenTransactionsUseCase";
 export type { ListOpenTransactionsQuery } from "./application/list-open-transactions/ListOpenTransactionsUseCase";

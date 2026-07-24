@@ -1,7 +1,6 @@
 export type { DagobertPair } from "./domain/DagobertPair";
 export type { PairRepository } from "./domain/PairRepository";
 export type { PairDto } from "./dto/PairDto";
-export { KvPairRepository } from "./infrastructure/kv/KvPairRepository";
 export type {
   PairMutationResult,
   GetPairResult,

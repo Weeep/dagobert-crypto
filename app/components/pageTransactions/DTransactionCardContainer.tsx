@@ -1,14 +1,10 @@
 import React, { useEffect, useState } from "react";
 import DTransactionCard from "./DTransactionCard";
 import type { DagobertTransaction } from "@/src/modules/transaction";
-import {
-  KvTransactionRepository,
-  ListOpenTransactionsUseCase,
-  TradeStyle,
-  UpdateTransactionTradeStyleUseCase,
-} from "@/src/modules/transaction";
+import { TradeStyle } from "@/src/modules/transaction";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
-import DtransactionGroups from "../../lib/DtransactionGroups";
+import { buildTransactionGroup } from "@/src/modules/transaction-group";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronRight,
@@ -16,13 +12,9 @@ import {
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 
-const transactionRepository = new KvTransactionRepository();
-const listOpenTransactionsUseCase = new ListOpenTransactionsUseCase(
-  transactionRepository
-);
-const updateTransactionTradeStyleUseCase = new UpdateTransactionTradeStyleUseCase(
-  transactionRepository
-);
+const listOpenTransactionsUseCase = clientUseCasesSingleton.listOpenTransactions;
+const updateTransactionTradeStyleUseCase =
+  clientUseCasesSingleton.updateTransactionTradeStyle;
 
 interface Props {
   selectedPairsProp: string[];
@@ -111,7 +103,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
 
   const mergePreview = (): React.ReactElement => {
     const dtransactionGroup: DagobertTransactionGroup =
-      DtransactionGroups.group(markedForMerge);
+      buildTransactionGroup(markedForMerge);
     let r: React.ReactElement = <></>;
     if (dtransactionGroup.groupedTrans.length > 1) {
       r = (
@@ -126,12 +118,14 @@ const DTransactionCardContainer: React.FC<Props> = ({
   };
 
   const merge = async () => {
-    let dtransactionGroup: DagobertTransactionGroup =
-      DtransactionGroups.group(markedForMerge);
+    const dtransactionGroup: DagobertTransactionGroup =
+      buildTransactionGroup(markedForMerge);
 
     if (dtransactionGroup.groupedTrans.length > 1) {
       try {
-        const r = await DtransactionGroups.post([dtransactionGroup]);
+        const r = await clientUseCasesSingleton.createTransactionGroup.execute([
+          dtransactionGroup,
+        ]);
         if (r.ok) {
           newDtransactionGroupEpochCallback(new Date().getTime());
         } else {

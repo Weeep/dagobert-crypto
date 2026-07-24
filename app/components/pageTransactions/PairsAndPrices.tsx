@@ -7,21 +7,13 @@ import {
 } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import {
-  KvTransactionRepository,
-  ListOpenTransactionsUseCase,
-} from "@/src/modules/transaction";
-import { KvPairRepository, ListPairsUseCase } from "@/src/modules/pair";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
 
 
-const pairRepository = new KvPairRepository();
-const transactionRepository = new KvTransactionRepository();
-const listPairsUseCase = new ListPairsUseCase(pairRepository);
-const listOpenTransactionsUseCase = new ListOpenTransactionsUseCase(
-  transactionRepository
-);
+const listPairsUseCase = clientUseCasesSingleton.listPairs;
+const listOpenTransactionsUseCase = clientUseCasesSingleton.listOpenTransactions;
 
 type Indicators = {
   ema7: number;

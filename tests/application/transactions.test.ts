@@ -7,7 +7,7 @@ import { ImportTransactionsStoreService } from "@/src/modules/transaction/applic
 import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
 import {
   CreateTransactionGroupUseCase,
-  DtransactionGroups,
+  buildTransactionGroup,
   type DagobertTransactionGroup,
   type TransactionGroupRepository,
 } from "@/src/modules/transaction-group";
@@ -102,7 +102,7 @@ test("tranzakciócsoport képzés amount, executed és utolsó dátum alapján �
     dateEpoch: 3000,
   });
 
-  const group = DtransactionGroups.group([buy, sell]);
+  const group = buildTransactionGroup([buy, sell]);
 
   assert.equal(group.groupId, null);
   assert.equal(group.pair, "SOLUSDC");
@@ -204,7 +204,7 @@ test("tranzakciócsoport létrehozás use case menti a groupot és grouped=true-
     transactionGroupRepository,
     transactionRepository
   );
-  const transactionGroup = DtransactionGroups.group([
+  const transactionGroup = buildTransactionGroup([
     makeTransaction({ orderId: "buy-1" }),
     makeTransaction({ orderId: "sell-1", side: "SELL", amount: 30 }),
   ]);

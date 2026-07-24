@@ -1,15 +1,9 @@
 import React, { ReactElement, useEffect, useState } from "react";
 import Image from "next/image";
 import { Color } from "@/src/shared/ui/Color";
-import { GetPairUseCase, KvPairRepository } from "@/src/modules/pair";
+import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
 import type { DagobertTransaction } from "@/src/modules/transaction";
-import {
-  ClearOtherSideOrderUseCase,
-  KvTransactionRepository,
-  SetOtherSideOrderUseCase,
-  TradeType,
-  UpdateTransactionNoteUseCase,
-} from "@/src/modules/transaction";
+import { TradeType } from "@/src/modules/transaction";
 import {
   formatDate,
   getPrice,
@@ -34,18 +28,10 @@ import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
 
 
-const pairRepository = new KvPairRepository();
-const transactionRepository = new KvTransactionRepository();
-const getPairUseCase = new GetPairUseCase(pairRepository);
-const updateTransactionNoteUseCase = new UpdateTransactionNoteUseCase(
-  transactionRepository
-);
-const setOtherSideOrderUseCase = new SetOtherSideOrderUseCase(
-  transactionRepository
-);
-const clearOtherSideOrderUseCase = new ClearOtherSideOrderUseCase(
-  transactionRepository
-);
+const getPairUseCase = clientUseCasesSingleton.getPair;
+const updateTransactionNoteUseCase = clientUseCasesSingleton.updateTransactionNote;
+const setOtherSideOrderUseCase = clientUseCasesSingleton.setOtherSideOrder;
+const clearOtherSideOrderUseCase = clientUseCasesSingleton.clearOtherSideOrder;
 
 interface Props {
   dtransaction: DagobertTransaction;
