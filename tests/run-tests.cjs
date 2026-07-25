@@ -6,5 +6,6 @@ require('./application/transactions.test.ts');
 require('./application/pairs.test.ts');
 require('./application/transaction-groups.test.ts');
 require('./infrastructure/server-kv-repositories.test.ts');
+require('./infrastructure/redis-key-value-store.test.ts');
 require('./api/read-api.test.ts');
 require('./infrastructure/http-read-repositories.test.ts');
