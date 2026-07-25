@@ -10,6 +10,7 @@ import type {
 } from "@/src/modules/transaction";
 import { TradeStyle, TradeType } from "@/src/modules/transaction";
 import { createTransactionsReadHandler } from "@/src/modules/transaction/infrastructure/http/transactionsReadHandler";
+import { createTransactionEpochHandler } from "@/src/modules/transaction/infrastructure/http/transactionEpochHandler";
 import type {
   DagobertTransactionGroup,
   TransactionGroupRepository,
@@ -17,6 +18,7 @@ import type {
 import { createTransactionGroupsReadHandler } from "@/src/modules/transaction-group/infrastructure/http/transactionGroupsReadHandler";
 import { createUseCases } from "@/src/shared/composition/createUseCases";
 import { generateToken, withAuth } from "@/utils/auth";
+import { createDatabaseHealthHandler } from "@/src/shared/infrastructure/http/databaseHealthHandler";
 
 type MockResponse = {
   statusCode: number;
@@ -49,8 +51,12 @@ function createMockResponse(): MockResponse {
   return state;
 }
 
-function request(method = "GET", query: NextApiRequest["query"] = {}): NextApiRequest {
-  return { method, query, headers: {} } as NextApiRequest;
+function request(
+  method = "GET",
+  query: NextApiRequest["query"] = {},
+  body?: unknown
+): NextApiRequest {
+  return { method, query, body, headers: {} } as NextApiRequest;
 }
 
 const transaction: DagobertTransaction = {
@@ -231,5 +237,121 @@ describe("read API integration", () => {
     await handler(authorizedRequest, authorized.response);
     assert.equal(authorized.statusCode, 200);
     assert.deepEqual(authorized.body, { data: [pair] });
+  });
+
+  test("write API-k mentik és törlik a pair, transaction és group DTO-kat", async () => {
+    const saved: string[] = [];
+    const pairWrites: Pick<PairRepository, "save" | "delete"> = {
+      save: async (value) => void saved.push(`pair:${value.pair}`),
+      delete: async (id) => void saved.push(`pair-delete:${id}`),
+    };
+    const transactionWrites: Pick<TransactionRepository, "save" | "saveMany"> = {
+      save: async (value) => void saved.push(`transaction:${value.orderId}:${value.date instanceof Date}`),
+      saveMany: async (values) => void saved.push(`transactions:${values.length}`),
+    };
+    const groupWrites: Pick<TransactionGroupRepository, "save" | "delete"> = {
+      save: async (value) => void saved.push(`group:${value.groupId}:${value.groupedTrans[0].date instanceof Date}`),
+      delete: async (id) => void saved.push(`group-delete:${id}`),
+    };
+    const useCases = createReadUseCases();
+    const transactionDto = { ...transaction, date: transaction.date.toISOString() };
+    const groupDto = { ...group, groupedTrans: [transactionDto] };
+    const calls = [
+      [createPairsReadHandler(useCases, pairWrites), request("PUT", { symbol: pair.pair }, pair)],
+      [createPairsReadHandler(useCases, pairWrites), request("DELETE", { symbol: pair.pair })],
+      [createTransactionsReadHandler(useCases, transactionWrites), request("PUT", { id: transaction.orderId }, transactionDto)],
+      [createTransactionsReadHandler(useCases, transactionWrites), request("PUT", {}, [transactionDto])],
+      [createTransactionGroupsReadHandler(useCases, groupWrites), request("PUT", { id: group.groupId! }, groupDto)],
+      [createTransactionGroupsReadHandler(useCases, groupWrites), request("DELETE", { id: group.groupId! })],
+    ] as const;
+
+    for (const [handler, apiRequest] of calls) {
+      const apiResponse = createMockResponse();
+      await handler(apiRequest, apiResponse.response);
+      assert.equal(apiResponse.statusCode, 200);
+    }
+    assert.deepEqual(saved, [
+      "pair:SOLUSDC",
+      "pair-delete:SOLUSDC",
+      "transaction:tx-1:true",
+      "transactions:1",
+      "group:group-1:true",
+      "group-delete:group-1",
+    ]);
+  });
+
+  test("transaction epoch API GET és PUT műveleteket konzisztensen kezel", async () => {
+    let epoch: number | null = 100;
+    const handler = createTransactionEpochHandler({
+      getLastProcessedEpoch: async () => epoch,
+      setLastProcessedEpoch: async (_pair, _tradeType, value) => void (epoch = value),
+    });
+    const getResponse = createMockResponse();
+    await handler(request("GET", { pair: "SOLUSDC", tradeType: TradeType.Spot }), getResponse.response);
+    assert.deepEqual(getResponse.body, { data: 100 });
+
+    const putResponse = createMockResponse();
+    await handler(request("PUT", {}, { pair: "SOLUSDC", tradeType: TradeType.Spot, epoch: 200 }), putResponse.response);
+    assert.equal(epoch, 200);
+    assert.deepEqual(putResponse.body, { data: null });
+  });
+
+  test("write API hibás DTO-ra 400-at, repository hibára sanitizált 500-at ad", async () => {
+    const badRequest = createMockResponse();
+    await createPairsReadHandler(createReadUseCases(), { save: async () => {}, delete: async () => {} })(
+      request("PUT", { symbol: "SOLUSDC" }, { pair: "OTHER" }),
+      badRequest.response
+    );
+    assert.equal(badRequest.statusCode, 400);
+    assert.deepEqual(badRequest.body, {
+      error: { code: "BAD_REQUEST", message: "A valid pair matching the URL symbol is required" },
+    });
+
+    const serverError = createMockResponse();
+    await createTransactionsReadHandler(createReadUseCases(), {
+      save: async () => { throw new Error("database secret"); },
+      saveMany: async () => {},
+    })(request("PUT", { id: transaction.orderId }, { ...transaction, date: transaction.date.toISOString() }), serverError.response);
+    assert.equal(serverError.statusCode, 500);
+    assert.deepEqual(serverError.body, {
+      error: { code: "INTERNAL_ERROR", message: "Failed to write transactions" },
+    });
+  });
+
+  test("database health API csak GET-et enged és nem módosít adatot", async () => {
+    let checks = 0;
+    const handler = createDatabaseHealthHandler(async () => {
+      checks += 1;
+      return true;
+    });
+    const success = createMockResponse();
+    await handler(request("GET"), success.response);
+    assert.equal(checks, 1);
+    assert.deepEqual(success.body, { data: { status: "ok" } });
+
+    const rejected = createMockResponse();
+    await handler(request("POST"), rejected.response);
+    assert.equal(checks, 1);
+    assert.equal(rejected.statusCode, 405);
+    assert.equal(rejected.headers.Allow, "GET");
+    assert.deepEqual(rejected.body, {
+      error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
+    });
+  });
+
+  test("database health API elrejti a kapcsolat belső hibáját", async () => {
+    const handler = createDatabaseHealthHandler(async () => {
+      throw new Error("redis host and password details");
+    });
+    const response = createMockResponse();
+    await handler(request("GET"), response.response);
+
+    assert.equal(response.statusCode, 503);
+    assert.deepEqual(response.body, {
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Database connection unavailable",
+      },
+    });
   });
 });

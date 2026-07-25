@@ -3,23 +3,20 @@ import type { TradeType } from "../../domain/TradeType";
 import type { TransactionRepository } from "../../domain/TransactionRepository";
 import {
   fromTransactionDto,
+  toTransactionDto,
   type TransactionDto,
 } from "../../dto/TransactionDto";
 import {
   HttpReadClient,
   HttpReadError,
 } from "@/src/shared/infrastructure/http/HttpReadClient";
+import { HttpWriteClient } from "@/src/shared/infrastructure/http/HttpWriteClient";
 
-type TransactionWriteRepository = Pick<
-  TransactionRepository,
-  "save" | "saveMany" | "getLastProcessedEpoch" | "setLastProcessedEpoch"
->;
-
-/** Server-backed entity reads with temporary client-cache write/epoch delegation. */
+/** Server-backed transaction persistence. */
 export class HttpTransactionRepository implements TransactionRepository {
   constructor(
     private readonly http: HttpReadClient,
-    private readonly writeRepository: TransactionWriteRepository
+    private readonly writes: HttpWriteClient
   ) {}
 
   async findAll(): Promise<DagobertTransaction[]> {
@@ -41,23 +38,34 @@ export class HttpTransactionRepository implements TransactionRepository {
     }
   }
 
-  save(transaction: DagobertTransaction): Promise<void> {
-    return this.writeRepository.save(transaction);
+  async save(transaction: DagobertTransaction): Promise<void> {
+    await this.writes.put(
+      `/api/transactions/${encodeURIComponent(transaction.orderId)}`,
+      toTransactionDto(transaction)
+    );
   }
 
-  saveMany(transactions: DagobertTransaction[]): Promise<void> {
-    return this.writeRepository.saveMany(transactions);
+  async saveMany(transactions: DagobertTransaction[]): Promise<void> {
+    await this.writes.put(
+      "/api/transactions",
+      transactions.map(toTransactionDto)
+    );
   }
 
   getLastProcessedEpoch(pair: string, tradeType: TradeType): Promise<number | null> {
-    return this.writeRepository.getLastProcessedEpoch(pair, tradeType);
+    const query = new URLSearchParams({ pair, tradeType });
+    return this.http.get<number | null>(`/api/transactions/last-processed-epoch?${query}`);
   }
 
-  setLastProcessedEpoch(
+  async setLastProcessedEpoch(
     pair: string,
     tradeType: TradeType,
     epoch: number
   ): Promise<void> {
-    return this.writeRepository.setLastProcessedEpoch(pair, tradeType, epoch);
+    await this.writes.put("/api/transactions/last-processed-epoch", {
+      pair,
+      tradeType,
+      epoch,
+    });
   }
 }

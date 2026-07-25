@@ -6,9 +6,13 @@ import { createUseCases } from "./createUseCases";
 
 /** Server composition factory with an injectable persistence connection. */
 export function createServerUseCases(store: KeyValueStore) {
-  return createUseCases({
+  return createUseCases(createServerRepositories(store));
+}
+
+export function createServerRepositories(store: KeyValueStore) {
+  return {
     pairRepository: new KvPairRepository(store),
     transactionRepository: new KvTransactionRepository(store),
     transactionGroupRepository: new KvTransactionGroupRepository(store),
-  });
+  };
 }

@@ -2,9 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { binanceOrdersToTransactionsByPair } from "@/src/modules/transaction/application/mappers/binanceOrderToTransaction";
-import { ClientCachePairRepository } from "@/src/modules/pair/infrastructure/client-cache/ClientCachePairRepository";
+import type { PairRepository } from "@/src/modules/pair";
 import { ImportTransactionsStoreService } from "@/src/modules/transaction/application/import-transactions/ImportTransactionsStoreService";
-import { ClientCacheTransactionRepository } from "@/src/modules/transaction/infrastructure/client-cache/ClientCacheTransactionRepository";
 import {
   CreateTransactionGroupUseCase,
   buildTransactionGroup,
@@ -12,10 +11,8 @@ import {
   type TransactionGroupRepository,
 } from "@/src/modules/transaction-group";
 import { TransactionIf } from "@/app/lib/Interfaces";
-import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import type { DagobertTransaction, TransactionRepository } from "@/src/modules/transaction";
 import { TradeStyle, TradeType } from "@/src/modules/transaction";
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 
 const binanceBuyOrder: TransactionIf = {
   symbol: "SOLUSDC",
@@ -114,66 +111,52 @@ test("tranzakciócsoport képzés amount, executed és utolsó dátum alapján �
 });
 
 test("duplicate/newer-than-stored logika: Binance API importnál csak a korábbinál újabb FILLED tranzakciót tárolja", async () => {
-  const cache = new Map<string, any>([
-    ["last_transaction_epoch_spot_SOLUSDC", "2000"],
-    [KVRoot.pairs, { SOLUSDC: { pair: "SOLUSDC", decimals: 4, keyLevels: [] } }],
-  ]);
   const storedTransactions: Record<string, DagobertTransaction> = {};
-  const originalGet = ClientSideDbCache.get;
-  const originalSet = ClientSideDbCache.set;
-  const originalHget = ClientSideDbCache.hget;
-  const originalHset = ClientSideDbCache.hset;
+  let lastProcessedEpoch: number | null = 2000;
+  const transactionRepository: TransactionRepository = {
+    findAll: async () => Object.values(storedTransactions),
+    findById: async (id) => storedTransactions[id] ?? null,
+    save: async (transaction) => void (storedTransactions[transaction.orderId] = transaction),
+    saveMany: async (transactions) => transactions.forEach((transaction) => {
+      storedTransactions[transaction.orderId] = transaction;
+    }),
+    getLastProcessedEpoch: async () => lastProcessedEpoch,
+    setLastProcessedEpoch: async (_pair, _tradeType, epoch) => void (lastProcessedEpoch = epoch),
+  };
+  const pairRepository: PairRepository = {
+    findAll: async () => [{ pair: "SOLUSDC", decimals: 4, keyLevels: [] }],
+    findBySymbol: async (symbol) => symbol === "SOLUSDC"
+      ? { pair: "SOLUSDC", decimals: 4, keyLevels: [] }
+      : null,
+    save: async () => {},
+    delete: async () => {},
+  };
+  const oldFilled = makeTransaction({ orderId: "old", dateEpoch: 1000 });
+  const newFilled = makeTransaction({ orderId: "new", dateEpoch: 3000 });
+  const newerButRejected = makeTransaction({
+    orderId: "rejected",
+    dateEpoch: 4000,
+    status: "CANCELED",
+  });
+  const storeService = new ImportTransactionsStoreService(
+    transactionRepository,
+    pairRepository
+  );
 
-  ClientSideDbCache.get = ((key: string) => cache.get(key) ?? null) as any;
-  ClientSideDbCache.set = (async (key: string, value: string) => {
-    cache.set(key, value);
-    return true;
-  }) as any;
-  ClientSideDbCache.hget = ((key: KVRoot, field: string) => {
-    return cache.get(key)?.[field] ?? null;
-  }) as any;
-  ClientSideDbCache.hset = (async (key: KVRoot, value: Record<string, any>) => {
-    if (key === KVRoot.dtransactions) {
-      Object.assign(storedTransactions, value);
-    }
-    cache.set(key, { ...(cache.get(key) ?? {}), ...value });
-    return true;
-  }) as any;
+  const result = await storeService.store(
+    { SOLUSDC: [oldFilled, newerButRejected, newFilled] },
+    TradeType.Spot,
+    "binanceapi"
+  );
 
-  try {
-    const oldFilled = makeTransaction({ orderId: "old", dateEpoch: 1000 });
-    const newFilled = makeTransaction({ orderId: "new", dateEpoch: 3000 });
-    const newerButRejected = makeTransaction({
-      orderId: "rejected",
-      dateEpoch: 4000,
-      status: "CANCELED",
-    });
-
-    const storeService = new ImportTransactionsStoreService(
-      new ClientCacheTransactionRepository(),
-      new ClientCachePairRepository()
-    );
-
-    const result = await storeService.store(
-      { SOLUSDC: [oldFilled, newerButRejected, newFilled] },
-      TradeType.Spot,
-      "binanceapi"
-    );
-
-    assert.deepEqual(result.pairInfo.SOLUSDC, {
-      processed: 3,
-      added: 1,
-      skipped: 2,
-    });
-    assert.deepEqual(result.addedTransactions, [newFilled]);
-    assert.deepEqual(Object.keys(storedTransactions), ["new"]);
-    assert.equal(cache.get("last_transaction_epoch_spot_SOLUSDC"), "3000");
-  } finally {
-    ClientSideDbCache.get = originalGet;
-    ClientSideDbCache.set = originalSet;
-    ClientSideDbCache.hget = originalHget;
-    ClientSideDbCache.hset = originalHset;
-  }
+  assert.deepEqual(result.pairInfo.SOLUSDC, {
+    processed: 3,
+    added: 1,
+    skipped: 2,
+  });
+  assert.deepEqual(result.addedTransactions, [newFilled]);
+  assert.deepEqual(Object.keys(storedTransactions), ["new"]);
+  assert.equal(lastProcessedEpoch, 3000);
 });
 
 test("tranzakciócsoport létrehozás use case menti a groupot és grouped=true-re állítja a tranzakciókat", async () => {
