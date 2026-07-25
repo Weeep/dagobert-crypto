@@ -79,6 +79,17 @@ const DTransactionCardContainer: React.FC<Props> = ({
     setMarkedForTrash(newMarkedForMerge);
   };
 
+  const isIncompatibleWithMergeSelection = (
+    transaction: DagobertTransaction
+  ): boolean => {
+    const selectedTransaction = markedForMerge[0];
+    return Boolean(
+      selectedTransaction &&
+        (transaction.pair !== selectedTransaction.pair ||
+          transaction.tradeType !== selectedTransaction.tradeType)
+    );
+  };
+
   const handlePairOnCardClicked = (pair: string) => {
     if (selectedPairs.length !== 1) {
       setSelectedPairs([pair]);
@@ -223,6 +234,9 @@ const DTransactionCardContainer: React.FC<Props> = ({
               currentPrice={getCurPrice(transaction.pair)}
               clickOnCard={handleCardClicked}
               clickOnPair={handlePairOnCardClicked}
+              isSelectionDisabled={isIncompatibleWithMergeSelection(
+                transaction
+              )}
             />
           ))}
       </div>

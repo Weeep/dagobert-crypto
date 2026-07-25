@@ -85,6 +85,24 @@ test("transaction group get use case visszaadja a groupot vagy stabil hibát ad"
   assert.match(missingResult.error, /Transaction group not found/);
 });
 
+test("korábban mentett, vegyes tranzakciócsoport továbbra is olvasható", async () => {
+  const legacyGroup = makeTransactionGroup({
+    groupId: "legacy-mixed-group",
+    groupedTrans: [
+      makeTransaction({ orderId: "sol", pair: "SOLUSDC" }),
+      makeTransaction({ orderId: "btc", pair: "BTCUSDC" }),
+    ],
+  });
+  const repository = makeInMemoryTransactionGroupRepository([legacyGroup]);
+
+  const result = await new GetTransactionGroupUseCase(repository).execute(
+    "legacy-mixed-group"
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.transactionGroup, legacyGroup);
+});
+
 function makeInMemoryTransactionGroupRepository(
   seed: DagobertTransactionGroup[]
 ): TransactionGroupRepository {

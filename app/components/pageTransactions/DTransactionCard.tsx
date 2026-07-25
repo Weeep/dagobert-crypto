@@ -38,6 +38,7 @@ interface Props {
   currentPrice: number;
   clickOnCard: (transaction: DagobertTransaction) => void;
   clickOnPair: (pair: string) => void;
+  isSelectionDisabled?: boolean;
   className?: string;
 }
 
@@ -46,6 +47,7 @@ const DTransactionCard: React.FC<Props> = ({
   currentPrice,
   clickOnCard,
   clickOnPair,
+  isSelectionDisabled = false,
   className = "",
 }) => {
   const [isMarked, setIsMarked] = useState(false);
@@ -94,6 +96,8 @@ const DTransactionCard: React.FC<Props> = ({
   };
 
   const handleCardClicked = () => {
+    if (isSelectionDisabled) return;
+
     clickOnCard(dtransaction);
     setIsMarked(!isMarked);
   };
@@ -460,9 +464,17 @@ const DTransactionCard: React.FC<Props> = ({
     >
       <div
         onClick={handleCardClicked}
+        aria-disabled={isSelectionDisabled}
+        title={
+          isSelectionDisabled
+            ? "Only transactions with the same pair and trade type can be grouped"
+            : undefined
+        }
         className={`relative bg-${
           isMarked ? "blue" : "slate"
-        }-100 p-4 rounded-md shadow-md`}
+        }-100 p-4 rounded-md shadow-md ${
+          isSelectionDisabled ? "cursor-not-allowed opacity-50" : ""
+        }`}
       >
         <div style={{ display: "none" }}>
           <span className="bg-red-100"></span>
