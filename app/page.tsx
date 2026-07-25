@@ -5,11 +5,9 @@ import { useEffect, useState } from "react";
 import PageTransactions from "./components/pageTransactions/PageTransactions";
 import Charts from "./components/Charts";
 import PageConfig from "./components/pageConfig/PageConfig";
-import { ClientDataBootstrapService } from "@/src/shared/application/client-data-bootstrap/ClientDataBootstrapService";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
-import { Color } from "@/src/shared/ui/Color";
 import PageBot from "./components/pageBot/PageBot";
 
 const pages = {
@@ -22,8 +20,6 @@ const pages = {
 export default function Home() {
   const [activePage, setActivePage] =
     useState<keyof typeof pages>("Transactions");
-  const [cacheInitialized, setCacheInitialized] = useState<boolean>(false);
-  const [info, setInfo] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const router = useRouter();
@@ -39,12 +35,6 @@ export default function Home() {
       })
       .finally(() => {
         setLoading(false);
-        new ClientDataBootstrapService().bootstrap().then((result) => {
-          setCacheInitialized(result.ok);
-          if (!result.ok) {
-            setInfo(result.error);
-          }
-        });
       });
   }, [router]);
 
@@ -104,19 +94,5 @@ export default function Home() {
     );
   };
 
-  return (
-    <>
-      {!loading && authorized && cacheInitialized ? (
-        addPageContent()
-      ) : (
-        <>
-          <div className="flex space-x-2">
-            <div className={`w-2 h-2 bg-${Color.SpotColor}`}></div>
-            <div className={`w-2 h-2 bg-${Color.MarginColor}`}></div>
-          </div>
-          <div className="p-8 text-xl">{info}</div>
-        </>
-      )}
-    </>
-  );
+  return authorized ? addPageContent() : null;
 }
