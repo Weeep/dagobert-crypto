@@ -1,9 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { serialize } from "cookie";
-import DbApiUtil from "@/utils/dbapiutil";
-import { generateToken } from "@/utils/auth";
-import type { ApiResponse } from "@/src/shared/dto/ApiResponse";
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import { serverUseCases } from "@/src/shared/composition/serverUseCases";
 
 export default async function handler(
   req: NextApiRequest,
@@ -20,18 +17,11 @@ export default async function handler(
   }
 
   try {
-    const response: ApiResponse = await DbApiUtil.hget(KVRoot.users, email);
-    if (!response.ok) {
-      throw new Error(`${response.error} (${response.code})`);
-    }
-    const storedPassword = response.response;
-
-    if (storedPassword && storedPassword === password) {
-      const token = generateToken(email);
-
+    const result = await serverUseCases.login.execute({ email, password });
+    if (result.authenticated) {
       res.setHeader(
         "Set-Cookie",
-        serialize("token", token, {
+        serialize("token", result.token, {
           httpOnly: true,
           secure: false, //TODO!!! https , process.env.NODE_ENV === "production",
           sameSite: "strict",
@@ -41,9 +31,9 @@ export default async function handler(
       );
 
       return res.status(200).json({ success: true });
-    } else {
-      return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    return res.status(401).json({ error: "Invalid credentials" });
   } catch (error) {
     return res
       .status(500)
