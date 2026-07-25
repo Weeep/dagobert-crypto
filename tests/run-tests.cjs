@@ -10,3 +10,4 @@ require('./infrastructure/client-side-db-cache.test.ts');
 require('./infrastructure/client-cache-repositories.test.ts');
 require('./infrastructure/server-kv-repositories.test.ts');
 require('./api/read-api.test.ts');
+require('./infrastructure/http-read-repositories.test.ts');

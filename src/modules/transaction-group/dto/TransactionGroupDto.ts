@@ -1,4 +1,8 @@
-import { toTransactionDto, type TransactionDto } from "@/src/modules/transaction/dto/TransactionDto";
+import {
+  fromTransactionDto,
+  toTransactionDto,
+  type TransactionDto,
+} from "@/src/modules/transaction/dto/TransactionDto";
 import type { TradeType } from "@/src/modules/transaction";
 import type { DagobertTransactionGroup } from "../domain/DagobertTransactionGroup";
 
@@ -20,5 +24,14 @@ export function toTransactionGroupDto(
   return {
     ...group,
     groupedTrans: group.groupedTrans.map(toTransactionDto),
+  };
+}
+
+export function fromTransactionGroupDto(
+  dto: TransactionGroupDto
+): DagobertTransactionGroup {
+  return {
+    ...dto,
+    groupedTrans: dto.groupedTrans.map(fromTransactionDto),
   };
 }

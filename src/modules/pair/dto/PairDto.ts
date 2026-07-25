@@ -14,3 +14,11 @@ export function toPairDto(pair: DagobertPair): PairDto {
     keyLevels: pair.keyLevels,
   };
 }
+
+export function fromPairDto(dto: PairDto): DagobertPair {
+  return {
+    pair: dto.pair,
+    decimals: dto.decimals,
+    keyLevels: dto.keyLevels,
+  };
+}

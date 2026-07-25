@@ -30,3 +30,10 @@ export function toTransactionDto(transaction: DagobertTransaction): TransactionD
         : String(transaction.date),
   };
 }
+
+export function fromTransactionDto(dto: TransactionDto): DagobertTransaction {
+  return {
+    ...dto,
+    date: new Date(dto.date),
+  };
+}
