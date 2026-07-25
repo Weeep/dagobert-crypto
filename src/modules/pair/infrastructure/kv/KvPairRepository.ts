@@ -1,24 +1,27 @@
-import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
+import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import type { KeyValueStore } from "@/src/shared/infrastructure/kv/KeyValueStore";
 import type { DagobertPair } from "../../domain/DagobertPair";
 import type { PairRepository } from "../../domain/PairRepository";
-import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 
+/** Redis/KV adapter for server-side composition roots. */
 export class KvPairRepository implements PairRepository {
-  findAll(): Promise<DagobertPair[]> {
-    return Promise.resolve(
-      Object.values(ClientSideDbCache.hgetall(KVRoot.pairs) ?? {}) as DagobertPair[]
-    );
+  constructor(private readonly store: KeyValueStore) {}
+
+  async findAll(): Promise<DagobertPair[]> {
+    const pairs = await this.store.hgetall(KVRoot.pairs);
+    return Object.values(pairs) as DagobertPair[];
   }
 
-  findBySymbol(symbol: string): Promise<DagobertPair | null> {
-    return Promise.resolve(ClientSideDbCache.hget(KVRoot.pairs, symbol) as DagobertPair | null);
+  async findBySymbol(symbol: string): Promise<DagobertPair | null> {
+    const pair = await this.store.hget(KVRoot.pairs, symbol);
+    return pair === null ? null : (pair as DagobertPair);
   }
 
   async save(pair: DagobertPair): Promise<void> {
-    await ClientSideDbCache.hset(KVRoot.pairs, { [pair.pair]: pair });
+    await this.store.hset(KVRoot.pairs, { [pair.pair]: pair });
   }
 
   async delete(symbol: string): Promise<void> {
-    await ClientSideDbCache.hdel(KVRoot.pairs, symbol);
+    await this.store.hdel(KVRoot.pairs, symbol);
   }
 }

@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { ClientDataBootstrapService } from "@/src/shared/application/client-data-bootstrap/ClientDataBootstrapService";
-import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
+import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 
 const clientDataBootstrapService = new ClientDataBootstrapService();
-const listPairsUseCase = clientUseCasesSingleton.listPairs;
-const listOpenTransactionsUseCase = clientUseCasesSingleton.listOpenTransactions;
-const listTransactionGroupsUseCase = clientUseCasesSingleton.listTransactionGroups;
+const listPairsUseCase = clientUseCases.listPairs;
+const listOpenTransactionsUseCase = clientUseCases.listOpenTransactions;
+const listTransactionGroupsUseCase = clientUseCases.listTransactionGroups;
 
 const DTransAdminPage: React.FC = () => {
   const [infoStr, setInfoStr] = useState<string>("Loading admin diagnostics...");

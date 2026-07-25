@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
-import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
+import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 import { formatDate, getTradeTypeColor, redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
-const listTransactionGroupsUseCase = clientUseCasesSingleton.listTransactionGroups;
+const listTransactionGroupsUseCase = clientUseCases.listTransactionGroups;
 const deleteTransactionGroupUseCase =
-  clientUseCasesSingleton.deleteTransactionGroup;
+  clientUseCases.deleteTransactionGroup;
 
 interface Props {
   newDtransactionGroupEpoch: number;

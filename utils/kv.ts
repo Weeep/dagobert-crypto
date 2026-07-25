@@ -58,7 +58,7 @@ export class KV {
 
   public async hget(key: KVRoot, field: string): Promise<any> {
     const raw = await this.redis.hget(key, field);
-    if (raw === null) return "null"; // TODO
+    if (raw === null) return null;
 
     try {
       return JSON.parse(raw);

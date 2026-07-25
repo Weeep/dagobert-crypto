@@ -7,13 +7,13 @@ import {
 } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
-import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
+import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 import { faRefresh } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
 
 
-const listPairsUseCase = clientUseCasesSingleton.listPairs;
-const listOpenTransactionsUseCase = clientUseCasesSingleton.listOpenTransactions;
+const listPairsUseCase = clientUseCases.listPairs;
+const listOpenTransactionsUseCase = clientUseCases.listOpenTransactions;
 
 type Indicators = {
   ema7: number;

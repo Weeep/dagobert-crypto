@@ -11,6 +11,9 @@ export { legacyCsvRowToTransaction, legacyCsvRowsToTransactionsByPair } from "./
 export { isTransactionNewerThanStored } from "./application/import-transactions/isTransactionNewerThanStored";
 export type { TransactionMutationResult } from "./application/updateTransactionResult";
 export { ListOpenTransactionsUseCase } from "./application/list-open-transactions/ListOpenTransactionsUseCase";
+export { ListTransactionsUseCase } from "./application/list-transactions/ListTransactionsUseCase";
+export { GetTransactionUseCase } from "./application/get-transaction/GetTransactionUseCase";
+export type { GetTransactionResult } from "./application/get-transaction/GetTransactionUseCase";
 export type { ListOpenTransactionsQuery } from "./application/list-open-transactions/ListOpenTransactionsUseCase";
 export { UpdateTransactionNoteUseCase } from "./application/update-transaction-note/UpdateTransactionNoteUseCase";
 export { UpdateTransactionTradeStyleUseCase } from "./application/update-transaction-trade-style/UpdateTransactionTradeStyleUseCase";

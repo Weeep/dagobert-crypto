@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import Papa from "papaparse";
 import type { BnceTradeHisFromCsv } from "@/src/modules/transaction/dto/legacy/BnceTradeHisFromCsv";
 import { TradeType } from "@/src/modules/transaction";
-import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
+import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 import { isBnceTradeHisFromCsvArray } from "@/utils/helper";
 
 const importTransactionsFromLegacyCsvUseCase =
-  clientUseCasesSingleton.importTransactionsFromLegacyCsv;
+  clientUseCases.importTransactionsFromLegacyCsv;
 
 //Record<string, string>; // Defines the type for each row in the CSV
 
