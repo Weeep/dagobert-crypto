@@ -5,15 +5,16 @@ import {
   HttpReadClient,
   HttpReadError,
 } from "@/src/shared/infrastructure/http/HttpReadClient";
+import { HttpWriteClient } from "@/src/shared/infrastructure/http/HttpWriteClient";
+import { toPairDto } from "../../dto/PairDto";
 
 /**
- * Reads pairs from the server API. Writes are temporarily delegated to the
- * client-cache adapter until the write API migration is complete.
+ * Reads and writes pairs through the authenticated server API.
  */
 export class HttpPairRepository implements PairRepository {
   constructor(
     private readonly http: HttpReadClient,
-    private readonly writeRepository: Pick<PairRepository, "save" | "delete">
+    private readonly writes: HttpWriteClient
   ) {}
 
   async findAll(): Promise<DagobertPair[]> {
@@ -36,11 +37,11 @@ export class HttpPairRepository implements PairRepository {
     }
   }
 
-  save(pair: DagobertPair): Promise<void> {
-    return this.writeRepository.save(pair);
+  async save(pair: DagobertPair): Promise<void> {
+    await this.writes.put(`/api/pairs/${encodeURIComponent(pair.pair)}`, toPairDto(pair));
   }
 
-  delete(symbol: string): Promise<void> {
-    return this.writeRepository.delete(symbol);
+  async delete(symbol: string): Promise<void> {
+    await this.writes.delete(`/api/pairs/${encodeURIComponent(symbol.trim().toUpperCase())}`);
   }
 }

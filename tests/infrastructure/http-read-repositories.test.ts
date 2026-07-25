@@ -1,18 +1,16 @@
 import test, { describe } from "node:test";
 import assert from "node:assert/strict";
 
-import type { DagobertPair, PairRepository } from "@/src/modules/pair";
+import type { DagobertPair } from "@/src/modules/pair";
 import { HttpPairRepository } from "@/src/modules/pair/infrastructure/http/HttpPairRepository";
 import type {
   DagobertTransaction,
-  TransactionRepository,
 } from "@/src/modules/transaction";
 import { TradeStyle, TradeType } from "@/src/modules/transaction";
 import type { TransactionDto } from "@/src/modules/transaction/dto/TransactionDto";
 import { HttpTransactionRepository } from "@/src/modules/transaction/infrastructure/http/HttpTransactionRepository";
 import type {
   DagobertTransactionGroup,
-  TransactionGroupRepository,
 } from "@/src/modules/transaction-group";
 import type { TransactionGroupDto } from "@/src/modules/transaction-group/dto/TransactionGroupDto";
 import { HttpTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/http/HttpTransactionGroupRepository";
@@ -22,6 +20,7 @@ import {
   HttpReadError,
   type FetchLike,
 } from "@/src/shared/infrastructure/http/HttpReadClient";
+import { HttpWriteClient } from "@/src/shared/infrastructure/http/HttpWriteClient";
 
 function response(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -32,14 +31,18 @@ function response(body: unknown, status = 200): Response {
 
 function fetchRouter(routes: Record<string, Response>): {
   fetch: FetchLike;
-  requests: Array<{ url: string; method: string | undefined }>;
+  requests: Array<{ url: string; method: string | undefined; body?: string }>;
 } {
-  const requests: Array<{ url: string; method: string | undefined }> = [];
+  const requests: Array<{ url: string; method: string | undefined; body?: string }> = [];
   return {
     requests,
     fetch: (async (input: string | URL | Request, init?: RequestInit) => {
       const url = input.toString();
-      requests.push({ url, method: init?.method });
+      requests.push({
+        url,
+        method: init?.method,
+        ...(typeof init?.body === "string" ? { body: init.body } : {}),
+      });
       return (
         routes[url]?.clone() ??
         response({ error: { message: "missing test route" } }, 500)
@@ -81,23 +84,9 @@ const groupDto: TransactionGroupDto = {
   note: "",
 };
 
-const pairWrites: Pick<PairRepository, "save" | "delete"> = {
-  save: async () => {},
-  delete: async () => {},
-};
-const transactionWrites: Pick<
-  TransactionRepository,
-  "save" | "saveMany" | "getLastProcessedEpoch" | "setLastProcessedEpoch"
-> = {
-  save: async () => {},
-  saveMany: async () => {},
-  getLastProcessedEpoch: async () => null,
-  setLastProcessedEpoch: async () => {},
-};
-const groupWrites: Pick<TransactionGroupRepository, "save" | "delete"> = {
-  save: async () => {},
-  delete: async () => {},
-};
+const unusedWrites = new HttpWriteClient(async () => {
+  throw new Error("Unexpected write request");
+});
 
 describe("HTTP read repositoryk", () => {
   test("pair list/get az API-ból olvas, URL-t kódol, a 404-et pedig nullra képezi", async () => {
@@ -111,7 +100,7 @@ describe("HTTP read repositoryk", () => {
     });
     const repository = new HttpPairRepository(
       new HttpReadClient(router.fetch),
-      pairWrites
+      unusedWrites
     );
 
     assert.deepEqual(await repository.findAll(), [pair]);
@@ -131,7 +120,7 @@ describe("HTTP read repositoryk", () => {
     });
     const repository = new HttpTransactionRepository(
       new HttpReadClient(router.fetch),
-      transactionWrites
+      unusedWrites
     );
 
     assert.deepEqual(await repository.findAll(), [transaction]);
@@ -146,7 +135,7 @@ describe("HTTP read repositoryk", () => {
     });
     const repository = new HttpTransactionGroupRepository(
       new HttpReadClient(router.fetch),
-      groupWrites
+      unusedWrites
     );
 
     const groups = await repository.findAll();
@@ -164,7 +153,7 @@ describe("HTTP read repositoryk", () => {
           ),
         }).fetch
       ),
-      pairWrites
+      unusedWrites
     );
 
     await assert.rejects(repository.findAll(), (error: unknown) => {
@@ -213,5 +202,56 @@ describe("HTTP read repositoryk", () => {
     const useCases = createClientUseCases(browserFetch);
 
     assert.deepEqual(await useCases.listPairs.execute(), [pair]);
+  });
+
+  test("a kliens composition root minden repository írást HTTP API-ra küld", async () => {
+    const epochUrl = "/api/transactions/last-processed-epoch?pair=SOLUSDC&tradeType=spot";
+    const router = fetchRouter({
+      "/api/pairs/SOL%2FUSDC": response({ data: pair }),
+      "/api/transactions/tx%2Fid": response({ data: transactionDto }),
+      "/api/transactions": response({ data: null }),
+      [epochUrl]: response({ data: 123 }),
+      "/api/transactions/last-processed-epoch": response({ data: null }),
+      "/api/transaction-groups/group%2Fid": response({ data: groupDto }),
+    });
+    const writes = new HttpWriteClient(router.fetch);
+    const pairRepository = new HttpPairRepository(new HttpReadClient(router.fetch), writes);
+    const transactionRepository = new HttpTransactionRepository(new HttpReadClient(router.fetch), writes);
+    const groupRepository = new HttpTransactionGroupRepository(new HttpReadClient(router.fetch), writes);
+
+    await pairRepository.save(pair);
+    await pairRepository.delete(pair.pair);
+    await transactionRepository.save(transaction);
+    await transactionRepository.saveMany([transaction]);
+    assert.equal(await transactionRepository.getLastProcessedEpoch("SOLUSDC", TradeType.Spot), 123);
+    await transactionRepository.setLastProcessedEpoch("SOLUSDC", TradeType.Spot, 456);
+    await groupRepository.save({ ...groupDto, groupedTrans: [transaction] });
+    await groupRepository.delete("group/id");
+
+    assert.deepEqual(router.requests.map(({ url, method }) => ({ url, method })), [
+      { url: "/api/pairs/SOL%2FUSDC", method: "PUT" },
+      { url: "/api/pairs/SOL%2FUSDC", method: "DELETE" },
+      { url: "/api/transactions/tx%2Fid", method: "PUT" },
+      { url: "/api/transactions", method: "PUT" },
+      { url: epochUrl, method: "GET" },
+      { url: "/api/transactions/last-processed-epoch", method: "PUT" },
+      { url: "/api/transaction-groups/group%2Fid", method: "PUT" },
+      { url: "/api/transaction-groups/group%2Fid", method: "DELETE" },
+    ]);
+  });
+
+  test("HTTP write hiba státusszal és sanitizált API üzenettel továbbterjed", async () => {
+    const writes = new HttpWriteClient(fetchRouter({
+      "/api/pairs/SOL%2FUSDC": response(
+        { error: { code: "INTERNAL_ERROR", message: "Failed to write pair" } },
+        500
+      ),
+    }).fetch);
+
+    await assert.rejects(
+      new HttpPairRepository(new HttpReadClient(), writes).save(pair),
+      (error: unknown) => error instanceof HttpReadError &&
+        error.status === 500 && error.message === "Failed to write pair"
+    );
   });
 });

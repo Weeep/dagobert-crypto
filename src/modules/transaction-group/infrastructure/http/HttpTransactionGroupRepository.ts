@@ -2,21 +2,22 @@ import type { DagobertTransactionGroup } from "../../domain/DagobertTransactionG
 import type { TransactionGroupRepository } from "../../domain/TransactionGroupRepository";
 import {
   fromTransactionGroupDto,
+  toTransactionGroupDto,
   type TransactionGroupDto,
 } from "../../dto/TransactionGroupDto";
 import {
   HttpReadClient,
   HttpReadError,
 } from "@/src/shared/infrastructure/http/HttpReadClient";
+import { HttpWriteClient } from "@/src/shared/infrastructure/http/HttpWriteClient";
 
 /**
- * Reads groups from the server API. Writes are temporarily delegated to the
- * client-cache adapter until the write API migration is complete.
+ * Reads and writes groups through the authenticated server API.
  */
 export class HttpTransactionGroupRepository implements TransactionGroupRepository {
   constructor(
     private readonly http: HttpReadClient,
-    private readonly writeRepository: Pick<TransactionGroupRepository, "save" | "delete">
+    private readonly writes: HttpWriteClient
   ) {}
 
   async findAll(): Promise<DagobertTransactionGroup[]> {
@@ -40,11 +41,15 @@ export class HttpTransactionGroupRepository implements TransactionGroupRepositor
     }
   }
 
-  save(group: DagobertTransactionGroup): Promise<void> {
-    return this.writeRepository.save(group);
+  async save(group: DagobertTransactionGroup): Promise<void> {
+    if (!group.groupId) throw new Error("Cannot save transaction group without groupId");
+    await this.writes.put(
+      `/api/transaction-groups/${encodeURIComponent(group.groupId)}`,
+      toTransactionGroupDto(group)
+    );
   }
 
-  delete(id: string): Promise<void> {
-    return this.writeRepository.delete(id);
+  async delete(id: string): Promise<void> {
+    await this.writes.delete(`/api/transaction-groups/${encodeURIComponent(id)}`);
   }
 }

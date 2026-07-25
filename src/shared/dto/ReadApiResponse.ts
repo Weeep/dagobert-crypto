@@ -1,6 +1,7 @@
 export type ReadApiSuccess<T> = { data: T };
 
 export type ReadApiErrorCode =
+  | "BAD_REQUEST"
   | "METHOD_NOT_ALLOWED"
   | "NOT_FOUND"
   | "INTERNAL_ERROR";
