@@ -135,27 +135,6 @@ class DbApiUtil {
     }
   }
 
-  // ADD
-
-  public static async set(key: string, value: string): Promise<ApiResponse> {
-    return this.handleOperation(() => kv.set(key, value));
-  }
-
-  public static async hset(
-    key: KVRoot,
-    kvObject: { [field: string]: any }
-  ): Promise<ApiResponse> {
-    return this.handleOperation(() => kv.hset(key, kvObject));
-  }
-
-  public static async sadd(key: KVRoot, item: any): Promise<ApiResponse> {
-    return this.handleOperation(() => kv.sadd(key, item));
-  }
-
-  public static async lpush(key: string, value: object): Promise<ApiResponse> {
-    return this.handleOperation(() => kv.lpush(key, value));
-  }
-
   // GET
 
   public static async get(key: string): Promise<ApiResponse> {
@@ -172,26 +151,6 @@ class DbApiUtil {
 
   private static async smembers(key: KVRoot): Promise<ApiResponse> {
     return this.handleOperation(() => kv.smembers(key));
-  }
-
-  // DEL
-
-  public static async del(key: string): Promise<ApiResponse> {
-    return this.handleOperation(() => kv.del(key));
-  }
-
-  public static async hdel(key: string, fields: string): Promise<ApiResponse> {
-    return this.handleOperation(() => kv.hdel(key, fields));
-  }
-
-  public static async srem(key: KVRoot, item: any): Promise<ApiResponse> {
-    return this.handleOperation(() => kv.srem(key, item));
-  }
-
-  // FLUSH
-
-  public static async flushdb(): Promise<ApiResponse> {
-    return this.handleOperation(() => kv.flushdb());
   }
 
   // PRIVATE

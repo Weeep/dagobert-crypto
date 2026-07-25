@@ -18,6 +18,7 @@ import type {
 import { createTransactionGroupsReadHandler } from "@/src/modules/transaction-group/infrastructure/http/transactionGroupsReadHandler";
 import { createUseCases } from "@/src/shared/composition/createUseCases";
 import { generateToken, withAuth } from "@/utils/auth";
+import { createDatabaseHealthHandler } from "@/src/shared/infrastructure/http/databaseHealthHandler";
 
 type MockResponse = {
   statusCode: number;
@@ -314,6 +315,43 @@ describe("read API integration", () => {
     assert.equal(serverError.statusCode, 500);
     assert.deepEqual(serverError.body, {
       error: { code: "INTERNAL_ERROR", message: "Failed to write transactions" },
+    });
+  });
+
+  test("database health API csak GET-et enged és nem módosít adatot", async () => {
+    let checks = 0;
+    const handler = createDatabaseHealthHandler(async () => {
+      checks += 1;
+      return true;
+    });
+    const success = createMockResponse();
+    await handler(request("GET"), success.response);
+    assert.equal(checks, 1);
+    assert.deepEqual(success.body, { data: { status: "ok" } });
+
+    const rejected = createMockResponse();
+    await handler(request("POST"), rejected.response);
+    assert.equal(checks, 1);
+    assert.equal(rejected.statusCode, 405);
+    assert.equal(rejected.headers.Allow, "GET");
+    assert.deepEqual(rejected.body, {
+      error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed" },
+    });
+  });
+
+  test("database health API elrejti a kapcsolat belső hibáját", async () => {
+    const handler = createDatabaseHealthHandler(async () => {
+      throw new Error("redis host and password details");
+    });
+    const response = createMockResponse();
+    await handler(request("GET"), response.response);
+
+    assert.equal(response.statusCode, 503);
+    assert.deepEqual(response.body, {
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Database connection unavailable",
+      },
     });
   });
 });

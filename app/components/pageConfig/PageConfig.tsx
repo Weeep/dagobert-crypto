@@ -24,11 +24,13 @@ export default function PageConfig() {
   );
 
   const databaseConnectionCheck = async () => {
-    const response = await fetch(`/api/dbapi/admin?action=connectiontest`);
+    const response = await fetch("/api/health/database");
     setDbConn(response.status === 200);
 
     const data = await response.json();
-    setDbConnStatusStr(data.response);
+    setDbConnStatusStr(
+      response.ok ? "Database connection OK" : data.error?.message ?? "Database connection unavailable"
+    );
   };
 
   useEffect(() => {
