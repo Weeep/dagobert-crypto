@@ -12,7 +12,9 @@ import {
   ClearOtherSideOrderUseCase,
   ImportTransactionsFromBinanceUseCase,
   ImportTransactionsFromLegacyCsvUseCase,
+  GetTransactionUseCase,
   ListOpenTransactionsUseCase,
+  ListTransactionsUseCase,
   SetOtherSideOrderUseCase,
   UpdateTransactionNoteUseCase,
   UpdateTransactionTradeStyleUseCase,
@@ -22,6 +24,7 @@ import {
   CreateTransactionGroupUseCase,
   DeleteTransactionGroupUseCase,
   ListTransactionGroupsUseCase,
+  GetTransactionGroupUseCase,
 } from "@/src/modules/transaction-group";
 
 export type UseCaseRepositories = {
@@ -57,6 +60,10 @@ export function createUseCases({
       transactionRepository
     ),
     getPair: new GetPairUseCase(pairRepository),
+    getTransaction: new GetTransactionUseCase(transactionRepository),
+    getTransactionGroup: new GetTransactionGroupUseCase(
+      transactionGroupRepository
+    ),
     importTransactionsFromBinance: new ImportTransactionsFromBinanceUseCase(
       transactionRepository,
       pairRepository
@@ -66,6 +73,7 @@ export function createUseCases({
       pairRepository
     ),
     listOpenTransactions: new ListOpenTransactionsUseCase(transactionRepository),
+    listTransactions: new ListTransactionsUseCase(transactionRepository),
     listPairs: new ListPairsUseCase(pairRepository),
     listTransactionGroups: new ListTransactionGroupsUseCase(
       transactionGroupRepository

@@ -1,4 +1,5 @@
 process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({ module: 'commonjs' });
+process.env.SECRET_KEY = process.env.SECRET_KEY || 'test-only-secret';
 require('ts-node/register');
 require('tsconfig-paths/register');
 require('./application/transactions.test.ts');
@@ -8,3 +9,4 @@ require('./application/client-data-bootstrap.test.ts');
 require('./infrastructure/client-side-db-cache.test.ts');
 require('./infrastructure/client-cache-repositories.test.ts');
 require('./infrastructure/server-kv-repositories.test.ts');
+require('./api/read-api.test.ts');
