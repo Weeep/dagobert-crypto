@@ -17,7 +17,7 @@ export class HttpReadClient {
   constructor(private readonly fetchImplementation: FetchLike = globalThis.fetch) {}
 
   async get<T>(url: string): Promise<T> {
-    const response = await this.fetchImplementation(url, {
+    const response = await this.fetchImplementation.call(globalThis, url, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
