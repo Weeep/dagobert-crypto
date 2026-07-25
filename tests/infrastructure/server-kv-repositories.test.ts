@@ -11,6 +11,8 @@ import { KvTransactionGroupRepository } from "@/src/modules/transaction-group/in
 import { createServerUseCases } from "@/src/shared/composition/createServerUseCases";
 import type { KeyValueStore } from "@/src/shared/infrastructure/kv/KeyValueStore";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import { KvUserCredentialRepository } from "@/src/modules/auth/infrastructure/kv/KvUserCredentialRepository";
+import type { AuthTokenService } from "@/src/modules/auth";
 
 class InMemoryKeyValueStore implements KeyValueStore {
   readonly strings = new Map<string, string | number>();
@@ -42,6 +44,11 @@ class InMemoryKeyValueStore implements KeyValueStore {
   }
 }
 
+const tokenService: AuthTokenService = {
+  generate: (email) => `token-for-${email}`,
+  verify: () => null,
+};
+
 const makeTransaction = (
   overrides: Partial<DagobertTransaction> = {}
 ): DagobertTransaction => ({
@@ -64,6 +71,15 @@ const makeTransaction = (
 });
 
 describe("server-side KV repository szerződések", () => {
+  test("credential repository a users hashből olvassa a jelszót", async () => {
+    const store = new InMemoryKeyValueStore();
+    const repository = new KvUserCredentialRepository(store);
+    store.hashes.set(KVRoot.users, { "user@example.com": "password" });
+
+    assert.equal(await repository.findPasswordByEmail("user@example.com"), "password");
+    assert.equal(await repository.findPasswordByEmail("missing@example.com"), null);
+  });
+
   test("pair repository közvetlenül a szerveroldali store-ból olvas és oda ír", async () => {
     const store = new InMemoryKeyValueStore();
     const repository = new KvPairRepository(store);
@@ -120,7 +136,7 @@ describe("server-side KV repository szerződések", () => {
 
   test("server composition root ugyanazokat a use case-eket KV adapterekkel köti be", async () => {
     const store = new InMemoryKeyValueStore();
-    const useCases = createServerUseCases(store);
+    const useCases = createServerUseCases(store, tokenService);
 
     const createResult = await useCases.createPair.execute({ pair: "solusdc" });
 
@@ -128,5 +144,12 @@ describe("server-side KV repository szerződések", () => {
     assert.deepEqual(await useCases.listPairs.execute(), [
       { pair: "SOLUSDC", decimals: 4, keyLevels: [] },
     ]);
+    assert.deepEqual(
+      await useCases.login.execute({
+        email: "missing@example.com",
+        password: "password",
+      }),
+      { authenticated: false }
+    );
   });
 });
