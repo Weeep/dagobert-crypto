@@ -44,6 +44,10 @@ function createStore(responses: {
         calls.push({ method: "hdel", arguments: args });
         return 1;
       },
+      async ping() {
+        calls.push({ method: "ping", arguments: [] });
+        return "PONG";
+      },
     } as ReturnType<RedisClientFactory>;
   };
 
@@ -114,4 +118,11 @@ test("RedisKeyValueStore serializes hash writes and delegates deletion", async (
     },
     { method: "hdel", arguments: [KVRoot.pairs, "btc"] },
   ]);
+});
+
+test("RedisKeyValueStore exposes the underlying Redis PING", async () => {
+  const { calls, store } = createStore({});
+
+  assert.equal(await store.ping(), "PONG");
+  assert.deepEqual(calls, [{ method: "ping", arguments: [] }]);
 });

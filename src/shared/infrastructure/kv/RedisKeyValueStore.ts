@@ -9,7 +9,7 @@ export type RedisConnectionOptions = Pick<
 
 type RedisClient = Pick<
   Redis,
-  "get" | "set" | "hget" | "hgetall" | "hset" | "hdel"
+  "get" | "set" | "hget" | "hgetall" | "hset" | "hdel" | "ping"
 >;
 
 export type RedisClientFactory = (
@@ -72,6 +72,10 @@ export class RedisKeyValueStore implements KeyValueStore {
 
   public hdel(key: string, field: string): Promise<unknown> {
     return this.redis.hdel(key, field);
+  }
+
+  public ping(): Promise<string> {
+    return this.redis.ping();
   }
 
   private parseValue(value: string): unknown {
