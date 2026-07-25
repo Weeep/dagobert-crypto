@@ -197,4 +197,21 @@ describe("HTTP read repositoryk", () => {
       ["/api/pairs", "/api/transaction-groups", "/api/transactions"]
     );
   });
+
+  test("a böngésző natív fetch függvényét globalThis kontextussal hívja", async () => {
+    const browserFetch = async function (
+      this: unknown,
+      input: string | URL | Request
+    ): Promise<Response> {
+      if (this !== globalThis) {
+        throw new TypeError("Illegal invocation");
+      }
+
+      assert.equal(input.toString(), "/api/pairs");
+      return response({ data: [pair] });
+    } as FetchLike;
+    const useCases = createClientUseCases(browserFetch);
+
+    assert.deepEqual(await useCases.listPairs.execute(), [pair]);
+  });
 });
