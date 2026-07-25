@@ -110,6 +110,28 @@ test("tranzakciócsoport képzés amount, executed és utolsó dátum alapján �
   assert.deepEqual(group.groupedTrans, [buy, sell]);
 });
 
+test("tranzakciócsoport képzés elutasítja az eltérő pairhez tartozó tranzakciókat", () => {
+  assert.throws(
+    () =>
+      buildTransactionGroup([
+        makeTransaction({ orderId: "sol", pair: "SOLUSDC" }),
+        makeTransaction({ orderId: "btc", pair: "BTCUSDC" }),
+      ]),
+    /Cannot group transactions with different pairs/
+  );
+});
+
+test("tranzakciócsoport képzés elutasítja az eltérő trade type-hoz tartozó tranzakciókat", () => {
+  assert.throws(
+    () =>
+      buildTransactionGroup([
+        makeTransaction({ orderId: "spot", tradeType: TradeType.Spot }),
+        makeTransaction({ orderId: "margin", tradeType: TradeType.Margin }),
+      ]),
+    /Cannot group transactions with different trade types/
+  );
+});
+
 test("duplicate/newer-than-stored logika: Binance API importnál csak a korábbinál újabb FILLED tranzakciót tárolja", async () => {
   const storedTransactions: Record<string, DagobertTransaction> = {};
   let lastProcessedEpoch: number | null = 2000;

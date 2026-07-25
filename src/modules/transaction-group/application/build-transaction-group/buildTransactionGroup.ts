@@ -5,6 +5,8 @@ import type { DagobertTransactionGroup } from "../../domain/DagobertTransactionG
 export function buildTransactionGroup(
   transactions: DagobertTransaction[]
 ): DagobertTransactionGroup {
+  validateTransactionsBelongToSameGroup(transactions);
+
   const transactionGroup: DagobertTransactionGroup = {
     groupId: null,
     pair: "",
@@ -32,4 +34,23 @@ export function buildTransactionGroup(
   }
 
   return transactionGroup;
+}
+
+function validateTransactionsBelongToSameGroup(
+  transactions: DagobertTransaction[]
+): void {
+  const firstTransaction = transactions[0];
+  if (!firstTransaction) return;
+
+  if (transactions.some(({ pair }) => pair !== firstTransaction.pair)) {
+    throw new Error("Cannot group transactions with different pairs");
+  }
+
+  if (
+    transactions.some(
+      ({ tradeType }) => tradeType !== firstTransaction.tradeType
+    )
+  ) {
+    throw new Error("Cannot group transactions with different trade types");
+  }
 }
