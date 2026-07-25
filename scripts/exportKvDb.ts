@@ -1,19 +1,19 @@
-// scripts/exportKv.ts
+import { writeFile } from "node:fs/promises";
+import dotenv from "dotenv";
+import {
+  exportRedisDatabase,
+  withRedisToolingClient,
+} from "./kv/redisDatabaseTooling";
 
-const DbApiUtil = require("../utils/dbapiutil").default;
-const fse = require("fs");
-const dotenve = require("dotenv");
+dotenv.config({ path: ".env.local" });
 
-dotenve.config({ path: ".env.local" });
-
-async function exportKvDatabase() {
-  const data = await DbApiUtil.getCache();
-
-  fse.writeFileSync(
-    "vercel_kv_export.json",
-    JSON.stringify(data.cache, null, 2)
-  );
+async function main(): Promise<void> {
+  const dump = await withRedisToolingClient(exportRedisDatabase);
+  await writeFile("vercel_kv_export.json", JSON.stringify(dump, null, 2));
   console.log("Database exported successfully!");
 }
 
-exportKvDatabase().catch(console.error);
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
