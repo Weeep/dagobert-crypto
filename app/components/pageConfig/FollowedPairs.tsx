@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { TradeType } from "@/src/modules/transaction";
-import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
+import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 import { redCross } from "@/utils/helper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRefresh, faGear } from "@fortawesome/free-solid-svg-icons";
 
-const createPairUseCase = clientUseCasesSingleton.createPair;
-const updatePairSettingsUseCase = clientUseCasesSingleton.updatePairSettings;
-const deletePairUseCase = clientUseCasesSingleton.deletePair;
+const createPairUseCase = clientUseCases.createPair;
+const updatePairSettingsUseCase = clientUseCases.updatePairSettings;
+const deletePairUseCase = clientUseCases.deletePair;
 const createPairsFromTransactionsUseCase =
-  clientUseCasesSingleton.createPairsFromTransactions;
+  clientUseCases.createPairsFromTransactions;
 
 export type PairsInfo = {
   [pair: string]: {

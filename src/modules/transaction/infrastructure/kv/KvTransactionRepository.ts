@@ -1,45 +1,52 @@
-import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import type { KeyValueStore } from "@/src/shared/infrastructure/kv/KeyValueStore";
 import type { DagobertTransaction } from "../../domain/DagobertTransaction";
-import type { TransactionRepository } from "../../domain/TransactionRepository";
 import type { TradeType } from "../../domain/TradeType";
+import type { TransactionRepository } from "../../domain/TransactionRepository";
 
+/** Redis/KV adapter for server-side composition roots. */
 export class KvTransactionRepository implements TransactionRepository {
-  findAll(): Promise<DagobertTransaction[]> {
-    return Promise.resolve(
-      Object.values(ClientSideDbCache.hgetall(KVRoot.dtransactions) ?? {}) as DagobertTransaction[]
-    );
+  constructor(private readonly store: KeyValueStore) {}
+
+  async findAll(): Promise<DagobertTransaction[]> {
+    const transactions = await this.store.hgetall(KVRoot.dtransactions);
+    return Object.values(transactions) as DagobertTransaction[];
   }
 
-  findById(id: string): Promise<DagobertTransaction | null> {
-    return Promise.resolve(
-      ClientSideDbCache.hget(KVRoot.dtransactions, id) as DagobertTransaction | null
-    );
+  async findById(id: string): Promise<DagobertTransaction | null> {
+    const transaction = await this.store.hget(KVRoot.dtransactions, id);
+    return transaction === null ? null : (transaction as DagobertTransaction);
   }
 
   async save(transaction: DagobertTransaction): Promise<void> {
-    await ClientSideDbCache.hset(KVRoot.dtransactions, {
+    await this.store.hset(KVRoot.dtransactions, {
       [transaction.orderId]: transaction,
     });
   }
 
   async saveMany(transactions: DagobertTransaction[]): Promise<void> {
     const transactionsById = transactions.reduce<Record<string, DagobertTransaction>>(
-      (acc, transaction) => {
-        acc[transaction.orderId] = transaction;
-        return acc;
+      (result, transaction) => {
+        result[transaction.orderId] = transaction;
+        return result;
       },
       {}
     );
 
     if (Object.keys(transactionsById).length > 0) {
-      await ClientSideDbCache.hset(KVRoot.dtransactions, transactionsById);
+      await this.store.hset(KVRoot.dtransactions, transactionsById);
     }
   }
 
-  getLastProcessedEpoch(pair: string, tradeType: TradeType): Promise<number | null> {
-    const value = ClientSideDbCache.get(this.lastProcessedEpochKey(pair, tradeType));
-    return Promise.resolve(value ? parseInt(value, 10) : null);
+  async getLastProcessedEpoch(
+    pair: string,
+    tradeType: TradeType
+  ): Promise<number | null> {
+    const value = await this.store.get(this.lastProcessedEpochKey(pair, tradeType));
+    if (value === null) return null;
+
+    const epoch = typeof value === "number" ? value : Number.parseInt(value, 10);
+    return Number.isNaN(epoch) ? null : epoch;
   }
 
   async setLastProcessedEpoch(
@@ -47,10 +54,7 @@ export class KvTransactionRepository implements TransactionRepository {
     tradeType: TradeType,
     epoch: number
   ): Promise<void> {
-    await ClientSideDbCache.set(
-      this.lastProcessedEpochKey(pair, tradeType),
-      epoch.toString()
-    );
+    await this.store.set(this.lastProcessedEpochKey(pair, tradeType), epoch.toString());
   }
 
   private lastProcessedEpochKey(pair: string, tradeType: TradeType): string {

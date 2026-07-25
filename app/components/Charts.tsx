@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { format, getDaysInMonth } from "date-fns";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
-import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
+import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 
-const listTransactionGroupsUseCase = clientUseCasesSingleton.listTransactionGroups;
+const listTransactionGroupsUseCase = clientUseCases.listTransactionGroups;
 
 type Transaction = {
   groupId: string;

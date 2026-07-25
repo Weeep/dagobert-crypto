@@ -1,7 +1,7 @@
 import React, { ReactElement, useEffect, useState } from "react";
 import Image from "next/image";
 import { Color } from "@/src/shared/ui/Color";
-import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
+import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 import type { DagobertTransaction } from "@/src/modules/transaction";
 import { TradeType } from "@/src/modules/transaction";
 import {
@@ -28,10 +28,10 @@ import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { DCandle, TradingAnalysis } from "../../lib/TradingAnalysis";
 
 
-const getPairUseCase = clientUseCasesSingleton.getPair;
-const updateTransactionNoteUseCase = clientUseCasesSingleton.updateTransactionNote;
-const setOtherSideOrderUseCase = clientUseCasesSingleton.setOtherSideOrder;
-const clearOtherSideOrderUseCase = clientUseCasesSingleton.clearOtherSideOrder;
+const getPairUseCase = clientUseCases.getPair;
+const updateTransactionNoteUseCase = clientUseCases.updateTransactionNote;
+const setOtherSideOrderUseCase = clientUseCases.setOtherSideOrder;
+const clearOtherSideOrderUseCase = clientUseCases.clearOtherSideOrder;
 
 interface Props {
   dtransaction: DagobertTransaction;

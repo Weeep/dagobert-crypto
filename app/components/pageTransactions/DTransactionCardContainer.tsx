@@ -4,7 +4,7 @@ import type { DagobertTransaction } from "@/src/modules/transaction";
 import { TradeStyle } from "@/src/modules/transaction";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
 import { buildTransactionGroup } from "@/src/modules/transaction-group";
-import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
+import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronRight,
@@ -12,9 +12,9 @@ import {
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 
-const listOpenTransactionsUseCase = clientUseCasesSingleton.listOpenTransactions;
+const listOpenTransactionsUseCase = clientUseCases.listOpenTransactions;
 const updateTransactionTradeStyleUseCase =
-  clientUseCasesSingleton.updateTransactionTradeStyle;
+  clientUseCases.updateTransactionTradeStyle;
 
 interface Props {
   selectedPairsProp: string[];
@@ -123,7 +123,7 @@ const DTransactionCardContainer: React.FC<Props> = ({
 
     if (dtransactionGroup.groupedTrans.length > 1) {
       try {
-        const r = await clientUseCasesSingleton.createTransactionGroup.execute([
+        const r = await clientUseCases.createTransactionGroup.execute([
           dtransactionGroup,
         ]);
         if (r.ok) {

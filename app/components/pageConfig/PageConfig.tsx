@@ -4,14 +4,14 @@ import CsvParse from "./CsvParse";
 import { Color } from "@/src/shared/ui/Color";
 import { TradeType } from "@/src/modules/transaction";
 import type { DagobertPair } from "@/src/modules/pair";
-import { clientUseCasesSingleton } from "@/src/shared/application/clientUseCasesSingleton";
+import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
 import FollowedPairs, { PairsInfo } from "./FollowedPairs";
 import { TransactionIf } from "@/app/lib/Interfaces";
 
-const listPairsUseCase = clientUseCasesSingleton.listPairs;
+const listPairsUseCase = clientUseCases.listPairs;
 const importTransactionsFromBinanceUseCase =
-  clientUseCasesSingleton.importTransactionsFromBinance;
+  clientUseCases.importTransactionsFromBinance;
 
 export default function PageConfig() {
   const [dbConnStatusStr, setDbConnStatusStr] = useState<string>("Checking...");

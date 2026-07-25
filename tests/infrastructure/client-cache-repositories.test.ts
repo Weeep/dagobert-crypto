@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 
 import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import type { DagobertPair } from "@/src/modules/pair";
-import { KvPairRepository } from "@/src/modules/pair/infrastructure/kv/KvPairRepository";
+import { ClientCachePairRepository } from "@/src/modules/pair/infrastructure/client-cache/ClientCachePairRepository";
 import type { DagobertTransaction } from "@/src/modules/transaction";
 import { TradeStyle, TradeType } from "@/src/modules/transaction";
-import { KvTransactionRepository } from "@/src/modules/transaction/infrastructure/kv/KvTransactionRepository";
+import { ClientCacheTransactionRepository } from "@/src/modules/transaction/infrastructure/client-cache/ClientCacheTransactionRepository";
 import type { DagobertTransactionGroup } from "@/src/modules/transaction-group";
-import { KvTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/kv/KvTransactionGroupRepository";
+import { ClientCacheTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/client-cache/ClientCacheTransactionGroupRepository";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 
 type CacheInternals = { cache: Record<string, any>; isInitialized: boolean };
@@ -52,7 +52,7 @@ describe("kliensoldali cache repository szerződések", { concurrency: false }, 
   });
 
 test("pair cache repository teljes CRUD contractja megmarad", async () => {
-  const repository = new KvPairRepository();
+  const repository = new ClientCachePairRepository();
   const sol: DagobertPair = { pair: "SOLUSDC", decimals: 4, keyLevels: [100] };
   const btc: DagobertPair = { pair: "BTCUSDC", decimals: 2, keyLevels: [] };
 
@@ -68,7 +68,7 @@ test("pair cache repository teljes CRUD contractja megmarad", async () => {
 });
 
 test("transaction cache repository save/saveMany/read és epoch contractja megmarad", async () => {
-  const repository = new KvTransactionRepository();
+  const repository = new ClientCacheTransactionRepository();
   const first = makeTransaction({ orderId: "tx-1" });
   const second = makeTransaction({ orderId: "tx-2", pair: "BTCUSDC" });
   const third = makeTransaction({ orderId: "tx-3", tradeType: TradeType.Margin });
@@ -87,7 +87,7 @@ test("transaction cache repository save/saveMany/read és epoch contractja megma
 });
 
 test("transaction group cache repository teljes CRUD contractja és groupId validációja megmarad", async () => {
-  const repository = new KvTransactionGroupRepository();
+  const repository = new ClientCacheTransactionGroupRepository();
   const transaction = makeTransaction({ grouped: true });
   const group: DagobertTransactionGroup = {
     groupId: "group-1",

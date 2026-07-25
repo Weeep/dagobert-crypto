@@ -1,24 +1,20 @@
-import ClientSideDbCache from "@/app/lib/ClientSideDbCache";
 import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
+import type { KeyValueStore } from "@/src/shared/infrastructure/kv/KeyValueStore";
 import type { DagobertTransactionGroup } from "../../domain/DagobertTransactionGroup";
 import type { TransactionGroupRepository } from "../../domain/TransactionGroupRepository";
 
+/** Redis/KV adapter for server-side composition roots. */
 export class KvTransactionGroupRepository implements TransactionGroupRepository {
-  findAll(): Promise<DagobertTransactionGroup[]> {
-    return Promise.resolve(
-      Object.values(
-        ClientSideDbCache.hgetall(KVRoot.dtransactionGroups) ?? {}
-      ) as DagobertTransactionGroup[]
-    );
+  constructor(private readonly store: KeyValueStore) {}
+
+  async findAll(): Promise<DagobertTransactionGroup[]> {
+    const groups = await this.store.hgetall(KVRoot.dtransactionGroups);
+    return Object.values(groups) as DagobertTransactionGroup[];
   }
 
-  findById(id: string): Promise<DagobertTransactionGroup | null> {
-    return Promise.resolve(
-      ClientSideDbCache.hget(
-        KVRoot.dtransactionGroups,
-        id
-      ) as DagobertTransactionGroup | null
-    );
+  async findById(id: string): Promise<DagobertTransactionGroup | null> {
+    const group = await this.store.hget(KVRoot.dtransactionGroups, id);
+    return group === null ? null : (group as DagobertTransactionGroup);
   }
 
   async save(group: DagobertTransactionGroup): Promise<void> {
@@ -26,12 +22,12 @@ export class KvTransactionGroupRepository implements TransactionGroupRepository 
       throw new Error("Cannot save transaction group without groupId");
     }
 
-    await ClientSideDbCache.hset(KVRoot.dtransactionGroups, {
+    await this.store.hset(KVRoot.dtransactionGroups, {
       [group.groupId]: group,
     });
   }
 
   async delete(id: string): Promise<void> {
-    await ClientSideDbCache.hdel(KVRoot.dtransactionGroups, id);
+    await this.store.hdel(KVRoot.dtransactionGroups, id);
   }
 }
