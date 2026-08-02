@@ -16,7 +16,7 @@
     "prisma:validate": "prisma validate",
     "prisma:studio": "prisma studio",
     "test": "node --test tests/run-tests.cjs",
-    "test:prisma": "node --test --require ts-node/register --require tsconfig-paths/register tests/integration/prisma-connection.test.ts"
+    "test:prisma": "node --test tests/run-prisma-test.cjs"
   },
   "dependencies": {
     "@binance/connector": "^3.6.1",
