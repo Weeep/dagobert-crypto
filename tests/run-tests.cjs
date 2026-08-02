@@ -9,6 +9,7 @@ require('./application/auth-login.test.ts');
 require('./infrastructure/server-kv-repositories.test.ts');
 require('./infrastructure/redis-key-value-store.test.ts');
 require('./infrastructure/redis-health-check.test.ts');
+require('./infrastructure/prisma-health-check.test.ts');
 require('./infrastructure/redis-database-tooling.test.ts');
 require('./api/read-api.test.ts');
 require('./infrastructure/http-read-repositories.test.ts');

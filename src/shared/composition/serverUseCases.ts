@@ -1,6 +1,7 @@
 import { JwtAuthTokenService } from "@/src/modules/auth/infrastructure/JwtAuthTokenService";
-import { RedisHealthCheck } from "@/src/shared/infrastructure/kv/RedisHealthCheck";
 import { RedisKeyValueStore } from "@/src/shared/infrastructure/kv/RedisKeyValueStore";
+import { PrismaHealthCheck } from "@/src/shared/infrastructure/prisma/PrismaHealthCheck";
+import { prisma } from "@/src/shared/infrastructure/prisma/prisma";
 import {
   createServerRepositories,
   createServerUseCasesFromRepositories,
@@ -16,7 +17,7 @@ const redisKeyValueStore = new RedisKeyValueStore({
   password: process.env.KV_PASSWORD,
 });
 
-export const databaseHealthCheck = new RedisHealthCheck(redisKeyValueStore);
+export const databaseHealthCheck = new PrismaHealthCheck(prisma);
 export const serverRepositories = createServerRepositories(redisKeyValueStore);
 export const serverUseCases = createServerUseCasesFromRepositories(
   serverRepositories,
