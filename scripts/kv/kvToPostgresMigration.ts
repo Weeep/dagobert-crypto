@@ -1,4 +1,8 @@
-import { randomBytes, scrypt as nodeScrypt } from "node:crypto";
+import {
+  randomBytes,
+  scrypt as nodeScrypt,
+  timingSafeEqual,
+} from "node:crypto";
 
 const CURSOR_PREFIX = "last_transaction_epoch_";
 const SCRYPT_OPTIONS = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
@@ -52,6 +56,36 @@ export async function hashLegacyPassword(password: string): Promise<string> {
     )
   );
   return `scrypt$v=1$N=32768$r=8$p=1$${salt.toString("base64")}$${key.toString("base64")}`;
+}
+
+/** Verifies the versioned password representation written by the importer. */
+export async function verifyMigratedPassword(
+  password: string,
+  encoded: string
+): Promise<boolean> {
+  const match =
+    /^scrypt\$v=1\$N=(\d+)\$r=(\d+)\$p=(\d+)\$([^$]+)\$([^$]+)$/.exec(
+      encoded
+    );
+  if (!match) return false;
+
+  const salt = Buffer.from(match[4], "base64");
+  const expected = Buffer.from(match[5], "base64");
+  const actual = await new Promise<Buffer>((resolve, reject) =>
+    nodeScrypt(
+      password,
+      salt,
+      expected.length,
+      {
+        N: Number(match[1]),
+        r: Number(match[2]),
+        p: Number(match[3]),
+        maxmem: SCRYPT_OPTIONS.maxmem,
+      },
+      (error, result) => (error ? reject(error) : resolve(result))
+    )
+  );
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
 export async function prepareMigrationData(dump: KvDump): Promise<MigrationData> {

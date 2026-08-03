@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { auditKvExport } from "@/scripts/auditKvExport";
-import { prepareMigrationData } from "@/scripts/kv/kvToPostgresMigration";
+import {
+  prepareMigrationData,
+  verifyMigratedPassword,
+} from "@/scripts/kv/kvToPostgresMigration";
 
 test("KV export audit reports migration blockers without exposing passwords", () => {
   const audit = auditKvExport({
@@ -85,6 +88,17 @@ test("migration filters every record associated with a deleted pair", async () =
   });
   assert.match(migration.users[0].passwordHash, /^scrypt\$v=1\$N=32768\$r=8\$p=1\$/);
   assert.equal(migration.users[0].passwordHash.includes("legacy-secret"), false);
+  assert.equal(
+    await verifyMigratedPassword(
+      "legacy-secret",
+      migration.users[0].passwordHash
+    ),
+    true
+  );
+  assert.equal(
+    await verifyMigratedPassword("wrong-password", migration.users[0].passwordHash),
+    false
+  );
   assert.equal(migration.transactions[0].transactionGroupId, "00000000-0000-0000-0000-000000000001");
   assert.equal(migration.transactions[1].transactionGroupId, null);
   assert.equal(migration.transactions[1].grouped, true);
