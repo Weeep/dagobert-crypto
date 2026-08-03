@@ -1,23 +1,30 @@
 import { readFile } from "node:fs/promises";
 import dotenv from "dotenv";
+import { PrismaClient } from "@prisma/client";
 import {
-  importRedisDatabase,
-  type RedisDatabaseDump,
-  withRedisToolingClient,
-} from "./kv/redisDatabaseTooling";
+  importKvDump,
+  type KvDump,
+} from "./kv/kvToPostgresMigration";
 
 dotenv.config({ path: ".env.local" });
 
 async function main(): Promise<void> {
-  const dump = JSON.parse(
-    await readFile("vercel_kv_export.json", "utf8")
-  ) as RedisDatabaseDump;
+  const file = process.argv[2] ?? "vercel_kv_export.json";
+  const dump = JSON.parse(await readFile(file, "utf8")) as KvDump;
+  const prisma = new PrismaClient();
 
-  await withRedisToolingClient((redis) => importRedisDatabase(redis, dump));
-  console.log("Database imported successfully!");
+  try {
+    const summary = await importKvDump(prisma, dump);
+    console.log(`PostgreSQL import completed from ${file}.`);
+    console.log(JSON.stringify(summary, null, 2));
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

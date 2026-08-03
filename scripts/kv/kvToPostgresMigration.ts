@@ -1,0 +1,200 @@
+import { randomBytes, scrypt as nodeScrypt } from "node:crypto";
+
+const CURSOR_PREFIX = "last_transaction_epoch_";
+const SCRYPT_OPTIONS = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+
+type JsonObject = Record<string, any>;
+export type KvDump = Record<string, unknown>;
+type MigrationTransaction = {
+  [model: string]: { deleteMany(): Promise<unknown>; createMany(args: { data: any[] }): Promise<unknown> };
+};
+type MigrationPrismaClient = {
+  $transaction<T>(operation: (tx: MigrationTransaction) => Promise<T>, options: { timeout: number }): Promise<T>;
+};
+
+export type MigrationSummary = {
+  imported: Record<string, number>;
+  skipped: {
+    transactionsWithDeletedPair: number;
+    groupsWithDeletedPair: number;
+    cursorsWithDeletedPair: number;
+  };
+};
+
+export type MigrationData = {
+  users: Array<{ email: string; passwordHash: string }>;
+  pairs: Array<{ symbol: string; decimals: number; keyLevels: string[] }>;
+  groups: Array<JsonObject>;
+  transactions: Array<JsonObject>;
+  cursors: Array<JsonObject>;
+  summary: MigrationSummary;
+};
+
+function object(value: unknown): JsonObject {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonObject)
+    : {};
+}
+
+export async function hashLegacyPassword(password: string): Promise<string> {
+  const salt = randomBytes(16);
+  const key = await new Promise<Buffer>((resolve, reject) =>
+    nodeScrypt(password, salt, 64, SCRYPT_OPTIONS, (error, result) =>
+      error ? reject(error) : resolve(result)
+    )
+  );
+  return `scrypt$v=1$N=32768$r=8$p=1$${salt.toString("base64")}$${key.toString("base64")}`;
+}
+
+export async function prepareMigrationData(dump: KvDump): Promise<MigrationData> {
+  const rawUsers = object(dump.users);
+  const rawPairs = object(dump.pairs);
+  const rawTransactions = object(dump.dtransactions);
+  const rawGroups = object(dump.dtransactionGroups);
+  const pairSymbols = new Set(Object.keys(rawPairs));
+
+  const users = await Promise.all(
+    Object.entries(rawUsers).map(async ([email, password]) => ({
+      email,
+      passwordHash: await hashLegacyPassword(String(password)),
+    }))
+  );
+  const pairs = Object.entries(rawPairs).map(([symbol, value]) => {
+    const pair = object(value);
+    return {
+      symbol,
+      decimals: Number(pair.decimals),
+      keyLevels: (Array.isArray(pair.keyLevels) ? pair.keyLevels : []).map(String),
+    };
+  });
+
+  const importedGroups = Object.entries(rawGroups).filter(([, value]) =>
+    pairSymbols.has(String(object(value).pair))
+  );
+  const membership = new Map<string, string>();
+  for (const [groupId, value] of importedGroups) {
+    const group = object(value);
+    for (const transaction of Array.isArray(group.groupedTrans)
+      ? group.groupedTrans
+      : []) {
+      const orderId = String(object(transaction).orderId);
+      const previous = membership.get(orderId);
+      if (previous && previous !== groupId) {
+        throw new Error(
+          `Transaction ${orderId} belongs to multiple imported groups (${previous}, ${groupId}).`
+        );
+      }
+      membership.set(orderId, groupId);
+    }
+  }
+  const groups = importedGroups.map(([id, value]) => {
+    const group = object(value);
+    return {
+      id,
+      pairSymbol: String(group.pair),
+      amount: String(group.amount),
+      executed: String(group.executed),
+      tradeType: group.tradeType,
+      lastTransDateEpoch: BigInt(group.lastTransDateEpoch),
+      note: typeof group.note === "string" ? group.note : "",
+    };
+  });
+
+  const transactions = Object.values(rawTransactions)
+    .map(object)
+    .filter((transaction) => pairSymbols.has(String(transaction.pair)))
+    .map((transaction) => {
+      const transactionGroupId = membership.get(String(transaction.orderId)) ?? null;
+      return {
+        orderId: String(transaction.orderId),
+        binanceApiId: BigInt(transaction.binanceApiId),
+        pairSymbol: String(transaction.pair),
+        amount: String(transaction.amount),
+        executed: String(transaction.executed),
+        date: new Date(String(transaction.date)),
+        dateEpoch: BigInt(transaction.dateEpoch),
+        side: transaction.side,
+        price: String(transaction.price),
+        status: transaction.status,
+        grouped: transactionGroupId !== null,
+        note: typeof transaction.note === "string" ? transaction.note : "",
+        otherSideOrderId:
+          typeof transaction.otherSideOrderId === "string" &&
+          transaction.otherSideOrderId.length > 0
+            ? transaction.otherSideOrderId
+            : null,
+        tradeType: transaction.tradeType,
+        tradeStyle: transaction.tradeStyle,
+        transactionGroupId,
+      };
+    });
+
+  const cursorEntries = Object.entries(dump).filter(([key]) =>
+    key.startsWith(CURSOR_PREFIX)
+  );
+  const cursors = cursorEntries.flatMap(([key, value]) => {
+    const match = /^last_transaction_epoch_(spot|margin)_(.+)$/.exec(key);
+    if (!match || !pairSymbols.has(match[2])) return [];
+    return [{
+      tradeType: match[1],
+      pairSymbol: match[2],
+      lastProcessedEpoch: BigInt(value as number),
+    }];
+  });
+
+  return {
+    users,
+    pairs,
+    groups,
+    transactions,
+    cursors,
+    summary: {
+      imported: {
+        users: users.length,
+        pairs: pairs.length,
+        transactionGroups: groups.length,
+        transactions: transactions.length,
+        importCursors: cursors.length,
+      },
+      skipped: {
+        transactionsWithDeletedPair:
+          Object.keys(rawTransactions).length - transactions.length,
+        groupsWithDeletedPair: Object.keys(rawGroups).length - groups.length,
+        cursorsWithDeletedPair: cursorEntries.length - cursors.length,
+      },
+    },
+  };
+}
+
+/** Replaces migration-owned PostgreSQL data atomically with the filtered KV dump. */
+export async function importKvDump(
+  prisma: MigrationPrismaClient,
+  dump: KvDump
+): Promise<MigrationSummary> {
+  const data = await prepareMigrationData(dump);
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.transaction.deleteMany();
+      await tx.transactionGroup.deleteMany();
+      await tx.importCursor.deleteMany();
+      await tx.pair.deleteMany();
+      await tx.user.deleteMany();
+      if (data.users.length) await tx.user.createMany({ data: data.users });
+      if (data.pairs.length) await tx.pair.createMany({ data: data.pairs });
+      if (data.groups.length)
+        await tx.transactionGroup.createMany({
+          data: data.groups,
+        });
+      if (data.transactions.length)
+        await tx.transaction.createMany({
+          data: data.transactions,
+        });
+      if (data.cursors.length)
+        await tx.importCursor.createMany({
+          data: data.cursors,
+        });
+    },
+    { timeout: 120_000 }
+  );
+  return data.summary;
+}
