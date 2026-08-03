@@ -2,7 +2,9 @@ import { JwtAuthTokenService } from "@/src/modules/auth/infrastructure/JwtAuthTo
 import { RedisKeyValueStore } from "@/src/shared/infrastructure/kv/RedisKeyValueStore";
 import { PrismaHealthCheck } from "@/src/shared/infrastructure/prisma/PrismaHealthCheck";
 import { prisma } from "@/src/shared/infrastructure/prisma/prisma";
-import { createPrismaReadRepositories } from "@/src/shared/infrastructure/prisma/PrismaReadRepositories";
+import { PrismaPairRepository } from "@/src/modules/pair/infrastructure/prisma/PrismaPairRepository";
+import { PrismaTransactionRepository } from "@/src/modules/transaction/infrastructure/prisma/PrismaTransactionRepository";
+import { PrismaTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/prisma/PrismaTransactionGroupRepository";
 import { createUseCases } from "./createUseCases";
 import {
   createServerRepositories,
@@ -27,5 +29,9 @@ export const serverUseCases = createServerUseCasesFromRepositories(
 );
 
 /** Temporary read-only PostgreSQL root used by the UI comparison switch. */
-export const postgresReadRepositories = createPrismaReadRepositories(prisma);
+export const postgresReadRepositories = {
+  pairRepository: new PrismaPairRepository(prisma),
+  transactionRepository: new PrismaTransactionRepository(prisma),
+  transactionGroupRepository: new PrismaTransactionGroupRepository(prisma),
+};
 export const postgresReadUseCases = createUseCases(postgresReadRepositories);

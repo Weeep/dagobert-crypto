@@ -122,3 +122,9 @@ routes all subsequent GET requests to either Redis or PostgreSQL. PostgreSQL is
 read-only in this comparison mode. All PUT and DELETE requests continue to use
 Redis regardless of the selected read source, so the switch cannot modify the
 migrated snapshot accidentally.
+
+The Prisma adapters live beside the corresponding KV and HTTP adapters in each
+module's `infrastructure/prisma` directory. The authentication adapter is not
+switched yet: PostgreSQL stores password hashes, while the current login port
+still expects a directly comparable credential. That contract must be changed
+to password verification before adding `PrismaUserCredentialRepository`.
