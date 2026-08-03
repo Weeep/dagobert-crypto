@@ -66,6 +66,25 @@ test("migration validator describes missing, unexpected and changed fields", () 
   ]);
 });
 
+test("migration validator compares Prisma-like decimals by value", () => {
+  const prismaDecimal = {
+    s: 1,
+    e: -1,
+    d: [8350000],
+    toFixed: () => "0.835",
+    toString: () => "0.835",
+  };
+
+  assert.deepEqual(
+    describeRowDifferences(
+      [{ symbol: "ENAUSDC", keyLevels: ["0.835"] }],
+      [{ symbol: "ENAUSDC", keyLevels: [prismaDecimal] }],
+      ["symbol"]
+    ),
+    []
+  );
+});
+
 test("migration filters every record associated with a deleted pair", async () => {
   const transaction = (orderId: string, pair: string) => ({
     orderId, pair, binanceApiId: 1, amount: 2, executed: 3, price: 4,

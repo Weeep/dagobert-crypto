@@ -47,9 +47,13 @@ function comparable(value: any): any {
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map(comparable);
   if (value && typeof value === "object") {
+    // Prisma's Decimal constructor name is not stable across generated client
+    // builds/minification. Detect decimal-like values by their public numeric
+    // API instead of the constructor name, otherwise their internal s/e/d
+    // representation is compared with the source string.
     if (
       typeof value.toFixed === "function" &&
-      value.constructor?.name === "Decimal"
+      typeof value.toString === "function"
     ) {
       return value.toString();
     }
