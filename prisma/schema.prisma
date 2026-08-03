@@ -94,10 +94,7 @@ model TransactionGroup {
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  @@index(
-    [pairSymbol, tradeType, lastTransDateEpoch(sort: Desc)],
-    map: "transaction_groups_pair_trade_last_epoch_idx"
-  )
+  @@index([pairSymbol, tradeType, lastTransDateEpoch(sort: Desc)], map: "transaction_groups_pair_trade_last_epoch_idx")
   @@map("transaction_groups")
 }
 
