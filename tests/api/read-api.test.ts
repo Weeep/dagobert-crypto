@@ -374,5 +374,17 @@ test("data source selector uses PostgreSQL only for opted-in GET requests", asyn
   await handler(postgresPut, response);
   await handler(request("GET"), response);
 
-  assert.deepEqual(selected, ["postgres", "redis", "redis"]);
+  const pairWriteHandler = selectDataSourceHandler(
+    async () => { selected.push("redis-pair-write"); },
+    async () => { selected.push("postgres-pair-write"); },
+    { postgresWritesEnabled: true }
+  );
+  await pairWriteHandler(postgresPut, response);
+
+  assert.deepEqual(selected, [
+    "postgres",
+    "redis",
+    "redis",
+    "postgres-pair-write",
+  ]);
 });

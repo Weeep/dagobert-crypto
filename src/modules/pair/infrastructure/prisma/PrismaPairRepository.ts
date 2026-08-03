@@ -1,11 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import type { DagobertPair, PairRepository } from "@/src/modules/pair";
 
-function readOnly(): never {
-  throw new Error("The temporary PostgreSQL comparison source is read-only");
-}
-
-/** Prisma adapter for pair persistence; writes stay disabled during comparison. */
+/** Prisma adapter for pair persistence. */
 export class PrismaPairRepository implements PairRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -29,11 +25,19 @@ export class PrismaPairRepository implements PairRepository {
       : null;
   }
 
-  async save(): Promise<void> {
-    readOnly();
+  async save(pair: DagobertPair): Promise<void> {
+    const data = {
+      decimals: pair.decimals,
+      keyLevels: pair.keyLevels.map(String),
+    };
+    await this.prisma.pair.upsert({
+      where: { symbol: pair.pair },
+      create: { symbol: pair.pair, ...data },
+      update: data,
+    });
   }
 
-  async delete(): Promise<void> {
-    readOnly();
+  async delete(symbol: string): Promise<void> {
+    await this.prisma.pair.deleteMany({ where: { symbol } });
   }
 }

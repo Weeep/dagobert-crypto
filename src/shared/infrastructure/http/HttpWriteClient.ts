@@ -13,10 +13,16 @@ export class HttpWriteClient {
   }
 
   private async request<T>(url: string, method: "PUT" | "DELETE", body?: unknown) {
+    const dataSource =
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("dagobert-read-data-source") === "postgres"
+        ? "postgres"
+        : "redis";
     const response = await this.fetchImplementation.call(globalThis, url, {
       method,
       headers: {
         Accept: "application/json",
+        "X-Dagobert-Data-Source": dataSource,
         ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),

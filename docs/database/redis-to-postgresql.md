@@ -119,9 +119,10 @@ in audit output or migration logs.
 The authenticated application's header contains an `Adatforrás` switch. Its
 selection is stored in browser local storage; changing it reloads the page and
 routes all subsequent GET requests to either Redis or PostgreSQL. PostgreSQL is
-read-only in this comparison mode. All PUT and DELETE requests continue to use
-Redis regardless of the selected read source, so the switch cannot modify the
-migrated snapshot accidentally.
+read-only for transactions, groups, and cursors in this comparison mode. Pair
+PUT and DELETE requests use the selected source so the Prisma pair write path
+can be exercised; all other writes continue to use Redis until their Prisma
+repositories are implemented.
 
 The Prisma adapters live beside the corresponding KV and HTTP adapters in each
 module's `infrastructure/prisma` directory. The authentication adapter is not
