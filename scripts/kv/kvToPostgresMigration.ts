@@ -116,7 +116,10 @@ export async function prepareMigrationData(dump: KvDump): Promise<MigrationData>
         side: transaction.side,
         price: String(transaction.price),
         status: transaction.status,
-        grouped: transactionGroupId !== null,
+        // A retained transaction can have belonged to a group whose own pair was
+        // deleted. The group must not be imported, but clearing this compatibility
+        // flag would incorrectly make the completed trade appear open again.
+        grouped: transaction.grouped === true || transactionGroupId !== null,
         note: typeof transaction.note === "string" ? transaction.note : "",
         otherSideOrderId:
           typeof transaction.otherSideOrderId === "string" &&

@@ -54,6 +54,7 @@ test("migration filters every record associated with a deleted pair", async () =
     pairs: { BTCUSDT: { pair: "BTCUSDT", decimals: 2, keyLevels: [1.5] } },
     dtransactions: {
       kept: transaction("kept", "BTCUSDT"),
+      orphaned: transaction("orphaned", "BTCUSDT"),
       removed: transaction("removed", "SOLUSDT"),
     },
     dtransactionGroups: {
@@ -63,14 +64,18 @@ test("migration filters every record associated with a deleted pair", async () =
       },
       "00000000-0000-0000-0000-000000000002": {
         pair: "SOLUSDT", amount: 2, executed: 3, tradeType: "spot",
-        lastTransDateEpoch: 1, groupedTrans: [transaction("removed", "SOLUSDT")],
+        lastTransDateEpoch: 1,
+        groupedTrans: [
+          transaction("removed", "SOLUSDT"),
+          transaction("orphaned", "BTCUSDT"),
+        ],
       },
     },
     last_transaction_epoch_spot_BTCUSDT: 10,
     last_transaction_epoch_spot_SOLUSDT: 20,
   });
 
-  assert.deepEqual(migration.transactions.map((row) => row.orderId), ["kept"]);
+  assert.deepEqual(migration.transactions.map((row) => row.orderId), ["kept", "orphaned"]);
   assert.equal(migration.groups.length, 1);
   assert.deepEqual(migration.cursors.map((row) => row.pairSymbol), ["BTCUSDT"]);
   assert.deepEqual(migration.summary.skipped, {
@@ -81,4 +86,6 @@ test("migration filters every record associated with a deleted pair", async () =
   assert.match(migration.users[0].passwordHash, /^scrypt\$v=1\$N=32768\$r=8\$p=1\$/);
   assert.equal(migration.users[0].passwordHash.includes("legacy-secret"), false);
   assert.equal(migration.transactions[0].transactionGroupId, "00000000-0000-0000-0000-000000000001");
+  assert.equal(migration.transactions[1].transactionGroupId, null);
+  assert.equal(migration.transactions[1].grouped, true);
 });

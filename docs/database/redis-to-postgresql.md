@@ -97,7 +97,10 @@ in audit output or migration logs.
    The atomic import replaces the migration-owned tables. It hashes every
    password and skips transactions, groups, and import cursors for symbols not
    present in the export's `pairs` hash. Thus no trace of deleted pairs is
-   inserted into PostgreSQL.
+   inserted into PostgreSQL. If a retained-pair transaction was embedded in a
+   skipped group, its legacy `grouped` flag remains true so the completed trade
+   does not incorrectly reappear as open, while its `transactionGroupId` is
+   `NULL` because the deleted-pair group itself is not retained.
 4. Validate the result against the same immutable export:
 
    ```bash
