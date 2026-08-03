@@ -2491,49 +2491,6 @@
       ],
       "note": ""
     },
-    "cd446abf-7a4b-4303-b874-3b21355ccfdc": {
-      "groupId": "cd446abf-7a4b-4303-b874-3b21355ccfdc",
-      "pair": "TRUMPUSDC",
-      "tradeType": "spot",
-      "amount": 0.07000000000000028,
-      "executed": 0,
-      "lastTransDateEpoch": 1738178444075,
-      "groupedTrans": [
-        {
-          "orderId": "73cc9040-12df-4a42-a412-65bcf2f0a56b",
-          "binanceApiId": 80394531,
-          "pair": "TRUMPUSDC",
-          "amount": -5.97,
-          "dateEpoch": 1738114571313,
-          "date": "2025-01-29T02:37:11.313Z",
-          "side": "BUY",
-          "executed": 0.216,
-          "price": 27.66,
-          "status": "FILLED",
-          "grouped": false,
-          "note": "Sell set to 25.72 (-7%, -0.41$)",
-          "otherSideOrderId": "",
-          "tradeType": "spot"
-        },
-        {
-          "orderId": "b037aeba-dc6e-46f8-9f27-0cced510a8c5",
-          "binanceApiId": 82108255,
-          "pair": "TRUMPUSDC",
-          "amount": 6.04,
-          "dateEpoch": 1738178444075,
-          "date": "2025-01-29T20:21:44.075Z",
-          "side": "SELL",
-          "executed": 0.216,
-          "price": 27.94,
-          "status": "FILLED",
-          "grouped": false,
-          "note": "",
-          "otherSideOrderId": "",
-          "tradeType": "spot"
-        }
-      ],
-      "note": ""
-    },
     "d44e2a4f-d169-44dd-bcae-5e54caba4d31": {
       "groupId": "d44e2a4f-d169-44dd-bcae-5e54caba4d31",
       "pair": "POLUSDC",
@@ -10084,9 +10041,9 @@
     "cd544883-22b6-4b36-906f-051d454a0d7d": {
       "groupId": "cd544883-22b6-4b36-906f-051d454a0d7d",
       "pair": "ETHUSDT",
-      "amount": -0.4299999999999926,
+      "amount": -0.3699999999999939,
       "executed": -3.469446951953614e-18,
-      "lastTransDateEpoch": 1704518640000,
+      "lastTransDateEpoch": 1661015100000,
       "groupedTrans": [
         {
           "orderId": "8334c84c-126f-4138-8193-75d9118e01f8",
@@ -10193,30 +10150,6 @@
           "side": "SELL",
           "executed": 0.0171,
           "price": 1230,
-          "status": "FILLED",
-          "grouped": false
-        },
-        {
-          "orderId": "c503b6c5-66f6-4d13-acdb-8b178e6f19b9",
-          "pair": "ETHUSDT",
-          "amount": -9.86,
-          "dateEpoch": 1702267320000,
-          "date": "2023-12-11T04:02:00.000Z",
-          "side": "BUY",
-          "executed": 0.0044,
-          "price": 2241.8,
-          "status": "FILLED",
-          "grouped": false
-        },
-        {
-          "orderId": "ef25e7f1-e9ae-456c-b1d4-53596a879e97",
-          "pair": "ETHUSDT",
-          "amount": 9.8,
-          "dateEpoch": 1704518640000,
-          "date": "2024-01-06T05:24:00.000Z",
-          "side": "SELL",
-          "executed": 0.0044,
-          "price": 2227.45,
           "status": "FILLED",
           "grouped": false
         }
@@ -16141,49 +16074,6 @@
       ],
       "note": ""
     },
-    "1989a81a-78f4-4820-a9f1-d24d8f3c297c": {
-      "groupId": "1989a81a-78f4-4820-a9f1-d24d8f3c297c",
-      "pair": "SOLUSDC",
-      "tradeType": "spot",
-      "amount": 0.1899999999999995,
-      "executed": 0,
-      "lastTransDateEpoch": 1738178815615,
-      "groupedTrans": [
-        {
-          "orderId": "c0ed056d-8816-4df0-ad05-628348025e7f",
-          "binanceApiId": 1198612017,
-          "pair": "SOLUSDC",
-          "amount": -10.48,
-          "dateEpoch": 1737941507143,
-          "date": "2025-01-27T02:32:47.143Z",
-          "side": "BUY",
-          "executed": 0.045,
-          "price": 233,
-          "status": "FILLED",
-          "grouped": false,
-          "note": "Sell set to 214.36 (-8%)",
-          "otherSideOrderId": 1231232333,
-          "tradeType": "spot"
-        },
-        {
-          "orderId": "418ce744-4613-487b-8c41-3456da52c7b8",
-          "binanceApiId": 1245150240,
-          "pair": "SOLUSDC",
-          "amount": 10.67,
-          "dateEpoch": 1738178815615,
-          "date": "2025-01-29T20:27:55.615Z",
-          "side": "SELL",
-          "executed": 0.045,
-          "price": 237.16,
-          "status": "FILLED",
-          "grouped": false,
-          "note": "",
-          "otherSideOrderId": "",
-          "tradeType": "spot"
-        }
-      ],
-      "note": ""
-    },
     "9a9d9f59-7159-4bfe-91e8-275f3e6cee05": {
       "groupId": "9a9d9f59-7159-4bfe-91e8-275f3e6cee05",
       "pair": "ENAUSDC",
@@ -21140,23 +21030,6 @@
       "tradeType": "margin",
       "tradeStyle": "swing"
     },
-    "418ce744-4613-487b-8c41-3456da52c7b8": {
-      "orderId": "418ce744-4613-487b-8c41-3456da52c7b8",
-      "binanceApiId": 1245150240,
-      "pair": "SOLUSDC",
-      "amount": 10.67,
-      "dateEpoch": 1738178815615,
-      "date": "2025-01-29T20:27:55.615Z",
-      "side": "SELL",
-      "executed": 0.045,
-      "price": 237.16,
-      "status": "FILLED",
-      "grouped": true,
-      "note": "",
-      "otherSideOrderId": "",
-      "tradeType": "spot",
-      "tradeStyle": "swing"
-    },
     "96b84e78-008f-4bc5-a238-2904d49980d6": {
       "orderId": "96b84e78-008f-4bc5-a238-2904d49980d6",
       "binanceApiId": 562934450,
@@ -21377,23 +21250,6 @@
       "note": "",
       "otherSideOrderId": "",
       "tradeType": "margin",
-      "tradeStyle": "swing"
-    },
-    "b037aeba-dc6e-46f8-9f27-0cced510a8c5": {
-      "orderId": "b037aeba-dc6e-46f8-9f27-0cced510a8c5",
-      "binanceApiId": 82108255,
-      "pair": "TRUMPUSDC",
-      "amount": 6.04,
-      "dateEpoch": 1738178444075,
-      "date": "2025-01-29T20:21:44.075Z",
-      "side": "SELL",
-      "executed": 0.216,
-      "price": 27.94,
-      "status": "FILLED",
-      "grouped": true,
-      "note": "",
-      "otherSideOrderId": "",
-      "tradeType": "spot",
       "tradeStyle": "swing"
     },
     "cd3adc4a-4822-4e9e-8d2c-0686fcb3e09d": {
