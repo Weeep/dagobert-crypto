@@ -68,7 +68,7 @@ CREATE TABLE "import_cursors" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
-CREATE INDEX "transaction_groups_pair_symbol_trade_type_last_trans_date_epoch_idx" ON "transaction_groups"("pair_symbol", "trade_type", "last_trans_date_epoch" DESC);
+CREATE INDEX "transaction_groups_pair_trade_last_epoch_idx" ON "transaction_groups"("pair_symbol", "trade_type", "last_trans_date_epoch" DESC);
 CREATE INDEX "transactions_pair_symbol_date_idx" ON "transactions"("pair_symbol", "date" DESC);
 CREATE INDEX "transactions_trade_type_status_date_idx" ON "transactions"("trade_type", "status", "date" DESC);
 CREATE INDEX "transactions_transaction_group_id_idx" ON "transactions"("transaction_group_id");
