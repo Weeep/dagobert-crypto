@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TradeType {
+  spot
+  margin
+}
+
+enum TradeStyle {
+  day
+  swing
+  hodling
+  trash
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  FILLED
+  CANCELED
+  NEW
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("users")
+}
+
+model Pair {
+  symbol        String             @id
+  decimals      Int
+  keyLevels     Decimal[]          @default([]) @map("key_levels") @db.Decimal(38, 18)
+  transactions  Transaction[]
+  groups        TransactionGroup[]
+  importCursors ImportCursor[]
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("pairs")
+}
+
+model Transaction {
+  orderId           String            @id @map("order_id")
+  binanceApiId       BigInt            @map("binance_api_id")
+  pairSymbol         String            @map("pair_symbol")
+  pair               Pair              @relation(fields: [pairSymbol], references: [symbol], onUpdate: Cascade, onDelete: Restrict)
+  amount             Decimal           @db.Decimal(38, 18)
+  executed           Decimal           @db.Decimal(38, 18)
+  date               DateTime          @db.Timestamptz(3)
+  dateEpoch          BigInt             @map("date_epoch")
+  side               OrderSide
+  price              Decimal           @db.Decimal(38, 18)
+  status             OrderStatus
+  grouped            Boolean           @default(false)
+  note               String            @default("")
+  otherSideOrderId   String?           @map("other_side_order_id")
+  tradeType          TradeType         @map("trade_type")
+  tradeStyle         TradeStyle        @map("trade_style")
+  transactionGroupId String?           @map("transaction_group_id") @db.Uuid
+  transactionGroup   TransactionGroup? @relation(fields: [transactionGroupId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([pairSymbol, date(sort: Desc)])
+  @@index([tradeType, status, date(sort: Desc)])
+  @@index([transactionGroupId])
+  @@map("transactions")
+}
+
+model TransactionGroup {
+  id                 String        @id @db.Uuid
+  pairSymbol         String        @map("pair_symbol")
+  pair               Pair          @relation(fields: [pairSymbol], references: [symbol], onUpdate: Cascade, onDelete: Restrict)
+  amount             Decimal       @db.Decimal(38, 18)
+  executed           Decimal       @db.Decimal(38, 18)
+  tradeType          TradeType     @map("trade_type")
+  lastTransDateEpoch BigInt        @map("last_trans_date_epoch")
+  note               String        @default("")
+  transactions       Transaction[]
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([pairSymbol, tradeType, lastTransDateEpoch(sort: Desc)], map: "transaction_groups_pair_trade_last_epoch_idx")
+  @@map("transaction_groups")
+}
+
+model ImportCursor {
+  pairSymbol        String    @map("pair_symbol")
+  pair              Pair      @relation(fields: [pairSymbol], references: [symbol], onUpdate: Cascade, onDelete: Cascade)
+  tradeType         TradeType @map("trade_type")
+  lastProcessedEpoch BigInt   @map("last_processed_epoch")
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([pairSymbol, tradeType])
+  @@index([lastProcessedEpoch])
+  @@map("import_cursors")
+}

@@ -11,10 +11,17 @@
     "start": "next start -p 3082",
     "export-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/exportKvDb.ts",
     "import-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/importKvDb.ts",
-    "test": "node --test tests/run-tests.cjs"
+    "audit-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/auditKvExport.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:validate": "prisma validate",
+    "prisma:studio": "prisma studio",
+    "test": "node --test tests/run-tests.cjs",
+    "test:prisma": "node --test tests/run-prisma-test.cjs"
   },
   "dependencies": {
     "@binance/connector": "^3.6.1",
+    "@prisma/client": "^6.16.2",
     "@fortawesome/fontawesome-svg-core": "^7.0.0",
     "@fortawesome/free-solid-svg-icons": "^7.0.0",
     "@fortawesome/react-fontawesome": "^0.2.3",
@@ -50,6 +57,7 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
+    "prisma": "^6.16.2",
     "tailwindcss": "^4.1.18",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
