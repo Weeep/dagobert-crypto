@@ -113,3 +113,12 @@ in audit output or migration logs.
    against the legacy password without logging either value.
 5. Only after repository contract tests pass should the server composition
    root be changed from KV repositories to Prisma repositories.
+
+## Temporary visual comparison switch
+
+The authenticated application's header contains an `Adatforrás` switch. Its
+selection is stored in browser local storage; changing it reloads the page and
+routes all subsequent GET requests to either Redis or PostgreSQL. PostgreSQL is
+read-only in this comparison mode. All PUT and DELETE requests continue to use
+Redis regardless of the selected read source, so the switch cannot modify the
+migrated snapshot accidentally.

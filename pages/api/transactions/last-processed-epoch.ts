@@ -1,7 +1,11 @@
 import { createTransactionEpochHandler } from "@/src/modules/transaction/infrastructure/http/transactionEpochHandler";
-import { serverRepositories } from "@/src/shared/composition/serverUseCases";
+import { postgresReadRepositories, serverRepositories } from "@/src/shared/composition/serverUseCases";
+import { selectDataSourceHandler } from "@/src/shared/infrastructure/http/selectDataSourceHandler";
 import { withAuth } from "@/utils/auth";
 
 export default withAuth(
-  createTransactionEpochHandler(serverRepositories.transactionRepository)
+  selectDataSourceHandler(
+    createTransactionEpochHandler(serverRepositories.transactionRepository),
+    createTransactionEpochHandler(postgresReadRepositories.transactionRepository)
+  )
 );

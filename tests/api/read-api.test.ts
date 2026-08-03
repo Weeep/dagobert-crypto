@@ -19,6 +19,7 @@ import { createTransactionGroupsReadHandler } from "@/src/modules/transaction-gr
 import { createUseCases } from "@/src/shared/composition/createUseCases";
 import { generateToken, withAuth } from "@/utils/auth";
 import { createDatabaseHealthHandler } from "@/src/shared/infrastructure/http/databaseHealthHandler";
+import { selectDataSourceHandler } from "@/src/shared/infrastructure/http/selectDataSourceHandler";
 
 type MockResponse = {
   statusCode: number;
@@ -354,4 +355,24 @@ describe("read API integration", () => {
       },
     });
   });
+});
+
+test("data source selector uses PostgreSQL only for opted-in GET requests", async () => {
+  const selected: string[] = [];
+  const handler = selectDataSourceHandler(
+    async () => { selected.push("redis"); },
+    async () => { selected.push("postgres"); }
+  );
+  const response = createMockResponse().response;
+
+  const postgresGet = request("GET");
+  postgresGet.headers["x-dagobert-data-source"] = "postgres";
+  const postgresPut = request("PUT");
+  postgresPut.headers["x-dagobert-data-source"] = "postgres";
+
+  await handler(postgresGet, response);
+  await handler(postgresPut, response);
+  await handler(request("GET"), response);
+
+  assert.deepEqual(selected, ["postgres", "redis", "redis"]);
 });
