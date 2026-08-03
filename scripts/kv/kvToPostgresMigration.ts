@@ -42,6 +42,82 @@ export type MigrationData = {
   summary: MigrationSummary;
 };
 
+function comparable(value: any): any {
+  if (typeof value === "bigint") return value.toString();
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(comparable);
+  if (value && typeof value === "object") {
+    if (
+      typeof value.toFixed === "function" &&
+      value.constructor?.name === "Decimal"
+    ) {
+      return value.toString();
+    }
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, comparable(item)])
+    );
+  }
+  return value;
+}
+
+function rowKey(row: JsonObject, keys: string[]): string {
+  return keys.map((key) => String(row[key])).join("|");
+}
+
+function display(value: unknown): string {
+  return JSON.stringify(value) ?? String(value);
+}
+
+/** Returns actionable row/field differences, capped to keep CLI output useful. */
+export function describeRowDifferences(
+  expectedRows: any[],
+  actualRows: any[],
+  keys: string[],
+  limit = 20
+): string[] {
+  const expected = new Map(
+    expectedRows.map(comparable).map((row) => [rowKey(row, keys), row])
+  );
+  const actual = new Map(
+    actualRows.map(comparable).map((row) => [rowKey(row, keys), row])
+  );
+  const differences: string[] = [];
+  let differenceCount = 0;
+  const add = (message: string): void => {
+    differenceCount += 1;
+    if (differences.length < limit) differences.push(message);
+  };
+
+  expected.forEach((expectedRow, key) => {
+    const actualRow = actual.get(key);
+    if (!actualRow) {
+      add(`missing row ${key}`);
+      return;
+    }
+    const fields = new Set([
+      ...Object.keys(expectedRow),
+      ...Object.keys(actualRow),
+    ]);
+    Array.from(fields).forEach((field) => {
+      if (display(expectedRow[field]) !== display(actualRow[field])) {
+        add(
+          `row ${key}, field ${field}: expected ${display(expectedRow[field])}, actual ${display(actualRow[field])}`
+        );
+      }
+    });
+  });
+  actual.forEach((_, key) => {
+    if (!expected.has(key)) add(`unexpected row ${key}`);
+  });
+
+  if (differenceCount > limit) {
+    differences.push(
+      `${differenceCount - limit} additional difference(s) omitted; output limited to ${limit}`
+    );
+  }
+  return differences;
+}
+
 function object(value: unknown): JsonObject {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as JsonObject)

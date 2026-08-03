@@ -3,30 +3,20 @@ import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import {
   prepareMigrationData,
+  describeRowDifferences,
   verifyMigratedPassword,
   type KvDump,
 } from "./kv/kvToPostgresMigration";
 
 dotenv.config({ path: ".env.local" });
 
-function comparable(value: any): any {
-  if (typeof value === "bigint") return value.toString();
-  if (value instanceof Date) return value.toISOString();
-  if (Array.isArray(value)) return value.map(comparable);
-  if (value && typeof value === "object") {
-    if (typeof value.toFixed === "function" && value.constructor?.name === "Decimal") return value.toString();
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, comparable(item)]));
-  }
-  return value;
-}
-
 function sameRows(name: string, expected: any[], actual: any[], keys: string[]): void {
-  const sort = (rows: any[]) => rows.map(comparable).sort((a, b) =>
-    keys.map((key) => String(a[key])).join("|").localeCompare(keys.map((key) => String(b[key])).join("|"))
-  );
-  const left = JSON.stringify(sort(expected));
-  const right = JSON.stringify(sort(actual));
-  if (left !== right) throw new Error(`${name} differs between the filtered KV export and PostgreSQL.`);
+  const differences = describeRowDifferences(expected, actual, keys);
+  if (differences.length > 0) {
+    throw new Error(
+      `${name} differs between the filtered KV export and PostgreSQL:\n  - ${differences.join("\n  - ")}`
+    );
+  }
 }
 
 async function main(): Promise<void> {
@@ -58,4 +48,9 @@ async function main(): Promise<void> {
   }
 }
 
-if (require.main === module) main().catch((error) => { console.error(error); process.exitCode = 1; });
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}

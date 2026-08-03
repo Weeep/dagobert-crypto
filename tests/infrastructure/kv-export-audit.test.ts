@@ -3,6 +3,7 @@ import test from "node:test";
 import { auditKvExport } from "@/scripts/auditKvExport";
 import {
   prepareMigrationData,
+  describeRowDifferences,
   verifyMigratedPassword,
 } from "@/scripts/kv/kvToPostgresMigration";
 
@@ -43,6 +44,26 @@ test("KV export audit reports migration blockers without exposing passwords", ()
     ["PLAINTEXT_PASSWORDS", "MISSING_TRANSACTION_PAIR"]
   );
   assert.equal(JSON.stringify(audit).includes("secret-password"), false);
+});
+
+test("migration validator describes missing, unexpected and changed fields", () => {
+  const differences = describeRowDifferences(
+    [
+      { symbol: "BTCUSDT", decimals: 2, keyLevels: [1] },
+      { symbol: "ETHUSDT", decimals: 3, keyLevels: [] },
+    ],
+    [
+      { symbol: "BTCUSDT", decimals: 4, keyLevels: [1] },
+      { symbol: "SOLUSDT", decimals: 2, keyLevels: [] },
+    ],
+    ["symbol"]
+  );
+
+  assert.deepEqual(differences, [
+    "row BTCUSDT, field decimals: expected 2, actual 4",
+    "missing row ETHUSDT",
+    "unexpected row SOLUSDT",
+  ]);
 });
 
 test("migration filters every record associated with a deleted pair", async () => {
