@@ -9,8 +9,16 @@ type MigrationTransaction = {
   [model: string]: { deleteMany(): Promise<unknown>; createMany(args: { data: any[] }): Promise<unknown> };
 };
 type MigrationPrismaClient = {
-  $transaction<T>(operation: (tx: MigrationTransaction) => Promise<T>, options: { timeout: number }): Promise<T>;
+  // Prisma exposes $transaction as an overloaded method (batch and interactive
+  // forms). Keeping the public boundary broad lets a real PrismaClient as well
+  // as a test double satisfy it; the importer narrows to the interactive form
+  // at the single call site below.
+  $transaction: unknown;
 };
+type InteractiveTransaction = <T>(
+  operation: (tx: MigrationTransaction) => Promise<T>,
+  options: { timeout: number }
+) => Promise<T>;
 
 export type MigrationSummary = {
   imported: Record<string, number>;
@@ -175,7 +183,9 @@ export async function importKvDump(
   dump: KvDump
 ): Promise<MigrationSummary> {
   const data = await prepareMigrationData(dump);
-  await prisma.$transaction(
+  const transaction = prisma.$transaction as InteractiveTransaction;
+  await transaction.call(
+    prisma,
     async (tx) => {
       await tx.transaction.deleteMany();
       await tx.transactionGroup.deleteMany();
