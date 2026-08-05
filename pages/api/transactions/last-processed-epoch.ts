@@ -6,6 +6,7 @@ import { withAuth } from "@/utils/auth";
 export default withAuth(
   selectDataSourceHandler(
     createTransactionEpochHandler(serverRepositories.transactionRepository),
-    createTransactionEpochHandler(postgresReadRepositories.transactionRepository)
+    createTransactionEpochHandler(postgresReadRepositories.transactionRepository),
+    { postgresWritesEnabled: true }
   )
 );

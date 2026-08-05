@@ -17,7 +17,7 @@ type ApiHandler = (
   res: NextApiResponse
 ) => void | Promise<void>;
 
-/** Selects PostgreSQL for comparison reads; every write remains on Redis. */
+/** Selects PostgreSQL for comparison reads and explicitly enabled migration writes. */
 export function selectDataSourceHandler(
   redisHandler: ApiHandler,
   postgresHandler: ApiHandler,

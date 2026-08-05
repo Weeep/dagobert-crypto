@@ -1,13 +1,9 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type {
   DagobertTransaction,
   TransactionRepository,
 } from "@/src/modules/transaction";
 import { TradeStyle, TradeType } from "@/src/modules/transaction";
-
-function readOnly(): never {
-  throw new Error("The temporary PostgreSQL comparison source is read-only");
-}
 
 export function toDomainTransaction(row: any): DagobertTransaction {
   return {
@@ -29,7 +25,7 @@ export function toDomainTransaction(row: any): DagobertTransaction {
   };
 }
 
-/** Prisma adapter for transaction persistence; writes stay disabled during comparison. */
+/** Prisma adapter for transaction persistence selected by the comparison switch. */
 export class PrismaTransactionRepository implements TransactionRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -52,22 +48,75 @@ export class PrismaTransactionRepository implements TransactionRepository {
       where: {
         pairSymbol_tradeType: {
           pairSymbol: pair,
-          tradeType: tradeType as any,
+          tradeType,
         },
       },
     });
     return cursor ? Number(cursor.lastProcessedEpoch) : null;
   }
 
-  async save(): Promise<void> {
-    readOnly();
+  async save(transaction: DagobertTransaction): Promise<void> {
+    await this.prisma.transaction.upsert({
+      where: { orderId: transaction.orderId },
+      create: toPrismaTransactionInput(transaction),
+      update: toPrismaTransactionInput(transaction),
+    });
   }
 
-  async saveMany(): Promise<void> {
-    readOnly();
+  async saveMany(transactions: DagobertTransaction[]): Promise<void> {
+    if (transactions.length === 0) return;
+
+    await this.prisma.$transaction(
+      transactions.map((transaction) =>
+        this.prisma.transaction.upsert({
+          where: { orderId: transaction.orderId },
+          create: toPrismaTransactionInput(transaction),
+          update: toPrismaTransactionInput(transaction),
+        })
+      )
+    );
   }
 
-  async setLastProcessedEpoch(): Promise<void> {
-    readOnly();
+  async setLastProcessedEpoch(
+    pair: string,
+    tradeType: TradeType,
+    epoch: number
+  ): Promise<void> {
+    await this.prisma.importCursor.upsert({
+      where: {
+        pairSymbol_tradeType: {
+          pairSymbol: pair,
+          tradeType,
+        },
+      },
+      create: {
+        pairSymbol: pair,
+        tradeType,
+        lastProcessedEpoch: epoch,
+      },
+      update: { lastProcessedEpoch: epoch },
+    });
   }
+}
+
+function toPrismaTransactionInput(
+  transaction: DagobertTransaction
+): Prisma.TransactionUncheckedCreateInput {
+  return {
+    orderId: transaction.orderId,
+    binanceApiId: transaction.binanceApiId,
+    pairSymbol: transaction.pair,
+    amount: String(transaction.amount),
+    executed: String(transaction.executed),
+    date: transaction.date,
+    dateEpoch: transaction.dateEpoch,
+    side: transaction.side as Prisma.TransactionUncheckedCreateInput["side"],
+    price: String(transaction.price),
+    status: transaction.status as Prisma.TransactionUncheckedCreateInput["status"],
+    grouped: transaction.grouped,
+    note: transaction.note,
+    otherSideOrderId: transaction.otherSideOrderId || null,
+    tradeType: transaction.tradeType,
+    tradeStyle: transaction.tradeStyle,
+  };
 }

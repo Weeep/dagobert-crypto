@@ -66,18 +66,28 @@ describe("Prisma repository contracts", () => {
     ]);
   });
 
-  test("transaction repository maps relational fields and import cursors", async () => {
+  test("transaction repository maps relational fields, writes transactions and upserts import cursors", async () => {
+    const calls: Array<{ operation: string; args: any }> = [];
     const repository = new PrismaTransactionRepository(asPrisma({
       transaction: {
         findMany: async () => [transactionRow],
         findUnique: async ({ where }: any) =>
           where.orderId === transactionRow.orderId ? transactionRow : null,
+        upsert: (args: any) => {
+          calls.push({ operation: "transaction.upsert", args });
+          return { orderId: args.where.orderId };
+        },
       },
       importCursor: {
         findUnique: async ({ where }: any) =>
           where.pairSymbol_tradeType.pairSymbol === "SOLUSDC"
             ? { lastProcessedEpoch: BigInt(1234) }
             : null,
+        upsert: async (args: any) => calls.push({ operation: "importCursor.upsert", args }),
+      },
+      $transaction: async (operations: unknown[]) => {
+        calls.push({ operation: "$transaction", args: { count: operations.length } });
+        return operations;
       },
     }));
 
@@ -91,6 +101,37 @@ describe("Prisma repository contracts", () => {
     assert.deepEqual(await repository.findById("tx-1"), expected);
     assert.equal(await repository.findById("missing"), null);
     assert.equal(await repository.getLastProcessedEpoch("SOLUSDC", TradeType.Spot), 1234);
+
+    await repository.save(expected);
+    await repository.saveMany([expected, { ...expected, orderId: "tx-2", otherSideOrderId: "other" }]);
+    await repository.saveMany([]);
+    await repository.setLastProcessedEpoch("SOLUSDC", TradeType.Spot, 4567);
+
+    assert.equal(calls.filter((call) => call.operation === "transaction.upsert").length, 3);
+    assert.deepEqual(calls[0].args, {
+      where: { orderId: "tx-1" },
+      create: {
+        orderId: "tx-1", binanceApiId: 12, pairSymbol: "SOLUSDC", amount: "-50",
+        executed: "0.5", date: transactionRow.date, dateEpoch: 1735819200000,
+        side: "BUY", price: "100", status: "FILLED", grouped: true, note: "note",
+        otherSideOrderId: null, tradeType: TradeType.Spot, tradeStyle: TradeStyle.Swing,
+      },
+      update: {
+        orderId: "tx-1", binanceApiId: 12, pairSymbol: "SOLUSDC", amount: "-50",
+        executed: "0.5", date: transactionRow.date, dateEpoch: 1735819200000,
+        side: "BUY", price: "100", status: "FILLED", grouped: true, note: "note",
+        otherSideOrderId: null, tradeType: TradeType.Spot, tradeStyle: TradeStyle.Swing,
+      },
+    });
+    assert.deepEqual(calls.find((call) => call.operation === "$transaction")?.args, { count: 2 });
+    assert.deepEqual(calls.at(-1), {
+      operation: "importCursor.upsert",
+      args: {
+        where: { pairSymbol_tradeType: { pairSymbol: "SOLUSDC", tradeType: TradeType.Spot } },
+        create: { pairSymbol: "SOLUSDC", tradeType: TradeType.Spot, lastProcessedEpoch: 4567 },
+        update: { lastProcessedEpoch: 4567 },
+      },
+    });
   });
 
   test("transaction-group repository includes mapped member transactions", async () => {
