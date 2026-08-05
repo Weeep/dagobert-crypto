@@ -4,7 +4,10 @@ import type { DagobertTransaction } from "../../domain/DagobertTransaction";
 import type { TradeType } from "../../domain/TradeType";
 import type { TransactionRepository } from "../../domain/TransactionRepository";
 
-/** Redis/KV adapter for server-side composition roots. */
+/**
+ * @deprecated Legacy Redis/KV transaction adapter retained for migration and tests.
+ * New features should use Prisma/PostgreSQL only.
+ */
 export class KvTransactionRepository implements TransactionRepository {
   constructor(private readonly store: KeyValueStore) {}
 

@@ -11,6 +11,7 @@ require('./infrastructure/redis-key-value-store.test.ts');
 require('./infrastructure/redis-health-check.test.ts');
 require('./infrastructure/prisma-health-check.test.ts');
 require('./infrastructure/prisma-repositories.test.ts');
+require('./infrastructure/prisma-auth-repository.test.ts');
 require('./infrastructure/kv-export-audit.test.ts');
 require('./infrastructure/redis-database-tooling.test.ts');
 require('./api/read-api.test.ts');

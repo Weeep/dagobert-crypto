@@ -2,12 +2,18 @@ import { KVRoot } from "@/src/shared/infrastructure/kv/KVRoot";
 import type { KeyValueStore } from "@/src/shared/infrastructure/kv/KeyValueStore";
 import type { UserCredentialRepository } from "../../application/UserCredentialRepository";
 
-/** Redis/KV adapter for the authentication credential repository port. */
+/**
+ * @deprecated Legacy plaintext KV credential adapter. Runtime authentication
+ * uses Prisma/PostgreSQL; new features should not add KV support.
+ */
 export class KvUserCredentialRepository implements UserCredentialRepository {
   constructor(private readonly store: KeyValueStore) {}
 
-  public async findPasswordByEmail(email: string): Promise<string | null> {
+  public async verifyPasswordByEmail(
+    email: string,
+    submittedPassword: string
+  ): Promise<boolean> {
     const password = await this.store.hget(KVRoot.users, email);
-    return typeof password === "string" ? password : null;
+    return typeof password === "string" && password === submittedPassword;
   }
 }

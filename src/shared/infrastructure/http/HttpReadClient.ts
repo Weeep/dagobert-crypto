@@ -1,8 +1,6 @@
 import type { ReadApiError, ReadApiSuccess } from "../../dto/ReadApiResponse";
 
 export type FetchLike = typeof fetch;
-const DATA_SOURCE_STORAGE_KEY = "dagobert-read-data-source";
-
 export class HttpReadError extends Error {
   constructor(
     message: string,
@@ -18,17 +16,9 @@ export class HttpReadClient {
   constructor(private readonly fetchImplementation: FetchLike = globalThis.fetch) {}
 
   async get<T>(url: string): Promise<T> {
-    const dataSource =
-      typeof window !== "undefined" &&
-      window.localStorage.getItem(DATA_SOURCE_STORAGE_KEY) === "postgres"
-        ? "postgres"
-        : "redis";
     const response = await this.fetchImplementation.call(globalThis, url, {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-        "X-Dagobert-Data-Source": dataSource,
-      },
+      headers: { Accept: "application/json" },
     });
     const body = (await response.json()) as ReadApiSuccess<T> | ReadApiError;
 

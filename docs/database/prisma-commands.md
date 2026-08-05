@@ -58,5 +58,6 @@ development dependencies after migrations, client generation, and the build
 have completed.
 
 Schema migration creates or updates PostgreSQL structures only. It does not
-import the Redis export and does not switch the runtime repositories from Redis
-to Prisma.
+import the Redis export. The application runtime is already wired to
+Prisma/PostgreSQL; Redis/KV code remains deprecated legacy support for migration
+tooling and tests only.

@@ -7,10 +7,10 @@ import type {
 import { LoginUseCase } from "@/src/modules/auth";
 
 class StubCredentialRepository implements UserCredentialRepository {
-  constructor(private readonly password: string | null) {}
+  constructor(private readonly authenticated: boolean) {}
 
-  async findPasswordByEmail(): Promise<string | null> {
-    return this.password;
+  async verifyPasswordByEmail(): Promise<boolean> {
+    return this.authenticated;
   }
 }
 
@@ -30,7 +30,7 @@ class StubTokenService implements AuthTokenService {
 test("LoginUseCase authenticates matching credentials and creates a token", async () => {
   const tokens = new StubTokenService();
   const useCase = new LoginUseCase(
-    new StubCredentialRepository("correct-password"),
+    new StubCredentialRepository(true),
     tokens
   );
 
@@ -44,21 +44,16 @@ test("LoginUseCase authenticates matching credentials and creates a token", asyn
   assert.deepEqual(tokens.generatedFor, ["user@example.com"]);
 });
 
-test("LoginUseCase rejects missing or mismatched credentials without creating a token", async () => {
-  for (const storedPassword of [null, "different-password"]) {
-    const tokens = new StubTokenService();
-    const useCase = new LoginUseCase(
-      new StubCredentialRepository(storedPassword),
-      tokens
-    );
+test("LoginUseCase rejects failed credential verification without creating a token", async () => {
+  const tokens = new StubTokenService();
+  const useCase = new LoginUseCase(new StubCredentialRepository(false), tokens);
 
-    assert.deepEqual(
-      await useCase.execute({
-        email: "user@example.com",
-        password: "submitted-password",
-      }),
-      { authenticated: false }
-    );
-    assert.deepEqual(tokens.generatedFor, []);
-  }
+  assert.deepEqual(
+    await useCase.execute({
+      email: "user@example.com",
+      password: "submitted-password",
+    }),
+    { authenticated: false }
+  );
+  assert.deepEqual(tokens.generatedFor, []);
 });

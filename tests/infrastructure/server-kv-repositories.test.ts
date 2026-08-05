@@ -71,13 +71,23 @@ const makeTransaction = (
 });
 
 describe("server-side KV repository szerződések", () => {
-  test("credential repository a users hashből olvassa a jelszót", async () => {
+  test("credential repository plain text jelszót ellenőriz a users hashből", async () => {
     const store = new InMemoryKeyValueStore();
     const repository = new KvUserCredentialRepository(store);
     store.hashes.set(KVRoot.users, { "user@example.com": "password" });
 
-    assert.equal(await repository.findPasswordByEmail("user@example.com"), "password");
-    assert.equal(await repository.findPasswordByEmail("missing@example.com"), null);
+    assert.equal(
+      await repository.verifyPasswordByEmail("user@example.com", "password"),
+      true
+    );
+    assert.equal(
+      await repository.verifyPasswordByEmail("user@example.com", "wrong-password"),
+      false
+    );
+    assert.equal(
+      await repository.verifyPasswordByEmail("missing@example.com", "password"),
+      false
+    );
   });
 
   test("pair repository közvetlenül a szerveroldali store-ból olvas és oda ír", async () => {

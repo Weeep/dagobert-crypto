@@ -18,7 +18,12 @@ export type RedisClientFactory = (
 
 const createRedisClient: RedisClientFactory = (options) => new Redis(options);
 
-/** ioredis-backed implementation of the server-side key-value store port. */
+/**
+ * @deprecated Redis/KV persistence is retained only for legacy migration and
+ * comparison tests. New features should use Prisma/PostgreSQL instead.
+ *
+ * ioredis-backed implementation of the server-side key-value store port.
+ */
 export class RedisKeyValueStore implements KeyValueStore {
   private readonly redis: RedisClient;
 

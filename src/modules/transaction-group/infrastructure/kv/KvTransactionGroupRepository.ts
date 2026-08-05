@@ -3,7 +3,10 @@ import type { KeyValueStore } from "@/src/shared/infrastructure/kv/KeyValueStore
 import type { DagobertTransactionGroup } from "../../domain/DagobertTransactionGroup";
 import type { TransactionGroupRepository } from "../../domain/TransactionGroupRepository";
 
-/** Redis/KV adapter for server-side composition roots. */
+/**
+ * @deprecated Legacy Redis/KV transaction-group adapter retained for migration
+ * and tests. New features should use Prisma/PostgreSQL only.
+ */
 export class KvTransactionGroupRepository implements TransactionGroupRepository {
   constructor(private readonly store: KeyValueStore) {}
 

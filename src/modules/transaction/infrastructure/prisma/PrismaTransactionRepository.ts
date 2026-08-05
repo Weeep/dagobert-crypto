@@ -25,7 +25,7 @@ export function toDomainTransaction(row: any): DagobertTransaction {
   };
 }
 
-/** Prisma adapter for transaction persistence selected by the comparison switch. */
+/** Prisma adapter for transaction persistence. */
 export class PrismaTransactionRepository implements TransactionRepository {
   constructor(private readonly prisma: PrismaClient) {}
 

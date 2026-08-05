@@ -1,6 +1,9 @@
 import type { KVRoot } from "./KVRoot";
 
 /**
+ * @deprecated Redis/KV persistence is retained only for legacy migration and
+ * comparison tests. New features should use Prisma/PostgreSQL instead.
+ *
  * Minimal server-side KV contract used by Redis repository adapters.
  *
  * Domain repository contracts remain the application boundary. This port only

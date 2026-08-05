@@ -204,7 +204,7 @@ describe("HTTP read repositoryk", () => {
     assert.deepEqual(await useCases.listPairs.execute(), [pair]);
   });
 
-  test("HTTP read és write kliensek továbbítják a kiválasztott PostgreSQL adatforrást", async () => {
+  test("HTTP read és write kliensek adatforrás-kapcsoló header nélkül hívják az API-t", async () => {
     const requests: Array<{
       url: string;
       method: string | undefined;
@@ -222,36 +222,18 @@ describe("HTTP read repositoryk", () => {
       });
       return response({ data: init?.method === "GET" ? [] : null });
     }) as FetchLike;
-    const originalWindow = (
-      globalThis as typeof globalThis & { window?: unknown }
-    ).window;
-    Object.defineProperty(globalThis, "window", {
-      configurable: true,
-      value: { localStorage: { getItem: () => "postgres" } },
-    });
 
-    try {
-      await new HttpReadClient(fetchImplementation).get("/api/transactions");
-      await new HttpWriteClient(fetchImplementation).put(
-        "/api/transactions/tx-1",
-        transactionDto
-      );
-      await new HttpWriteClient(fetchImplementation).delete("/api/pairs/SOLUSDC");
-    } finally {
-      if (originalWindow === undefined) {
-        delete (globalThis as { window?: unknown }).window;
-      } else {
-        Object.defineProperty(globalThis, "window", {
-          configurable: true,
-          value: originalWindow,
-        });
-      }
-    }
+    await new HttpReadClient(fetchImplementation).get("/api/transactions");
+    await new HttpWriteClient(fetchImplementation).put(
+      "/api/transactions/tx-1",
+      transactionDto
+    );
+    await new HttpWriteClient(fetchImplementation).delete("/api/pairs/SOLUSDC");
 
     assert.deepEqual(requests, [
-      { url: "/api/transactions", method: "GET", dataSource: "postgres" },
-      { url: "/api/transactions/tx-1", method: "PUT", dataSource: "postgres" },
-      { url: "/api/pairs/SOLUSDC", method: "DELETE", dataSource: "postgres" },
+      { url: "/api/transactions", method: "GET", dataSource: null },
+      { url: "/api/transactions/tx-1", method: "PUT", dataSource: null },
+      { url: "/api/pairs/SOLUSDC", method: "DELETE", dataSource: null },
     ]);
   });
 
