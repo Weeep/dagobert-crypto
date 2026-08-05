@@ -1,6 +1,8 @@
 git pull &&
 npm install &&
 npm run build &&
-pm2 restart app || pm2 start "npm start" --name app
+npm run test &&
+npm run test:prisma && 
+pm2 restart app 
+#|| pm2 start "npm start" --name app
 
-#test

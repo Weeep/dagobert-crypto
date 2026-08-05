@@ -1,8 +1,7 @@
 # Redis to PostgreSQL mapping
 
-This document records the initial relational model and the decisions that a
-future data-import script must follow. The runtime repositories remain backed
-by Redis during this phase.
+This document records the relational model and the Redis export migration. The
+runtime repositories remain backed by Redis until the application cutover.
 
 ## Source inventory
 
@@ -16,10 +15,9 @@ npm run audit-kv-db -- path/to/export.json
 
 For the committed `vercel_kv_export.json`, the audit currently finds 1 user,
 24 configured pairs, 1,055 transactions, 276 transaction groups, and 52 import
-cursors. It also identifies migration blockers that must be resolved rather
-than silently discarded: plaintext credentials, references to pair symbols
-that are absent from `pairs`, and four transactions embedded in more than one
-group.
+cursors. Plaintext credentials are expected in the legacy export. References
+to symbols absent from `pairs` identify records for deleted pairs and are
+deliberately filtered by the PostgreSQL importer.
 
 The audit never connects to Redis or PostgreSQL and never prints password
 values. It only reads the selected JSON file.
@@ -84,20 +82,49 @@ Authentication must be updated to verify this format before the runtime is
 switched to the Prisma user repository. Passwords and hashes must never appear
 in audit output or migration logs.
 
-## Import prerequisites and order
+## Import and validation
 
 1. Take and retain an immutable Redis export and run `npm run audit-kv-db`.
-2. Resolve all multiple-group memberships with an explicit business decision.
-3. Add missing pair records. Their `decimals` value must be chosen explicitly;
-   the importer must not guess it from transaction values.
-4. Apply the initial Prisma migration to an empty PostgreSQL database.
-5. Import users (hashing passwords), pairs, groups, transactions with resolved
-   group IDs, and finally import cursors. Use idempotent upserts and a database
-   transaction where practical.
-6. Compare row counts, IDs, group memberships, and cursor values with the
-   source dump.
-7. Only after repository contract tests pass should the server composition
+2. Resolve any multiple-group memberships reported by the audit. The importer
+   refuses to choose one silently.
+3. Configure `DATABASE_URL`, apply the Prisma migration, and run:
+
+   ```bash
+   npm run import-kv-db
+   npm run import-kv-db -- path/to/export.json
+   ```
+
+   The atomic import replaces the migration-owned tables. It hashes every
+   password and skips transactions, groups, and import cursors for symbols not
+   present in the export's `pairs` hash. Thus no trace of deleted pairs is
+   inserted into PostgreSQL. If a retained-pair transaction was embedded in a
+   skipped group, its legacy `grouped` flag remains true so the completed trade
+   does not incorrectly reappear as open, while its `transactionGroupId` is
+   `NULL` because the deleted-pair group itself is not retained.
+4. Validate the result against the same immutable export:
+
+   ```bash
+   npm run validate-kv-import
+   npm run validate-kv-import -- path/to/export.json
+   ```
+
+   The validator reconstructs the filtered source view, compares every field,
+   relationship, cursor, and skipped-row count, and verifies each scrypt hash
+   against the legacy password without logging either value.
+5. Only after repository contract tests pass should the server composition
    root be changed from KV repositories to Prisma repositories.
 
-The initial migration deliberately contains schema only; it neither reads the
-Redis dump nor switches application persistence at runtime.
+## Temporary visual comparison switch
+
+The authenticated application's header contains an `Adatforrás` switch. Its
+selection is stored in browser local storage; changing it reloads the page and
+routes all subsequent GET requests to either Redis or PostgreSQL. Pair,
+transaction, and transaction-group write requests, plus transaction
+import-cursor updates, also use the selected source so those Prisma write paths
+can be exercised while the switch remains available.
+
+The Prisma adapters live beside the corresponding KV and HTTP adapters in each
+module's `infrastructure/prisma` directory. The authentication adapter is not
+switched yet: PostgreSQL stores password hashes, while the current login port
+still expects a directly comparable credential. That contract must be changed
+to password verification before adding `PrismaUserCredentialRepository`.

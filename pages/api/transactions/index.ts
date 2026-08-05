@@ -1,5 +1,10 @@
 import { createTransactionsReadHandler } from "@/src/modules/transaction/infrastructure/http/transactionsReadHandler";
-import { serverRepositories, serverUseCases } from "@/src/shared/composition/serverUseCases";
+import { postgresReadRepositories, postgresReadUseCases, serverRepositories, serverUseCases } from "@/src/shared/composition/serverUseCases";
+import { selectDataSourceHandler } from "@/src/shared/infrastructure/http/selectDataSourceHandler";
 import { withAuth } from "@/utils/auth";
 
-export default withAuth(createTransactionsReadHandler(serverUseCases, serverRepositories.transactionRepository));
+export default withAuth(selectDataSourceHandler(
+  createTransactionsReadHandler(serverUseCases, serverRepositories.transactionRepository),
+  createTransactionsReadHandler(postgresReadUseCases, postgresReadRepositories.transactionRepository),
+  { postgresWritesEnabled: true }
+));

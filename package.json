@@ -11,6 +11,7 @@
     "start": "next start -p 3082",
     "export-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/exportKvDb.ts",
     "import-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/importKvDb.ts",
+    "validate-kv-import": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/validateKvImport.ts",
     "audit-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/auditKvExport.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
