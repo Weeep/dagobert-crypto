@@ -34,9 +34,9 @@ export type UseCaseRepositories = {
 };
 
 /**
- * Shared use-case wiring. Runtime-specific composition roots only choose the
- * repository adapters, so Redis can later be replaced by Prisma/PostgreSQL
- * without changing application use cases.
+ * Shared use-case wiring. Runtime-specific composition roots choose repository
+ * adapters, so deprecated Redis/KV test seams can coexist with the production
+ * Prisma/PostgreSQL runtime without changing application use cases.
  */
 export function createUseCases({
   pairRepository,

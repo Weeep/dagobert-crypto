@@ -20,7 +20,10 @@ export type ServerRepositories = {
   transactionGroupRepository: TransactionGroupRepository;
 };
 
-/** Server composition factory with an injectable persistence connection. */
+/**
+ * @deprecated KV-backed server composition is retained only for legacy tests.
+ * Production routes use Prisma/PostgreSQL repositories.
+ */
 export function createServerUseCases(
   store: KeyValueStore,
   tokenService: AuthTokenService
@@ -29,6 +32,9 @@ export function createServerUseCases(
   return createServerUseCasesFromRepositories(repositories, tokenService);
 }
 
+/**
+ * @deprecated KV repository factory retained only for migration-era tests.
+ */
 export function createServerRepositories(
   store: KeyValueStore
 ): ServerRepositories {

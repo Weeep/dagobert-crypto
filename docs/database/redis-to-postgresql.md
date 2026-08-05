@@ -1,7 +1,9 @@
 # Redis to PostgreSQL mapping
 
 This document records the relational model and the Redis export migration. The
-runtime repositories remain backed by Redis until the application cutover.
+application runtime has been cut over to Prisma/PostgreSQL; Redis/KV code is
+kept only as deprecated legacy support for migration tooling, tests, and
+historical comparison seams.
 
 ## Source inventory
 
@@ -78,9 +80,8 @@ scrypt$v=1$N=32768$r=8$p=1$<base64-salt>$<base64-derived-key>
 The scrypt call must set `maxmem` to at least 64 MiB so the selected work factor
 has explicit memory headroom.
 
-Authentication must be updated to verify this format before the runtime is
-switched to the Prisma user repository. Passwords and hashes must never appear
-in audit output or migration logs.
+Runtime authentication verifies this format through the Prisma user repository.
+Passwords and hashes must never appear in audit output or migration logs.
 
 ## Import and validation
 
@@ -111,21 +112,23 @@ in audit output or migration logs.
    The validator reconstructs the filtered source view, compares every field,
    relationship, cursor, and skipped-row count, and verifies each scrypt hash
    against the legacy password without logging either value.
-5. Only after repository contract tests pass should the server composition
-   root be changed from KV repositories to Prisma repositories.
+5. After repository contract tests pass, keep Redis/KV code available only for
+   legacy migration checks; do not route new runtime behavior to KV.
 
-## Temporary visual comparison switch
+## Runtime cutover and KV deprecation
 
-The authenticated application's header contains an `Adatforrás` switch. Its
-selection is stored in browser local storage; changing it reloads the page and
-routes all subsequent GET requests to either Redis or PostgreSQL. Pair,
-transaction, and transaction-group write requests, plus transaction
-import-cursor updates, also use the selected source so those Prisma write paths
-can be exercised while the switch remains available.
+The authenticated application no longer exposes an `Adatforrás` switch in the
+header, and browser clients no longer send a data-source selection header. API
+routes use Prisma/PostgreSQL repositories directly for pairs, transactions,
+transaction groups, import cursors, and authentication.
 
-The Prisma adapters live beside the corresponding KV and HTTP adapters in each
-module's `infrastructure/prisma` directory. Authentication now uses
-`PrismaUserCredentialRepository` in the production server composition root,
-while the injectable KV factory remains available for legacy/plain-text KV
-repository tests and local comparison seams. PostgreSQL login verifies the
-scrypt hashes created from legacy KV plaintext passwords during migration.
+The Prisma adapters live beside the corresponding deprecated KV adapters in each
+module's `infrastructure/prisma` directory. Authentication uses
+`PrismaUserCredentialRepository` in the production server composition root and
+verifies the scrypt hashes created from legacy KV plaintext passwords during
+migration.
+
+All Redis/KV repositories, store ports, health checks, and migration-era tools
+are legacy-only. They should remain in the codebase for historical migration
+support and tests, but future features should not implement or extend KV-backed
+behavior.

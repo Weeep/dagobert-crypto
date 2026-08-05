@@ -6,7 +6,7 @@ import type {
 } from "@/src/modules/transaction-group";
 import { toDomainTransaction } from "@/src/modules/transaction/infrastructure/prisma/PrismaTransactionRepository";
 
-/** Prisma adapter for transaction-group persistence selected by the comparison switch. */
+/** Prisma adapter for transaction-group persistence. */
 export class PrismaTransactionGroupRepository
   implements TransactionGroupRepository
 {

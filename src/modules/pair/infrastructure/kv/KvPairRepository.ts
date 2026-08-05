@@ -3,7 +3,10 @@ import type { KeyValueStore } from "@/src/shared/infrastructure/kv/KeyValueStore
 import type { DagobertPair } from "../../domain/DagobertPair";
 import type { PairRepository } from "../../domain/PairRepository";
 
-/** Redis/KV adapter for server-side composition roots. */
+/**
+ * @deprecated Legacy Redis/KV pair adapter retained for migration and tests.
+ * New features should use Prisma/PostgreSQL only.
+ */
 export class KvPairRepository implements PairRepository {
   constructor(private readonly store: KeyValueStore) {}
 

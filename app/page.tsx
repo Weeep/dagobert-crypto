@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 import PageBot from "./components/pageBot/PageBot";
-import DataSourceToggle from "./components/DataSourceToggle";
 
 const pages = {
   Transactions: PageTransactions,
@@ -65,7 +64,6 @@ export default function Home() {
         <header className="flex justify-between items-center p-4 border-b border-gray-700">
           <h1 className="text-4xl font-bold">Dagobert</h1>
           <nav className="flex flex-wrap items-center justify-end">
-            <DataSourceToggle />
             {Object.keys(pages).map((page) => (
               <button
                 key={page}

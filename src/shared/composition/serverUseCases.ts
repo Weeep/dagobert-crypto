@@ -1,41 +1,24 @@
 import { JwtAuthTokenService } from "@/src/modules/auth/infrastructure/JwtAuthTokenService";
-import { RedisKeyValueStore } from "@/src/shared/infrastructure/kv/RedisKeyValueStore";
-import { PrismaHealthCheck } from "@/src/shared/infrastructure/prisma/PrismaHealthCheck";
-import { prisma } from "@/src/shared/infrastructure/prisma/prisma";
 import { PrismaUserCredentialRepository } from "@/src/modules/auth/infrastructure/prisma/PrismaUserCredentialRepository";
 import { PrismaPairRepository } from "@/src/modules/pair/infrastructure/prisma/PrismaPairRepository";
 import { PrismaTransactionRepository } from "@/src/modules/transaction/infrastructure/prisma/PrismaTransactionRepository";
 import { PrismaTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/prisma/PrismaTransactionGroupRepository";
+import { PrismaHealthCheck } from "@/src/shared/infrastructure/prisma/PrismaHealthCheck";
+import { prisma } from "@/src/shared/infrastructure/prisma/prisma";
 import { createUseCases } from "./createUseCases";
-import {
-  createServerRepositories,
-  createServerUseCasesFromRepositories,
-} from "./createServerUseCases";
+import { createServerUseCasesFromRepositories } from "./createServerUseCases";
 
-/**
- * Server composition root. API routes can use the singleton today, while tests
- * can inject an in-memory store through the factory.
- */
-const redisKeyValueStore = new RedisKeyValueStore({
-  host: process.env.KV_HOST,
-  port: Number(process.env.KV_PORT),
-  password: process.env.KV_PASSWORD,
-});
-
-export const databaseHealthCheck = new PrismaHealthCheck(prisma);
-export const serverRepositories = {
-  ...createServerRepositories(redisKeyValueStore),
+/** Production server composition root backed by Prisma/PostgreSQL. */
+export const postgresRepositories = {
   userCredentialRepository: new PrismaUserCredentialRepository(prisma),
-};
-export const serverUseCases = createServerUseCasesFromRepositories(
-  serverRepositories,
-  new JwtAuthTokenService()
-);
-
-/** Temporary read-only PostgreSQL root used by the UI comparison switch. */
-export const postgresReadRepositories = {
   pairRepository: new PrismaPairRepository(prisma),
   transactionRepository: new PrismaTransactionRepository(prisma),
   transactionGroupRepository: new PrismaTransactionGroupRepository(prisma),
 };
-export const postgresReadUseCases = createUseCases(postgresReadRepositories);
+
+export const databaseHealthCheck = new PrismaHealthCheck(prisma);
+export const postgresUseCases = createUseCases(postgresRepositories);
+export const serverUseCases = createServerUseCasesFromRepositories(
+  postgresRepositories,
+  new JwtAuthTokenService()
+);
