@@ -164,7 +164,8 @@ describe("Prisma repository contracts", () => {
     assert.deepEqual(calls, ["tx-1", "tx-2"]);
   });
 
-  test("transaction-group repository includes mapped member transactions", async () => {
+  test("transaction-group repository includes mapped member transactions and writes membership", async () => {
+    const calls: Array<{ operation: string; args: any }> = [];
     const groupRow = {
       id: "00000000-0000-0000-0000-000000000001",
       pairSymbol: "SOLUSDC",
@@ -180,6 +181,24 @@ describe("Prisma repository contracts", () => {
         findMany: async () => [groupRow],
         findUnique: async ({ where }: any) =>
           where.id === groupRow.id ? groupRow : null,
+        upsert: (args: any) => {
+          calls.push({ operation: "transactionGroup.upsert", args });
+          return args;
+        },
+        deleteMany: (args: any) => {
+          calls.push({ operation: "transactionGroup.deleteMany", args });
+          return args;
+        },
+      },
+      transaction: {
+        updateMany: (args: any) => {
+          calls.push({ operation: "transaction.updateMany", args });
+          return args;
+        },
+      },
+      $transaction: async (operations: unknown[]) => {
+        calls.push({ operation: "$transaction", args: { count: operations.length } });
+        return operations;
       },
     }));
 
@@ -189,5 +208,49 @@ describe("Prisma repository contracts", () => {
     assert.equal(groups[0].groupedTrans[0].orderId, "tx-1");
     assert.deepEqual(await repository.findById(groupRow.id), groups[0]);
     assert.equal(await repository.findById("missing"), null);
+
+    await repository.save(groups[0]);
+    await repository.delete(groupRow.id);
+
+    assert.deepEqual(calls, [
+      {
+        operation: "transactionGroup.upsert",
+        args: {
+          where: { id: groupRow.id },
+          create: {
+            id: groupRow.id, pairSymbol: "SOLUSDC", amount: "-50", executed: "0.5",
+            tradeType: TradeType.Spot, lastTransDateEpoch: 1735819200000, note: "group note",
+          },
+          update: {
+            pairSymbol: "SOLUSDC", amount: "-50", executed: "0.5",
+            tradeType: TradeType.Spot, lastTransDateEpoch: 1735819200000, note: "group note",
+          },
+        },
+      },
+      {
+        operation: "transaction.updateMany",
+        args: {
+          where: { transactionGroupId: groupRow.id },
+          data: { transactionGroupId: null, grouped: false },
+        },
+      },
+      {
+        operation: "transaction.updateMany",
+        args: {
+          where: { orderId: { in: ["tx-1"] } },
+          data: { transactionGroupId: groupRow.id, grouped: true },
+        },
+      },
+      { operation: "$transaction", args: { count: 3 } },
+      {
+        operation: "transaction.updateMany",
+        args: {
+          where: { transactionGroupId: groupRow.id },
+          data: { transactionGroupId: null, grouped: false },
+        },
+      },
+      { operation: "transactionGroup.deleteMany", args: { where: { id: groupRow.id } } },
+      { operation: "$transaction", args: { count: 2 } },
+    ]);
   });
 });

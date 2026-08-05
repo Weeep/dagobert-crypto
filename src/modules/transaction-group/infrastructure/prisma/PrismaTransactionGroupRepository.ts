@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { TradeType } from "@/src/modules/transaction";
 import type {
   DagobertTransactionGroup,
@@ -6,11 +6,7 @@ import type {
 } from "@/src/modules/transaction-group";
 import { toDomainTransaction } from "@/src/modules/transaction/infrastructure/prisma/PrismaTransactionRepository";
 
-function readOnly(): never {
-  throw new Error("The temporary PostgreSQL comparison source is read-only");
-}
-
-/** Prisma adapter for group persistence; writes stay disabled during comparison. */
+/** Prisma adapter for transaction-group persistence selected by the comparison switch. */
 export class PrismaTransactionGroupRepository
   implements TransactionGroupRepository
 {
@@ -44,11 +40,101 @@ export class PrismaTransactionGroupRepository
     return row ? this.toDomain(row) : null;
   }
 
-  async save(): Promise<void> {
-    readOnly();
+  async save(group: DagobertTransactionGroup): Promise<void> {
+    if (!group.groupId) {
+      throw new Error("Cannot save transaction group without groupId");
+    }
+
+    const transactionIds = group.groupedTrans.map(
+      (transaction) => transaction.orderId
+    );
+    const operations: Array<() => Prisma.PrismaPromise<unknown>> = [
+      () =>
+        this.prisma.transactionGroup.upsert({
+          where: { id: group.groupId! },
+          create: toPrismaTransactionGroupCreateInput(group),
+          update: toPrismaTransactionGroupUpdateInput(group),
+        }),
+      () =>
+        this.prisma.transaction.updateMany({
+          where: { transactionGroupId: group.groupId },
+          data: { transactionGroupId: null, grouped: false },
+        }),
+    ];
+
+    if (transactionIds.length > 0) {
+      operations.push(() =>
+        this.prisma.transaction.updateMany({
+          where: { orderId: { in: transactionIds } },
+          data: { transactionGroupId: group.groupId, grouped: true },
+        })
+      );
+    }
+
+    await runGroupWrite(this.prisma, operations);
   }
 
-  async delete(): Promise<void> {
-    readOnly();
+  async delete(id: string): Promise<void> {
+    await runGroupWrite(this.prisma, [
+      () =>
+        this.prisma.transaction.updateMany({
+          where: { transactionGroupId: id },
+          data: { transactionGroupId: null, grouped: false },
+        }),
+      () => this.prisma.transactionGroup.deleteMany({ where: { id } }),
+    ]);
   }
+}
+
+function toPrismaTransactionGroupCreateInput(
+  group: DagobertTransactionGroup
+): Prisma.TransactionGroupUncheckedCreateInput {
+  if (!group.groupId) {
+    throw new Error("Cannot save transaction group without groupId");
+  }
+
+  return {
+    id: group.groupId,
+    pairSymbol: group.pair,
+    amount: String(group.amount),
+    executed: String(group.executed),
+    tradeType: group.tradeType,
+    lastTransDateEpoch: group.lastTransDateEpoch,
+    note: group.note,
+  };
+}
+
+function toPrismaTransactionGroupUpdateInput(
+  group: DagobertTransactionGroup
+): Prisma.TransactionGroupUncheckedUpdateInput {
+  return {
+    pairSymbol: group.pair,
+    amount: String(group.amount),
+    executed: String(group.executed),
+    tradeType: group.tradeType,
+    lastTransDateEpoch: group.lastTransDateEpoch,
+    note: group.note,
+  };
+}
+
+async function runGroupWrite(
+  prisma: PrismaClient,
+  operations: Array<() => Prisma.PrismaPromise<unknown>>
+): Promise<void> {
+  if (hasBatchTransaction(prisma)) {
+    await prisma.$transaction(operations.map((operation) => operation()));
+    return;
+  }
+
+  for (const operation of operations) {
+    await operation();
+  }
+}
+
+function hasBatchTransaction(
+  prisma: PrismaClient
+): prisma is PrismaClient & { $transaction: PrismaClient["$transaction"] } {
+  return (
+    typeof (prisma as { $transaction?: unknown }).$transaction === "function"
+  );
 }
