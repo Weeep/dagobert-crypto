@@ -29,17 +29,30 @@ test("Prisma credential repository verifies migrated password hashes", async () 
   });
 });
 
-test("Prisma credential repository rejects missing users", async () => {
-  const repository = new PrismaUserCredentialRepository({
-    user: {
-      async findUnique() {
-        return null;
+test("Prisma credential repository runs a dummy hash check for missing users", async () => {
+  const verifications: Array<{ password: string; encoded: string }> = [];
+  const repository = new PrismaUserCredentialRepository(
+    {
+      user: {
+        async findUnique() {
+          return null;
+        },
       },
-    },
-  } as never);
+    } as never,
+    async (password, encoded) => {
+      verifications.push({ password, encoded });
+      return false;
+    }
+  );
 
   assert.equal(
     await repository.verifyPasswordByEmail("missing@example.com", "password"),
     false
+  );
+  assert.equal(verifications.length, 1);
+  assert.equal(verifications[0].password, "password");
+  assert.match(
+    verifications[0].encoded,
+    /^scrypt\$v=1\$N=32768\$r=8\$p=1\$/
   );
 });
