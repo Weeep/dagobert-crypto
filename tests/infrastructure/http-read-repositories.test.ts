@@ -204,6 +204,57 @@ describe("HTTP read repositoryk", () => {
     assert.deepEqual(await useCases.listPairs.execute(), [pair]);
   });
 
+  test("HTTP read és write kliensek továbbítják a kiválasztott PostgreSQL adatforrást", async () => {
+    const requests: Array<{
+      url: string;
+      method: string | undefined;
+      dataSource: string | null;
+    }> = [];
+    const fetchImplementation = (async (
+      input: string | URL | Request,
+      init?: RequestInit
+    ) => {
+      const headers = new Headers(init?.headers);
+      requests.push({
+        url: input.toString(),
+        method: init?.method,
+        dataSource: headers.get("X-Dagobert-Data-Source"),
+      });
+      return response({ data: init?.method === "GET" ? [] : null });
+    }) as FetchLike;
+    const originalWindow = (
+      globalThis as typeof globalThis & { window?: unknown }
+    ).window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: { localStorage: { getItem: () => "postgres" } },
+    });
+
+    try {
+      await new HttpReadClient(fetchImplementation).get("/api/transactions");
+      await new HttpWriteClient(fetchImplementation).put(
+        "/api/transactions/tx-1",
+        transactionDto
+      );
+      await new HttpWriteClient(fetchImplementation).delete("/api/pairs/SOLUSDC");
+    } finally {
+      if (originalWindow === undefined) {
+        delete (globalThis as { window?: unknown }).window;
+      } else {
+        Object.defineProperty(globalThis, "window", {
+          configurable: true,
+          value: originalWindow,
+        });
+      }
+    }
+
+    assert.deepEqual(requests, [
+      { url: "/api/transactions", method: "GET", dataSource: "postgres" },
+      { url: "/api/transactions/tx-1", method: "PUT", dataSource: "postgres" },
+      { url: "/api/pairs/SOLUSDC", method: "DELETE", dataSource: "postgres" },
+    ]);
+  });
+
   test("a kliens composition root minden repository írást HTTP API-ra küld", async () => {
     const epochUrl = "/api/transactions/last-processed-epoch?pair=SOLUSDC&tradeType=spot";
     const router = fetchRouter({
