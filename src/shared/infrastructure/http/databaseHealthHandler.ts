@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import type { ReadApiResponse } from "../../dto/ReadApiResponse";
 import { rejectNonGetMethod, sendReadApiError } from "./readApiHelpers";
 
-export type DatabaseHealth = { status: "ok" };
+export type DatabaseHealth = { status: "ok"; database: "postgresql" };
 
 export function createDatabaseHealthHandler(
   checkConnection: () => Promise<boolean>
@@ -26,7 +26,7 @@ export function createDatabaseHealthHandler(
         );
         return;
       }
-      res.status(200).json({ data: { status: "ok" } });
+      res.status(200).json({ data: { status: "ok", database: "postgresql" } });
     } catch {
       sendReadApiError(
         res,

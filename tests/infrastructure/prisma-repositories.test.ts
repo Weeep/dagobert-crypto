@@ -253,4 +253,45 @@ describe("Prisma repository contracts", () => {
       { operation: "$transaction", args: { count: 2 } },
     ]);
   });
+
+  test("server composition root wires Prisma repositories while keeping KV authentication", async () => {
+    const { createPrismaServerRepositories, createServerUseCasesFromRepositories } = await import(
+      "@/src/shared/composition/createServerUseCases"
+    );
+    const calls: Array<{ operation: string; args: any }> = [];
+    const prisma = asPrisma({
+      pair: {
+        findMany: async () => [],
+        findUnique: async () => null,
+        upsert: async (args: any) => calls.push({ operation: "pair.upsert", args }),
+      },
+      transaction: {},
+      transactionGroup: {},
+    });
+    const credentialStore = {
+      get: async () => null,
+      set: async () => undefined,
+      hget: async (_key: unknown, field: string) => field === "user@example.com" ? "password" : null,
+      hgetall: async () => ({}),
+      hset: async () => undefined,
+      hdel: async () => undefined,
+    };
+    const tokenService = {
+      generate: (email: string) => `token-for-${email}`,
+      verify: () => null,
+    };
+
+    const repositories = createPrismaServerRepositories(prisma, credentialStore);
+    const useCases = createServerUseCasesFromRepositories(repositories, tokenService);
+
+    assert.equal(repositories.pairRepository.constructor.name, "PrismaPairRepository");
+    assert.equal(repositories.userCredentialRepository.constructor.name, "KvUserCredentialRepository");
+    assert.deepEqual(await useCases.login.execute({ email: "user@example.com", password: "password" }), {
+      authenticated: true,
+      token: "token-for-user@example.com",
+    });
+    assert.equal((await useCases.createPair.execute({ pair: "solusdc" })).ok, true);
+    assert.equal(calls[0].operation, "pair.upsert");
+  });
+
 });

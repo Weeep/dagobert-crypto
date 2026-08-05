@@ -7,7 +7,7 @@ import { PrismaTransactionRepository } from "@/src/modules/transaction/infrastru
 import { PrismaTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/prisma/PrismaTransactionGroupRepository";
 import { createUseCases } from "./createUseCases";
 import {
-  createServerRepositories,
+  createPrismaServerRepositories,
   createServerUseCasesFromRepositories,
 } from "./createServerUseCases";
 
@@ -22,13 +22,16 @@ const redisKeyValueStore = new RedisKeyValueStore({
 });
 
 export const databaseHealthCheck = new PrismaHealthCheck(prisma);
-export const serverRepositories = createServerRepositories(redisKeyValueStore);
+export const serverRepositories = createPrismaServerRepositories(
+  prisma,
+  redisKeyValueStore
+);
 export const serverUseCases = createServerUseCasesFromRepositories(
   serverRepositories,
   new JwtAuthTokenService()
 );
 
-/** Temporary read-only PostgreSQL root used by the UI comparison switch. */
+/** PostgreSQL root used by the UI data-source switch. */
 export const postgresReadRepositories = {
   pairRepository: new PrismaPairRepository(prisma),
   transactionRepository: new PrismaTransactionRepository(prisma),
