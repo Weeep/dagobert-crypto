@@ -328,7 +328,7 @@ describe("read API integration", () => {
     const success = createMockResponse();
     await handler(request("GET"), success.response);
     assert.equal(checks, 1);
-    assert.deepEqual(success.body, { data: { status: "ok" } });
+    assert.deepEqual(success.body, { data: { status: "ok", database: "postgresql" } });
 
     const rejected = createMockResponse();
     await handler(request("POST"), rejected.response);
@@ -342,7 +342,7 @@ describe("read API integration", () => {
 
   test("database health API elrejti a kapcsolat belső hibáját", async () => {
     const handler = createDatabaseHealthHandler(async () => {
-      throw new Error("redis host and password details");
+      throw new Error("postgres host and password details");
     });
     const response = createMockResponse();
     await handler(request("GET"), response.response);

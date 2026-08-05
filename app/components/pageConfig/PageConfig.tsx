@@ -29,7 +29,9 @@ export default function PageConfig() {
 
     const data = await response.json();
     setDbConnStatusStr(
-      response.ok ? "Database connection OK" : data.error?.message ?? "Database connection unavailable"
+      response.ok
+        ? "PostgreSQL database connection OK"
+        : data.error?.message ?? "PostgreSQL database connection unavailable"
     );
   };
 
@@ -169,7 +171,7 @@ export default function PageConfig() {
     <>
       <h1 className="text-4xl font-semibold mb-4">Config</h1>
 
-      <h2 className="text-xl font-semibold my-3">{i++}. Database Connection</h2>
+      <h2 className="text-xl font-semibold my-3">{i++}. PostgreSQL Database Connection</h2>
       <p className="ml-8">
         {isDbConnOk ? greenPipe : redCross} {dbConnStatusStr}
       </p>
