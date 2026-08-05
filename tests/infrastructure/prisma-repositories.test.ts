@@ -134,6 +134,36 @@ describe("Prisma repository contracts", () => {
     });
   });
 
+
+  test("transaction repository saveMany also works inside interactive Prisma transactions", async () => {
+    const calls: string[] = [];
+    const repository = new PrismaTransactionRepository(asPrisma({
+      transaction: {
+        upsert: (args: any) => {
+          calls.push(args.where.orderId);
+          return Promise.resolve(args);
+        },
+      },
+    }));
+
+    await repository.saveMany([
+      {
+        orderId: "tx-1", binanceApiId: 12, pair: "SOLUSDC", amount: -50,
+        executed: 0.5, date: transactionRow.date, dateEpoch: 1735819200000,
+        side: "BUY", price: 100, status: "FILLED", grouped: true, note: "note",
+        otherSideOrderId: "", tradeType: TradeType.Spot, tradeStyle: TradeStyle.Swing,
+      },
+      {
+        orderId: "tx-2", binanceApiId: 13, pair: "SOLUSDC", amount: 50,
+        executed: 0.5, date: transactionRow.date, dateEpoch: 1735819200001,
+        side: "SELL", price: 101, status: "FILLED", grouped: false, note: "",
+        otherSideOrderId: "tx-1", tradeType: TradeType.Spot, tradeStyle: TradeStyle.Day,
+      },
+    ]);
+
+    assert.deepEqual(calls, ["tx-1", "tx-2"]);
+  });
+
   test("transaction-group repository includes mapped member transactions", async () => {
     const groupRow = {
       id: "00000000-0000-0000-0000-000000000001",

@@ -66,15 +66,20 @@ export class PrismaTransactionRepository implements TransactionRepository {
   async saveMany(transactions: DagobertTransaction[]): Promise<void> {
     if (transactions.length === 0) return;
 
-    await this.prisma.$transaction(
-      transactions.map((transaction) =>
-        this.prisma.transaction.upsert({
-          where: { orderId: transaction.orderId },
-          create: toPrismaTransactionInput(transaction),
-          update: toPrismaTransactionInput(transaction),
-        })
-      )
+    const operations = transactions.map((transaction) =>
+      this.prisma.transaction.upsert({
+        where: { orderId: transaction.orderId },
+        create: toPrismaTransactionInput(transaction),
+        update: toPrismaTransactionInput(transaction),
+      })
     );
+
+    if (hasBatchTransaction(this.prisma)) {
+      await this.prisma.$transaction(operations);
+      return;
+    }
+
+    await Promise.all(operations);
   }
 
   async setLastProcessedEpoch(
@@ -119,4 +124,10 @@ function toPrismaTransactionInput(
     tradeType: transaction.tradeType,
     tradeStyle: transaction.tradeStyle,
   };
+}
+
+function hasBatchTransaction(
+  prisma: PrismaClient
+): prisma is PrismaClient & { $transaction: PrismaClient["$transaction"] } {
+  return typeof (prisma as { $transaction?: unknown }).$transaction === "function";
 }
