@@ -1,3 +1,3 @@
 export interface UserCredentialRepository {
-  findPasswordByEmail(email: string): Promise<string | null>;
+  verifyPasswordByEmail(email: string, password: string): Promise<boolean>;
 }

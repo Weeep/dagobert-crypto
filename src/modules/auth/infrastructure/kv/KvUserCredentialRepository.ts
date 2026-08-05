@@ -6,8 +6,11 @@ import type { UserCredentialRepository } from "../../application/UserCredentialR
 export class KvUserCredentialRepository implements UserCredentialRepository {
   constructor(private readonly store: KeyValueStore) {}
 
-  public async findPasswordByEmail(email: string): Promise<string | null> {
+  public async verifyPasswordByEmail(
+    email: string,
+    submittedPassword: string
+  ): Promise<boolean> {
     const password = await this.store.hget(KVRoot.users, email);
-    return typeof password === "string" ? password : null;
+    return typeof password === "string" && password === submittedPassword;
   }
 }

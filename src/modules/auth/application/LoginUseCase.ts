@@ -13,9 +13,12 @@ export class LoginUseCase {
   ) {}
 
   public async execute({ email, password }: LoginDto): Promise<LoginResult> {
-    const storedPassword = await this.credentials.findPasswordByEmail(email);
+    const authenticated = await this.credentials.verifyPasswordByEmail(
+      email,
+      password
+    );
 
-    if (storedPassword === null || storedPassword !== password) {
+    if (!authenticated) {
       return { authenticated: false };
     }
 

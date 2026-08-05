@@ -124,7 +124,8 @@ import-cursor updates, also use the selected source so those Prisma write paths
 can be exercised while the switch remains available.
 
 The Prisma adapters live beside the corresponding KV and HTTP adapters in each
-module's `infrastructure/prisma` directory. The authentication adapter is not
-switched yet: PostgreSQL stores password hashes, while the current login port
-still expects a directly comparable credential. That contract must be changed
-to password verification before adding `PrismaUserCredentialRepository`.
+module's `infrastructure/prisma` directory. Authentication now uses
+`PrismaUserCredentialRepository` in the production server composition root,
+while the injectable KV factory remains available for legacy/plain-text KV
+repository tests and local comparison seams. PostgreSQL login verifies the
+scrypt hashes created from legacy KV plaintext passwords during migration.

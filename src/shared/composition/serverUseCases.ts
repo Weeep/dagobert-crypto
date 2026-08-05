@@ -2,6 +2,7 @@ import { JwtAuthTokenService } from "@/src/modules/auth/infrastructure/JwtAuthTo
 import { RedisKeyValueStore } from "@/src/shared/infrastructure/kv/RedisKeyValueStore";
 import { PrismaHealthCheck } from "@/src/shared/infrastructure/prisma/PrismaHealthCheck";
 import { prisma } from "@/src/shared/infrastructure/prisma/prisma";
+import { PrismaUserCredentialRepository } from "@/src/modules/auth/infrastructure/prisma/PrismaUserCredentialRepository";
 import { PrismaPairRepository } from "@/src/modules/pair/infrastructure/prisma/PrismaPairRepository";
 import { PrismaTransactionRepository } from "@/src/modules/transaction/infrastructure/prisma/PrismaTransactionRepository";
 import { PrismaTransactionGroupRepository } from "@/src/modules/transaction-group/infrastructure/prisma/PrismaTransactionGroupRepository";
@@ -22,7 +23,10 @@ const redisKeyValueStore = new RedisKeyValueStore({
 });
 
 export const databaseHealthCheck = new PrismaHealthCheck(prisma);
-export const serverRepositories = createServerRepositories(redisKeyValueStore);
+export const serverRepositories = {
+  ...createServerRepositories(redisKeyValueStore),
+  userCredentialRepository: new PrismaUserCredentialRepository(prisma),
+};
 export const serverUseCases = createServerUseCasesFromRepositories(
   serverRepositories,
   new JwtAuthTokenService()
