@@ -8,6 +8,7 @@ import { clientUseCases } from "@/src/shared/composition/clientUseCases";
 import { greenPipe, isTransactionIfArray, redCross } from "@/utils/helper";
 import FollowedPairs, { PairsInfo } from "./FollowedPairs";
 import { TransactionIf } from "@/app/lib/Interfaces";
+import type { BinanceHealth } from "@/src/shared/infrastructure/http/binanceHealthHandler";
 
 const listPairsUseCase = clientUseCases.listPairs;
 const importTransactionsFromBinanceUseCase =
@@ -16,6 +17,9 @@ const importTransactionsFromBinanceUseCase =
 export default function PageConfig() {
   const [dbConnStatusStr, setDbConnStatusStr] = useState<string>("Checking...");
   const [isDbConnOk, setDbConn] = useState<boolean>(true);
+  const [binanceHealth, setBinanceHealth] = useState<BinanceHealth | null>(null);
+  const [binanceStatus, setBinanceStatus] = useState("Checking...");
+  const [isBinanceLoading, setIsBinanceLoading] = useState(true);
   const [numOfNewTransactions, setNumOfNewTransactions] = useState<PairsInfo>(
     {}
   );
@@ -33,8 +37,37 @@ export default function PageConfig() {
     );
   };
 
+  const binanceConnectionCheck = async () => {
+    setIsBinanceLoading(true);
+    setBinanceStatus("Checking Binance API connection...");
+
+    try {
+      const response = await fetch("/api/health/binance");
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error?.message ?? "Binance API connection unavailable"
+        );
+      }
+
+      setBinanceHealth(result.data);
+      setBinanceStatus("Binance API connection OK");
+    } catch (error) {
+      setBinanceHealth(null);
+      setBinanceStatus(
+        error instanceof Error
+          ? error.message
+          : "Binance API connection unavailable"
+      );
+    } finally {
+      setIsBinanceLoading(false);
+    }
+  };
+
   useEffect(() => {
     databaseConnectionCheck();
+    binanceConnectionCheck();
     fetchPairs();
   }, []);
 
@@ -177,6 +210,63 @@ export default function PageConfig() {
       <h2 className="text-xl font-semibold my-3">
         {i++}. Binance API Connection
       </h2>
+      <div className="ml-8 max-w-2xl rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p>
+            {binanceHealth ? greenPipe : isBinanceLoading ? "⏳" : redCross}{" "}
+            {binanceStatus}
+          </p>
+          <button
+            type="button"
+            onClick={binanceConnectionCheck}
+            disabled={isBinanceLoading}
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-wait disabled:opacity-50"
+          >
+            {isBinanceLoading ? "Checking…" : "Check again"}
+          </button>
+        </div>
+
+        {binanceHealth && (
+          <div className="mt-4">
+            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+              <div className="rounded-md bg-slate-800 p-2">
+                <div className="text-xs text-slate-400">Account</div>
+                <div className="font-semibold">{binanceHealth.accountType}</div>
+              </div>
+              <div className="rounded-md bg-slate-800 p-2">
+                <div className="text-xs text-slate-400">Trading</div>
+                <div className={binanceHealth.canTrade ? "font-semibold text-emerald-400" : "font-semibold text-rose-400"}>
+                  {binanceHealth.canTrade ? "Enabled" : "Disabled"}
+                </div>
+              </div>
+              <div className="rounded-md bg-slate-800 p-2">
+                <div className="text-xs text-slate-400">Response time</div>
+                <div className="font-semibold">{binanceHealth.latencyMs} ms</div>
+              </div>
+              <div className="rounded-md bg-slate-800 p-2">
+                <div className="text-xs text-slate-400">Server time</div>
+                <div className="font-semibold">
+                  {new Date(binanceHealth.serverTime).toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
+
+            <h3 className="mb-2 mt-4 text-sm font-semibold">Available spot balances</h3>
+            {binanceHealth.balances.length === 0 ? (
+              <p className="text-sm text-slate-400">No available spot balance.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {binanceHealth.balances.map((balance) => (
+                  <div key={balance.asset} className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm">
+                    <span className="font-semibold text-blue-300">{balance.asset}</span>{" "}
+                    <span className="font-mono">{balance.free}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {isDbConnOk ? addFollowedPairs(`${i++}. Followed Pairs`) : ""}
       {isDbConnOk
