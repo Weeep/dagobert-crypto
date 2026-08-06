@@ -19,7 +19,15 @@ enum SpotActions {
   AllOrders = "AllOrders",
 }
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export function createSpotHandler(client = binanceClient) {
+  return (req: NextApiRequest, res: NextApiResponse) => handler(req, res, client);
+}
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  client: typeof binanceClient
+) {
   let action = null;
   switch (req.method) {
     case "GET":
@@ -41,13 +49,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   switch (action) {
     case SpotActions.OpenOrders:
-      return await openOrders(res, {});
+      return await openOrders(res, {}, client);
     case SpotActions.CancelOrder:
-      return await cancelOrder(res, req.body as CancelOrderOptions);
+      return await cancelOrder(res, req.body as CancelOrderOptions, client);
     case SpotActions.NewSlOrder:
-      return await newStopLimitOrder(res, req.body);
+      return await newStopLimitOrder(res, req.body, client);
     case SpotActions.AllOrders:
-      return await allOrders(req, res);
+      return await allOrders(req, res, client);
   }
 }
 
@@ -57,10 +65,11 @@ async function openOrders(
     symbol?: string;
     recvWindow?: number;
     useServerTime?: boolean;
-  }
+  },
+  client: typeof binanceClient
 ) {
   try {
-    const response: QueryOrderResult[] = await binanceClient.openOrders({
+    const response: QueryOrderResult[] = await client.openOrders({
       ...options,
       useServerTime: true,
     });
@@ -72,7 +81,11 @@ async function openOrders(
   }
 }
 
-async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
+async function cancelOrder(
+  res: NextApiResponse,
+  options: CancelOrderOptions,
+  client: typeof binanceClient
+) {
   try {
     if (
       //!options.orderId || <- TODO What? :O Why no such? It is mandatory!
@@ -83,7 +96,7 @@ async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
       });
     }
 
-    const response: CancelOrderResult = await binanceClient.cancelOrder({
+    const response: CancelOrderResult = await client.cancelOrder({
       ...options,
       useServerTime: true,
     });
@@ -97,7 +110,8 @@ async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
 
 async function newStopLimitOrder(
   res: NextApiResponse,
-  newOrderSL: NewOrderSL | NewOrderLimit
+  newOrderSL: NewOrderSL | NewOrderLimit,
+  client: typeof binanceClient
 ) {
   try {
     if (
@@ -114,7 +128,7 @@ async function newStopLimitOrder(
       });
     }
 
-    const response = await binanceClient.order({
+    const response = await client.order({
       ...newOrderSL,
       useServerTime: true,
     }); //.orderTest(newOrderSL);
@@ -128,12 +142,16 @@ async function newStopLimitOrder(
   }
 }
 
-async function allOrders(req: NextApiRequest, res: NextApiResponse) {
+async function allOrders(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  client: typeof binanceClient
+) {
   if (!req.query.symbol) {
     return res.status(400).json("symbol is mandatory parameter.");
   }
 
-  const queryOrderResult: QueryOrderResult[] = await binanceClient.allOrders({
+  const queryOrderResult: QueryOrderResult[] = await client.allOrders({
     symbol: req.query.symbol as string,
     useServerTime: true,
   });
@@ -148,4 +166,4 @@ const isValidAction = (value: any): value is SpotActions => {
   return Object.values(SpotActions).includes(value as SpotActions);
 };
 
-export default withAuth(handler);
+export default withAuth(createSpotHandler());

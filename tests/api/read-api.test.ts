@@ -21,6 +21,9 @@ import { generateToken, withAuth } from "@/utils/auth";
 import { createDatabaseHealthHandler } from "@/src/shared/infrastructure/http/databaseHealthHandler";
 import { createBinanceHealthHandler } from "@/src/shared/infrastructure/http/binanceHealthHandler";
 import type { Account } from "binance-api-node";
+import type Binance from "binance-api-node";
+import { createSpotHandler } from "@/pages/api/binanceapi/spot";
+import { createMarginHandler } from "@/pages/api/binanceapi/margin";
 
 type MockResponse = {
   statusCode: number;
@@ -413,5 +416,128 @@ describe("read API integration", () => {
         message: "Binance API connection unavailable",
       },
     });
+  });
+});
+
+describe("Binance API SDK migration contracts", () => {
+  type BinanceClient = ReturnType<typeof Binance>;
+
+  test("Spot all-orders változatlan paraméterekkel és válasszal működik", async () => {
+    const calls: unknown[] = [];
+    const orders = [{ orderId: 42, symbol: "SOLUSDC", status: "FILLED" }];
+    const handler = createSpotHandler({
+      allOrders: async (options: unknown) => {
+        calls.push(options);
+        return orders;
+      },
+    } as unknown as BinanceClient);
+    const response = createMockResponse();
+
+    await handler(request("GET", { action: "AllOrders", symbol: "SOLUSDC" }), response.response);
+
+    assert.deepEqual(calls, [{ symbol: "SOLUSDC", useServerTime: true }]);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, orders);
+  });
+
+  test("Spot order létrehozás és törlés megőrzi a request mezőket", async () => {
+    const calls: unknown[] = [];
+    const client = {
+      order: async (options: unknown) => {
+        calls.push(["order", options]);
+        return { orderId: 43 };
+      },
+      cancelOrder: async (options: unknown) => {
+        calls.push(["cancel", options]);
+        return { orderId: 43, status: "CANCELED" };
+      },
+    } as unknown as BinanceClient;
+    const handler = createSpotHandler(client);
+    const order = {
+      symbol: "SOLUSDC",
+      side: "SELL",
+      type: "STOP_LOSS_LIMIT",
+      quantity: "1.25",
+      price: "150",
+      stopPrice: "149",
+    };
+    const created = createMockResponse();
+    await handler(request("POST", {}, order), created.response);
+    const canceled = createMockResponse();
+    await handler(request("DELETE", {}, { symbol: "SOLUSDC", orderId: 43 }), canceled.response);
+
+    assert.deepEqual(calls, [
+      ["order", { ...order, useServerTime: true }],
+      ["cancel", { symbol: "SOLUSDC", orderId: 43, useServerTime: true }],
+    ]);
+    assert.deepEqual(created.body, { orderId: 43 });
+    assert.deepEqual(canceled.body, { orderId: 43, status: "CANCELED" });
+  });
+
+  test("Margin all-orders a symbolt továbbítja és változatlan listát ad vissza", async () => {
+    const calls: unknown[] = [];
+    const orders = [{ orderId: 44, symbol: "BTCUSDC", status: "NEW" }];
+    const handler = createMarginHandler({
+      marginAllOrders: async (options: unknown) => {
+        calls.push(options);
+        return orders;
+      },
+    } as unknown as BinanceClient);
+    const response = createMockResponse();
+
+    await handler(request("GET", { action: "AllOrders", symbol: "BTCUSDC" }), response.response);
+
+    assert.deepEqual(calls, [{ symbol: "BTCUSDC", useServerTime: true }]);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.body, orders);
+  });
+
+  test("Margin order létrehozás és törlés megőrzi a request mezőket", async () => {
+    const calls: unknown[] = [];
+    const client = {
+      marginOrder: async (options: unknown) => {
+        calls.push(["order", options]);
+        return { orderId: 45 };
+      },
+      marginCancelOrder: async (options: unknown) => {
+        calls.push(["cancel", options]);
+        return { orderId: 45, status: "CANCELED" };
+      },
+    } as unknown as BinanceClient;
+    const handler = createMarginHandler(client);
+    const order = {
+      symbol: "BTCUSDC",
+      side: "BUY",
+      type: "LIMIT",
+      quantity: "0.01",
+      price: "50000",
+    };
+    const created = createMockResponse();
+    await handler(request("POST", {}, order), created.response);
+    const canceled = createMockResponse();
+    await handler(request("DELETE", {}, { symbol: "BTCUSDC", orderId: 45 }), canceled.response);
+
+    assert.deepEqual(calls, [
+      ["order", { ...order, useServerTime: true }],
+      ["cancel", { symbol: "BTCUSDC", orderId: 45, useServerTime: true }],
+    ]);
+    assert.deepEqual(created.body, { orderId: 45 });
+    assert.deepEqual(canceled.body, { orderId: 45, status: "CANCELED" });
+  });
+
+  test("Spot és Margin írás nem hív SDK-t hiányos order esetén", async () => {
+    let calls = 0;
+    const client = {
+      order: async () => void (calls += 1),
+      marginOrder: async () => void (calls += 1),
+    } as unknown as BinanceClient;
+
+    for (const handler of [createSpotHandler(client), createMarginHandler(client)]) {
+      const response = createMockResponse();
+      await handler(request("POST", {}, { symbol: "SOLUSDC" }), response.response);
+      assert.equal(response.statusCode, 400);
+      assert.match(String((response.body as { error: string }).error), /parameters missing/i);
+    }
+    assert.equal(calls, 0);
   });
 });
