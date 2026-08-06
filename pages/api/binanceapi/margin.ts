@@ -20,7 +20,15 @@ enum MarginActions {
   AllOrders = "AllOrders",
 }
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export function createMarginHandler(client = binanceClient) {
+  return (req: NextApiRequest, res: NextApiResponse) => handler(req, res, client);
+}
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  client: typeof binanceClient
+) {
   let action = null;
   switch (req.method) {
     case "GET":
@@ -44,21 +52,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     case MarginActions.OpenOrders:
       return await openOrders(res, {});
     case MarginActions.CancelOrder:
-      return await cancelOrder(res, req.body as CancelOrderOptions);
+      return await cancelOrder(res, req.body as CancelOrderOptions, client);
     case MarginActions.NewTpOrder:
-      return await newOrder(res, req.body);
+      return await newOrder(res, req.body, client);
     case MarginActions.AllOrders:
-      return await allOrders(req, res);
+      return await allOrders(req, res, client);
   }
 }
 
-async function allOrders(req: NextApiRequest, res: NextApiResponse) {
+async function allOrders(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  client: typeof binanceClient
+) {
   if (!req.query.symbol) {
     return res.status(400).json("symbol is mandatory parameter.");
   }
 
   try {
-    const marginOrders = await binanceClient.marginAllOrders({
+    const marginOrders = await client.marginAllOrders({
       symbol: req.query.symbol as string,
       useServerTime: true,
     });
@@ -74,7 +86,11 @@ async function allOrders(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
+async function cancelOrder(
+  res: NextApiResponse,
+  options: CancelOrderOptions,
+  client: typeof binanceClient
+) {
   try {
     if (
       //!options.orderId || <- TODO What? :O Why no such? It is mandatory!
@@ -85,7 +101,7 @@ async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
       });
     }
 
-    const response: CancelOrderResult = await binanceClient.marginCancelOrder({
+    const response: CancelOrderResult = await client.marginCancelOrder({
       ...options,
       useServerTime: true,
     });
@@ -99,7 +115,8 @@ async function cancelOrder(res: NextApiResponse, options: CancelOrderOptions) {
 
 async function newOrder(
   res: NextApiResponse,
-  order: NewOrderSL | NewOrderLimit //TODO? as no NewOrderTP
+  order: NewOrderSL | NewOrderLimit, //TODO? as no NewOrderTP
+  client: typeof binanceClient
 ) {
   try {
     if (
@@ -116,7 +133,7 @@ async function newOrder(
       });
     }
 
-    const response = await binanceClient.marginOrder({
+    const response = await client.marginOrder({
       ...order,
       useServerTime: true,
     });
@@ -138,4 +155,4 @@ function isValidAction(value: any): value is MarginActions {
   return Object.values(MarginActions).includes(value as MarginActions);
 }
 
-export default withAuth(handler);
+export default withAuth(createMarginHandler());
