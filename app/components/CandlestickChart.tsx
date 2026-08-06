@@ -12,12 +12,14 @@ const CandlestickChart: React.FC<Props> = ({ data }) => {
   useEffect(() => {
     if (!data || data.length === 0) return;
 
-    const margin = { top: 20, right: 20, bottom: 70, left: 70 };
+    const margin = { top: 10, right: 6, bottom: 10, left: 6 };
     const width = 800 - margin.left - margin.right;
-    const height = 400 - margin.top - margin.bottom;
+    const height = 300 - margin.top - margin.bottom;
 
-    const svg = d3
-      .select(svgRef.current)
+    const root = d3.select(svgRef.current);
+    root.selectAll("*").remove();
+
+    const svg = root
       .attr(
         "viewBox",
         `0 0 ${width + margin.left + margin.right} ${
@@ -40,6 +42,21 @@ const CandlestickChart: React.FC<Props> = ({ data }) => {
         d3.max(data, (d) => parseFloat(d.high))!,
       ])
       .range([height, 0]);
+
+    svg
+      .selectAll(".grid-line")
+      .data(yScale.ticks(4))
+      .enter()
+      .append("line")
+      .attr("class", "grid-line")
+      .attr("x1", 0)
+      .attr("x2", width)
+      .attr("y1", (d) => yScale(d))
+      .attr("y2", (d) => yScale(d))
+      .attr("stroke", "#334155")
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "3 5")
+      .attr("opacity", 0.45);
 
     // const xAxis = d3.axisBottom(xScale).tickFormat((d) => {
     //   const date = new Date(+d);
@@ -75,7 +92,7 @@ const CandlestickChart: React.FC<Props> = ({ data }) => {
         Math.abs(yScale(parseFloat(d.open)) - yScale(parseFloat(d.close)))
       )
       .attr("fill", (d) =>
-        parseFloat(d.close) > parseFloat(d.open) ? "green" : "red"
+        parseFloat(d.close) >= parseFloat(d.open) ? "#34d399" : "#fb7185"
       );
 
     svg
@@ -95,7 +112,7 @@ const CandlestickChart: React.FC<Props> = ({ data }) => {
       .attr("y1", (d) => yScale(parseFloat(d.high)))
       .attr("y2", (d) => yScale(parseFloat(d.low)))
       .attr("stroke", (d) =>
-        parseFloat(d.close) > parseFloat(d.open) ? "green" : "red"
+        parseFloat(d.close) >= parseFloat(d.open) ? "#34d399" : "#fb7185"
       );
 
     // svg
@@ -135,7 +152,7 @@ const CandlestickChart: React.FC<Props> = ({ data }) => {
     //   });
   }, [data]);
 
-  return <svg ref={svgRef}></svg>;
+  return <svg ref={svgRef} className="block h-auto max-h-48 w-full" role="img" aria-label="Candlestick price chart"></svg>;
 };
 
 export default CandlestickChart;
