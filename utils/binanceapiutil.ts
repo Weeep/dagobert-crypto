@@ -29,7 +29,6 @@ const sdk = new Spot({
   },
 });
 
-const rest = sdk.restAPI as unknown as SpotRestApi;
 const data = async <T>(request: Promise<OfficialResponse<T>>): Promise<T> =>
   (await request).data();
 const withoutLegacyOptions = <T extends Record<string, unknown>>(options: T) => {
@@ -37,12 +36,35 @@ const withoutLegacyOptions = <T extends Record<string, unknown>>(options: T) => 
   return sdkOptions;
 };
 
+const signedOptions = async <T extends Record<string, unknown>>(
+  rest: SpotRestApi,
+  options: T
+) => {
+  const sdkOptions = withoutLegacyOptions(options);
+  if (!options.useServerTime) return sdkOptions;
+
+  const { serverTime } = await data(rest.time());
+  return { ...sdkOptions, timestamp: serverTime };
+};
+
+const orderOptions = (options: Record<string, unknown>) => {
+  const needsTimeInForce = [
+    "LIMIT",
+    "STOP_LOSS_LIMIT",
+    "TAKE_PROFIT_LIMIT",
+  ].includes(String(options.type));
+
+  return needsTimeInForce && !options.timeInForce
+    ? { timeInForce: "GTC", ...options }
+    : options;
+};
+
 /**
  * Compatibility facade for the official Binance Spot SDK. Keeping the existing
  * application-facing methods makes this migration independent from the later
  * removal of the two legacy Binance packages.
  */
-export const binanceClient = {
+export const createBinanceClient = (rest: SpotRestApi) => ({
   async ping() {
     await data(rest.ping());
     return true;
@@ -50,20 +72,22 @@ export const binanceClient = {
   async time() {
     return (await data(rest.time())).serverTime;
   },
-  accountInfo(options: Record<string, unknown>) {
-    return data(rest.account(withoutLegacyOptions(options)));
+  async accountInfo(options: Record<string, unknown>) {
+    return data(rest.account(await signedOptions(rest, options)));
   },
-  allOrders(options: Record<string, unknown>) {
-    return data(rest.allOrders(withoutLegacyOptions(options)));
+  async allOrders(options: Record<string, unknown>) {
+    return data(rest.allOrders(await signedOptions(rest, options)));
   },
-  openOrders(options: Record<string, unknown>) {
-    return data(rest.getOpenOrders(withoutLegacyOptions(options)));
+  async openOrders(options: Record<string, unknown>) {
+    return data(rest.getOpenOrders(await signedOptions(rest, options)));
   },
-  order(options: Record<string, unknown>) {
-    return data(rest.newOrder(withoutLegacyOptions(options)));
+  async order(options: Record<string, unknown>) {
+    return data(
+      rest.newOrder(await signedOptions(rest, orderOptions(options)))
+    );
   },
-  cancelOrder(options: Record<string, unknown>) {
-    return data(rest.deleteOrder(withoutLegacyOptions(options)));
+  async cancelOrder(options: Record<string, unknown>) {
+    return data(rest.deleteOrder(await signedOptions(rest, options)));
   },
   async candles(options: object) {
     const rows = await data(
@@ -77,10 +101,10 @@ export const binanceClient = {
       close: row[4],
       volume: row[5],
       closeTime: row[6],
-      quoteAssetVolume: row[7],
+      quoteVolume: row[7],
       trades: row[8],
       baseAssetVolume: row[9],
-      quoteVolume: row[10],
+      quoteAssetVolume: row[10],
     }));
   },
   async prices(options: Record<string, unknown> = {}) {
@@ -91,4 +115,8 @@ export const binanceClient = {
   dailyStats(options: Record<string, unknown> = {}) {
     return data(rest.ticker24hr(options));
   },
-};
+});
+
+export const binanceClient = createBinanceClient(
+  sdk.restAPI as unknown as SpotRestApi
+);

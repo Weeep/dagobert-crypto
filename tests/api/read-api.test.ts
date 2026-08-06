@@ -21,7 +21,10 @@ import { generateToken, withAuth } from "@/utils/auth";
 import { createDatabaseHealthHandler } from "@/src/shared/infrastructure/http/databaseHealthHandler";
 import { createBinanceHealthHandler } from "@/src/shared/infrastructure/http/binanceHealthHandler";
 import type { Account } from "binance-api-node";
-import type { binanceClient } from "@/utils/binanceapiutil";
+import {
+  createBinanceClient,
+  type binanceClient,
+} from "@/utils/binanceapiutil";
 import type Binance from "binance-api-node";
 import { createSpotHandler } from "@/pages/api/binanceapi/spot";
 import { createMarginHandler } from "@/pages/api/binanceapi/margin";
@@ -423,6 +426,69 @@ describe("read API integration", () => {
 describe("Binance API SDK migration contracts", () => {
   type BinanceClient = typeof binanceClient;
   type LegacyBinanceClient = ReturnType<typeof Binance>;
+  type SpotRestApi = Parameters<typeof createBinanceClient>[0];
+  const sdkResponse = <T>(value: T) => ({ data: async () => value });
+
+  test("a compatibility facade megtartja a szerveridőt és a legacy order defaultot", async () => {
+    const calls: unknown[] = [];
+    const client = createBinanceClient({
+      time: async () => sdkResponse({ serverTime: 123456 }),
+      newOrder: async (options: unknown) => {
+        calls.push(options);
+        return sdkResponse({ orderId: 42 });
+      },
+    } as unknown as SpotRestApi);
+
+    await client.order({
+      symbol: "SOLUSDC",
+      side: "SELL",
+      type: "STOP_LOSS_LIMIT",
+      quantity: "1",
+      price: "150",
+      stopPrice: "149",
+      useServerTime: true,
+    });
+
+    assert.deepEqual(calls, [
+      {
+        symbol: "SOLUSDC",
+        side: "SELL",
+        type: "STOP_LOSS_LIMIT",
+        quantity: "1",
+        price: "150",
+        stopPrice: "149",
+        timeInForce: "GTC",
+        timestamp: 123456,
+      },
+    ]);
+  });
+
+  test("a compatibility facade a legacy candle volume mezőket állítja elő", async () => {
+    const client = createBinanceClient({
+      klines: async () =>
+        sdkResponse([
+          [
+            1,
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            7,
+            "quote-volume",
+            9,
+            "base-volume",
+            "quote-asset-volume",
+          ],
+        ]),
+    } as unknown as SpotRestApi);
+
+    const [candle] = await client.candles({ symbol: "SOLUSDC", interval: "1h" });
+
+    assert.equal(candle.quoteVolume, "quote-volume");
+    assert.equal(candle.baseAssetVolume, "base-volume");
+    assert.equal(candle.quoteAssetVolume, "quote-asset-volume");
+  });
 
   test("Spot all-orders változatlan paraméterekkel és válasszal működik", async () => {
     const calls: unknown[] = [];
