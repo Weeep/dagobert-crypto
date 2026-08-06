@@ -1,4 +1,4 @@
-import React, { ReactElement, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Color } from "@/src/shared/ui/Color";
 import { clientUseCases } from "@/src/shared/composition/clientUseCases";
@@ -33,6 +33,13 @@ const updateTransactionNoteUseCase = clientUseCases.updateTransactionNote;
 const setOtherSideOrderUseCase = clientUseCases.setOtherSideOrder;
 const clearOtherSideOrderUseCase = clientUseCases.clearOtherSideOrder;
 
+type ChartInterval = "1h" | "1d";
+
+interface ChartData {
+  candles: DCandle[];
+  diffPctToEma100: number;
+}
+
 interface Props {
   dtransaction: DagobertTransaction;
   currentPrice: number;
@@ -57,9 +64,12 @@ const DTransactionCard: React.FC<Props> = ({
   const [note, setNote] = useState<string>(dtransaction.note);
   const [inputValue, setInputValue] = useState("");
   const [editNote, setEditNote] = useState<boolean>(false);
-  const [candleChart, setCandleChart] = useState<ReactElement>(<></>);
-  const [isCandleChartLoading, setIsCandleChartLoading] =
-    useState<boolean>(true);
+  const [isChartOpen, setIsChartOpen] = useState(false);
+  const [activeChartInterval, setActiveChartInterval] =
+    useState<ChartInterval>("1h");
+  const [chartData, setChartData] = useState<Record<ChartInterval, ChartData> | null>(null);
+  const [isCandleChartLoading, setIsCandleChartLoading] = useState(false);
+  const [chartError, setChartError] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
   const [otherSideOrderId, setOtherSideOrderId] = useState(
     dtransaction.otherSideOrderId
@@ -70,6 +80,49 @@ const DTransactionCard: React.FC<Props> = ({
   useEffect(() => {
     setOtherSideOrderId(dtransaction.otherSideOrderId);
   }, [dtransaction.otherSideOrderId]);
+
+  useEffect(() => {
+    if (!isChartOpen) return;
+
+    const controller = new AbortController();
+
+    const fetchInterval = async (interval: ChartInterval): Promise<ChartData> => {
+      const response = await fetch(
+        `/api/binanceapi/klines?symbol=${dtransaction.pair}&interval=${interval}&limit=111`,
+        { signal: controller.signal }
+      );
+      const data = (await response.json()) as DCandle[];
+
+      if (!response.ok || !Array.isArray(data) || data.length === 0) {
+        throw new Error("The chart data could not be loaded.");
+      }
+
+      const analysis = new TradingAnalysis(data, currentPrice);
+      return {
+        candles: data.slice(-30),
+        diffPctToEma100: analysis.getEma(100).emaDiffPct ?? -1000,
+      };
+    };
+
+    setIsCandleChartLoading(true);
+    setChartError("");
+    setChartData(null);
+
+    Promise.all([fetchInterval("1h"), fetchInterval("1d")])
+      .then(([hourly, daily]) => {
+        setChartData({ "1h": hourly, "1d": daily });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name !== "AbortError") {
+          setChartError(error.message);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsCandleChartLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [isChartOpen, dtransaction.pair, currentPrice]);
 
   const handleNoteEnterPressed = async () => {
     const newNote = inputValue.trim();
@@ -296,145 +349,15 @@ const DTransactionCard: React.FC<Props> = ({
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ): void => {
     event.stopPropagation();
-    setCandleChart(
-      <div
-        onClick={(event) => {
-          event.stopPropagation();
-        }}
-        className="absolute inset-1 bg-black"
-        title="Chart"
-      >
-        <button
-          onClick={(event) => chartCancelClicked(event)}
-          className="absolute top-2 right-2 text-white"
-        >
-          X
-        </button>
-
-        {isCandleChartLoading && (
-          <FontAwesomeIcon
-            icon={faSpinner}
-            className="absolute m-auto inset-0 animate-spin text-blue-500"
-          />
-        )}
-
-        {loadChart()}
-      </div>
-    );
+    setActiveChartInterval("1h");
+    setIsChartOpen(true);
   };
 
   const chartCancelClicked = (
     event: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ): void => {
     event.stopPropagation();
-    setIsCandleChartLoading(true);
-    setCandleChart(<></>);
-  };
-
-  const loadChart = async (): Promise<ReactElement> => {
-    let klines = {
-      "1h": {
-        ema7: -1,
-        ema25: -1,
-        ema100: -1,
-        rsi: -1,
-        diffPctToEma100: -1000,
-        candles: [] as DCandle[],
-      },
-      "1d": {
-        ema7: -1,
-        ema25: -1,
-        ema100: -1,
-        rsi: -1,
-        diffPctToEma100: -1000,
-        candles: [] as DCandle[],
-      },
-    };
-    const pair = dtransaction.pair;
-
-    for (const interval of Object.keys(klines)) {
-      const response = await fetch(
-        `/api/binanceapi/klines?symbol=${pair}&interval=${interval}&limit=111`
-      );
-
-      const data: DCandle[] = (await response.json()) as DCandle[];
-      if (response.status !== 200 || !Array.isArray(data)) {
-        console.error(
-          "error: " + response.status + " | " + JSON.stringify(data)
-        ); //TODO
-        return <>Error</>;
-      } else {
-        const ta = new TradingAnalysis(data, currentPrice);
-
-        const ema7 = ta.getEma(7);
-        const ema25 = ta.getEma(25);
-        const ema100 = ta.getEma(100);
-
-        const d = {
-          ema7: ema7.ema ?? -1,
-          ema25: ema25.ema ?? -1,
-          ema100: ema100.ema ?? -1,
-          rsi: ta.getRsi(6) ?? -1,
-          diffPctToEma100: ema100.emaDiffPct ?? -1000,
-          candles: data,
-        };
-
-        switch (interval) {
-          case "1h":
-            klines["1h"] = d;
-            break;
-          case "1d":
-            klines["1d"] = d;
-            break;
-        }
-      }
-    }
-
-    setIsCandleChartLoading(false);
-
-    return (
-      <div className="flex">
-        <div className="w-1/2">
-          <CandlestickChart data={klines["1h"].candles.slice(-30)} />
-          <div className="flex space-x-2 text-xs">
-            {/*<span>{pairData1h[pair].ema7}</span>
-      <span>{pairData1h[pair].ema25}</span>
-      <span>{pairData1h[pair].ema100}</span>
-      <span>{pairData1h[pair].rsi}</span>*/}
-            <span>
-              EMA 100 diff:{" "}
-              <span
-                className={`text-${
-                  klines["1h"].diffPctToEma100 > 0 ? "lime-600" : "red-500"
-                }`}
-              >
-                {klines["1h"].diffPctToEma100.toFixed(2)}%
-              </span>
-            </span>
-          </div>
-        </div>
-
-        <div className="w-1/2">
-          <CandlestickChart data={klines["1d"].candles.slice(-30)} />
-          <div className="flex space-x-2 text-xs">
-            {/*<span>{pairData1h[pair].ema7}</span>
-      <span>{pairData1h[pair].ema25}</span>
-      <span>{pairData1h[pair].ema100}</span>
-      <span>{pairData1h[pair].rsi}</span>*/}
-            <span>
-              EMA 100 diff:{" "}
-              <span
-                className={`text-${
-                  klines["1d"].diffPctToEma100 > 0 ? "lime-600" : "red-500"
-                }`}
-              >
-                {klines["1d"].diffPctToEma100.toFixed(2)}%
-              </span>
-            </span>
-          </div>
-        </div>
-      </div>
-    );
+    setIsChartOpen(false);
   };
 
   const getProfit = (tradeType: TradeType): number => {
@@ -714,9 +637,9 @@ const DTransactionCard: React.FC<Props> = ({
           </div>
           <button
             onClick={(event) => chartClicked(event)}
-            className="text-xs text-black"
+            className="ml-2 self-end rounded-md border border-slate-300 bg-white/70 px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600"
           >
-            chart
+            Chart
           </button>
         </div>
 
@@ -726,7 +649,79 @@ const DTransactionCard: React.FC<Props> = ({
           {dtransaction.orderId.slice(-6)} | {dtransaction.tradeStyle}
         </div>
 
-        {candleChart}
+        {isChartOpen && (
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className="absolute inset-1 z-20 overflow-hidden rounded-lg border border-slate-700 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-3 text-slate-100 shadow-2xl"
+            role="dialog"
+            aria-label={`${dtransaction.pair} price chart`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex rounded-lg bg-slate-800 p-1" aria-label="Chart interval">
+                  {(["1h", "1d"] as ChartInterval[]).map((interval) => (
+                    <button
+                      key={interval}
+                      type="button"
+                      onClick={() => setActiveChartInterval(interval)}
+                      className={`min-w-10 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                        activeChartInterval === interval
+                          ? "bg-blue-500 text-white shadow"
+                          : "text-slate-400 hover:bg-slate-700 hover:text-white"
+                      }`}
+                      aria-pressed={activeChartInterval === interval}
+                    >
+                      {interval === "1h" ? "1h" : "D"}
+                    </button>
+                  ))}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold tracking-wide">{dtransaction.pair}</div>
+                  <div className="text-[10px] text-slate-400">
+                    {activeChartInterval === "1h" ? "Hourly candles" : "Daily candles"}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={chartCancelClicked}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-700 hover:text-white"
+                aria-label="Close chart"
+                title="Close chart"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="relative mt-2 flex min-h-36 flex-1 items-center justify-center">
+              {isCandleChartLoading && (
+                <div className="flex flex-col items-center gap-2 text-slate-400" role="status">
+                  <FontAwesomeIcon icon={faSpinner} className="h-5 w-5 animate-spin text-blue-400" />
+                  <span className="text-xs">Loading market data…</span>
+                </div>
+              )}
+              {!isCandleChartLoading && chartError && (
+                <div className="rounded-lg border border-red-900/70 bg-red-950/50 px-4 py-3 text-center text-xs text-red-300">
+                  {chartError}
+                </div>
+              )}
+              {!isCandleChartLoading && chartData && (
+                <div className="w-full">
+                  <CandlestickChart data={chartData[activeChartInterval].candles} />
+                  <div className="mt-1 flex items-center justify-between border-t border-slate-800 pt-2 text-xs text-slate-400">
+                    <span>EMA 100 distance</span>
+                    <span className={chartData[activeChartInterval].diffPctToEma100 > 0 ? "font-semibold text-emerald-400" : "font-semibold text-rose-400"}>
+                      {chartData[activeChartInterval].diffPctToEma100 > 0 ? "+" : ""}
+                      {chartData[activeChartInterval].diffPctToEma100.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </DFrame>
   );

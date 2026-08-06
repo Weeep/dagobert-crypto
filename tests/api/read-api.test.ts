@@ -19,6 +19,8 @@ import { createTransactionGroupsReadHandler } from "@/src/modules/transaction-gr
 import { createUseCases } from "@/src/shared/composition/createUseCases";
 import { generateToken, withAuth } from "@/utils/auth";
 import { createDatabaseHealthHandler } from "@/src/shared/infrastructure/http/databaseHealthHandler";
+import { createBinanceHealthHandler } from "@/src/shared/infrastructure/http/binanceHealthHandler";
+import type { Account } from "binance-api-node";
 
 type MockResponse = {
   statusCode: number;
@@ -351,6 +353,64 @@ describe("read API integration", () => {
       error: {
         code: "INTERNAL_ERROR",
         message: "Database connection unavailable",
+      },
+    });
+  });
+
+  test("Binance health API alap kapcsolatadatokat és csak elérhető spot balance-okat ad vissza", async () => {
+    const handler = createBinanceHealthHandler({
+      ping: async () => true,
+      time: async () => 1_725_000_000_000,
+      accountInfo: async () =>
+        ({
+          accountType: "SPOT",
+          canTrade: true,
+          balances: [
+            { asset: "USDC", free: "125.50", locked: "10" },
+            { asset: "BTC", free: "0.002", locked: "0" },
+            { asset: "ETH", free: "0", locked: "1" },
+          ],
+        } as Account),
+    });
+    const response = createMockResponse();
+
+    await handler(request("GET"), response.response);
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual((response.body as any).data.balances, [
+      { asset: "BTC", free: "0.002" },
+      { asset: "USDC", free: "125.50" },
+    ]);
+    assert.equal((response.body as any).data.accountType, "SPOT");
+    assert.equal((response.body as any).data.canTrade, true);
+    assert.equal((response.body as any).data.serverTime, 1_725_000_000_000);
+    assert.equal(typeof (response.body as any).data.latencyMs, "number");
+  });
+
+  test("Binance health API elutasítja a nem GET kérést és elrejti a klienshibát", async () => {
+    let calls = 0;
+    const handler = createBinanceHealthHandler({
+      ping: async () => {
+        calls += 1;
+        throw new Error("API secret and upstream details");
+      },
+      time: async () => 0,
+      accountInfo: async () => ({}) as Account,
+    });
+
+    const rejected = createMockResponse();
+    await handler(request("POST"), rejected.response);
+    assert.equal(rejected.statusCode, 405);
+    assert.equal(rejected.headers.Allow, "GET");
+    assert.equal(calls, 0);
+
+    const unavailable = createMockResponse();
+    await handler(request("GET"), unavailable.response);
+    assert.equal(unavailable.statusCode, 503);
+    assert.deepEqual(unavailable.body, {
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Binance API connection unavailable",
       },
     });
   });
