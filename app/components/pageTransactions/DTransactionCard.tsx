@@ -93,7 +93,7 @@ const DTransactionCard: React.FC<Props> = ({
       );
       const data = (await response.json()) as DCandle[];
 
-      if (!response.ok || !Array.isArray(data)) {
+      if (!response.ok || !Array.isArray(data) || data.length === 0) {
         throw new Error("The chart data could not be loaded.");
       }
 

@@ -10,14 +10,14 @@ const CandlestickChart: React.FC<Props> = ({ data }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
+    const root = d3.select(svgRef.current);
+    root.selectAll("*").remove();
+
     if (!data || data.length === 0) return;
 
     const margin = { top: 10, right: 6, bottom: 10, left: 6 };
     const width = 800 - margin.left - margin.right;
     const height = 300 - margin.top - margin.bottom;
-
-    const root = d3.select(svgRef.current);
-    root.selectAll("*").remove();
 
     const svg = root
       .attr(
