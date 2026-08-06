@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { binanceClient } from "../../../utils/binanceapiutil";
+import { legacyBinanceMarginClient as binanceClient } from "../../../utils/legacyBinanceMarginClient";
 import { withAuth } from "@/utils/auth";
 import {
   CancelOrderOptions,

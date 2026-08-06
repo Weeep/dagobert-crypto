@@ -21,6 +21,7 @@ import { generateToken, withAuth } from "@/utils/auth";
 import { createDatabaseHealthHandler } from "@/src/shared/infrastructure/http/databaseHealthHandler";
 import { createBinanceHealthHandler } from "@/src/shared/infrastructure/http/binanceHealthHandler";
 import type { Account } from "binance-api-node";
+import type { binanceClient } from "@/utils/binanceapiutil";
 import type Binance from "binance-api-node";
 import { createSpotHandler } from "@/pages/api/binanceapi/spot";
 import { createMarginHandler } from "@/pages/api/binanceapi/margin";
@@ -420,7 +421,8 @@ describe("read API integration", () => {
 });
 
 describe("Binance API SDK migration contracts", () => {
-  type BinanceClient = ReturnType<typeof Binance>;
+  type BinanceClient = typeof binanceClient;
+  type LegacyBinanceClient = ReturnType<typeof Binance>;
 
   test("Spot all-orders változatlan paraméterekkel és válasszal működik", async () => {
     const calls: unknown[] = [];
@@ -482,7 +484,7 @@ describe("Binance API SDK migration contracts", () => {
         calls.push(options);
         return orders;
       },
-    } as unknown as BinanceClient);
+    } as unknown as LegacyBinanceClient);
     const response = createMockResponse();
 
     await handler(request("GET", { action: "AllOrders", symbol: "BTCUSDC" }), response.response);
@@ -503,7 +505,7 @@ describe("Binance API SDK migration contracts", () => {
         calls.push(["cancel", options]);
         return { orderId: 45, status: "CANCELED" };
       },
-    } as unknown as BinanceClient;
+    } as unknown as LegacyBinanceClient;
     const handler = createMarginHandler(client);
     const order = {
       symbol: "BTCUSDC",
@@ -527,12 +529,17 @@ describe("Binance API SDK migration contracts", () => {
 
   test("Spot és Margin írás nem hív SDK-t hiányos order esetén", async () => {
     let calls = 0;
-    const client = {
+    const spotClient = {
       order: async () => void (calls += 1),
-      marginOrder: async () => void (calls += 1),
     } as unknown as BinanceClient;
+    const marginClient = {
+      marginOrder: async () => void (calls += 1),
+    } as unknown as LegacyBinanceClient;
 
-    for (const handler of [createSpotHandler(client), createMarginHandler(client)]) {
+    for (const handler of [
+      createSpotHandler(spotClient),
+      createMarginHandler(marginClient),
+    ]) {
       const response = createMockResponse();
       await handler(request("POST", {}, { symbol: "SOLUSDC" }), response.response);
       assert.equal(response.statusCode, 400);
