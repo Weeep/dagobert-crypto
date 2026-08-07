@@ -1,7 +1,10 @@
 import { Spot } from "@binance/spot";
 
-const apiKey = process.env.BAPI_KEY;
-const apiSecret = process.env.BAPI_SEC;
+// Next.js evaluates this module during `next build`, where runtime secrets may
+// intentionally be absent. The SDK requires strings in its configuration; an
+// authenticated request will still fail normally at runtime when they are not set.
+const apiKey = process.env.BAPI_KEY ?? "";
+const apiSecret = process.env.BAPI_SEC ?? "";
 const basePath = process.env.BAPI_HTTPBASE;
 
 type OfficialResponse<T> = { data(): Promise<T> };
