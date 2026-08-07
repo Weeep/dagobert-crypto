@@ -22,7 +22,6 @@
   },
   "dependencies": {
     "@binance/connector": "^3.6.1",
-    "@binance/spot": "^32.0.1",
     "@fortawesome/fontawesome-svg-core": "^7.0.0",
     "@fortawesome/free-solid-svg-icons": "^7.0.0",
     "@fortawesome/react-fontawesome": "^0.2.3",
