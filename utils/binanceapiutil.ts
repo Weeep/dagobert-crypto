@@ -22,6 +22,18 @@ type SpotRestApi = {
   klines(options: Record<string, unknown>): Promise<OfficialResponse<any[][]>>;
   tickerPrice(options?: Record<string, unknown>): Promise<OfficialResponse<any>>;
   ticker24hr(options?: Record<string, unknown>): Promise<OfficialResponse<any>>;
+  getAllMarginOrders(
+    options: Record<string, unknown>
+  ): Promise<OfficialResponse<any[]>>;
+  getMarginOpenOrders(
+    options?: Record<string, unknown>
+  ): Promise<OfficialResponse<any[]>>;
+  marginAccountNewOrder(
+    options: Record<string, unknown>
+  ): Promise<OfficialResponse<any>>;
+  marginAccountCancelOrder(
+    options: Record<string, unknown>
+  ): Promise<OfficialResponse<any>>;
 };
 
 const sdk = new Spot({
@@ -32,8 +44,19 @@ const sdk = new Spot({
   },
 });
 
+const toLegacyJsonValue = (value: unknown): unknown => {
+  if (typeof value === "bigint") return Number(value);
+  if (Array.isArray(value)) return value.map(toLegacyJsonValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, toLegacyJsonValue(item)])
+    );
+  }
+  return value;
+};
+
 const data = async <T>(request: Promise<OfficialResponse<T>>): Promise<T> =>
-  (await request).data();
+  toLegacyJsonValue(await (await request).data()) as T;
 const withoutLegacyOptions = <T extends Record<string, unknown>>(options: T) => {
   const { useServerTime: _useServerTime, ...sdkOptions } = options;
   return sdkOptions;
@@ -91,6 +114,24 @@ export const createBinanceClient = (rest: SpotRestApi) => ({
   },
   async cancelOrder(options: Record<string, unknown>) {
     return data(rest.deleteOrder(await signedOptions(rest, options)));
+  },
+  async marginAllOrders(options: Record<string, unknown>) {
+    return data(rest.getAllMarginOrders(await signedOptions(rest, options)));
+  },
+  async marginOpenOrders(options: Record<string, unknown>) {
+    return data(rest.getMarginOpenOrders(await signedOptions(rest, options)));
+  },
+  async marginOrder(options: Record<string, unknown>) {
+    return data(
+      rest.marginAccountNewOrder(
+        await signedOptions(rest, orderOptions(options))
+      )
+    );
+  },
+  async marginCancelOrder(options: Record<string, unknown>) {
+    return data(
+      rest.marginAccountCancelOrder(await signedOptions(rest, options))
+    );
   },
   async candles(options: object) {
     const rows = await data(

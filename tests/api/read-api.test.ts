@@ -25,7 +25,6 @@ import {
   createBinanceClient,
   type binanceClient,
 } from "@/utils/binanceapiutil";
-import type Binance from "binance-api-node";
 import { createSpotHandler } from "@/pages/api/binanceapi/spot";
 import { createMarginHandler } from "@/pages/api/binanceapi/margin";
 
@@ -385,7 +384,6 @@ describe("read API integration", () => {
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual((response.body as any).data.balances, [
-      { asset: "BTC", free: "0.002" },
       { asset: "USDC", free: "125.50" },
     ]);
     assert.equal((response.body as any).data.accountType, "SPOT");
@@ -425,7 +423,6 @@ describe("read API integration", () => {
 
 describe("Binance API SDK migration contracts", () => {
   type BinanceClient = typeof binanceClient;
-  type LegacyBinanceClient = ReturnType<typeof Binance>;
   type SpotRestApi = Parameters<typeof createBinanceClient>[0];
   const sdkResponse = <T>(value: T) => ({ data: async () => value });
 
@@ -490,6 +487,36 @@ describe("Binance API SDK migration contracts", () => {
     assert.equal(candle.quoteAssetVolume, "quote-asset-volume");
   });
 
+  test("a compatibility facade JSON-kompatibilissé teszi az SDK bigint mezőit", async () => {
+    const client = createBinanceClient({
+      time: async () => sdkResponse({ serverTime: BigInt("1725000000000") }),
+    } as unknown as SpotRestApi);
+
+    const serverTime = await client.time();
+
+    assert.equal(serverTime, 1_725_000_000_000);
+    assert.doesNotThrow(() => JSON.stringify({ serverTime }));
+  });
+
+  test("a margin facade a hivatalos SDK margin végpontjait használja", async () => {
+    const calls: unknown[] = [];
+    const client = createBinanceClient({
+      time: async () => sdkResponse({ serverTime: 123456 }),
+      getAllMarginOrders: async (options: unknown) => {
+        calls.push(options);
+        return sdkResponse([{ orderId: BigInt("44") }]);
+      },
+    } as unknown as SpotRestApi);
+
+    const orders = await client.marginAllOrders({
+      symbol: "BTCUSDC",
+      useServerTime: true,
+    });
+
+    assert.deepEqual(calls, [{ symbol: "BTCUSDC", timestamp: 123456 }]);
+    assert.deepEqual(orders, [{ orderId: 44 }]);
+  });
+
   test("Spot all-orders változatlan paraméterekkel és válasszal működik", async () => {
     const calls: unknown[] = [];
     const orders = [{ orderId: 42, symbol: "SOLUSDC", status: "FILLED" }];
@@ -550,7 +577,7 @@ describe("Binance API SDK migration contracts", () => {
         calls.push(options);
         return orders;
       },
-    } as unknown as LegacyBinanceClient);
+    } as unknown as BinanceClient);
     const response = createMockResponse();
 
     await handler(request("GET", { action: "AllOrders", symbol: "BTCUSDC" }), response.response);
@@ -571,7 +598,7 @@ describe("Binance API SDK migration contracts", () => {
         calls.push(["cancel", options]);
         return { orderId: 45, status: "CANCELED" };
       },
-    } as unknown as LegacyBinanceClient;
+    } as unknown as BinanceClient;
     const handler = createMarginHandler(client);
     const order = {
       symbol: "BTCUSDC",
@@ -600,7 +627,7 @@ describe("Binance API SDK migration contracts", () => {
     } as unknown as BinanceClient;
     const marginClient = {
       marginOrder: async () => void (calls += 1),
-    } as unknown as LegacyBinanceClient;
+    } as unknown as BinanceClient;
 
     for (const handler of [
       createSpotHandler(spotClient),

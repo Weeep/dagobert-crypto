@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { legacyBinanceMarginClient as binanceClient } from "../../../utils/legacyBinanceMarginClient";
+import { binanceClient } from "../../../utils/binanceapiutil";
 import { withAuth } from "@/utils/auth";
 import {
   CancelOrderOptions,
@@ -50,7 +50,7 @@ async function handler(
 
   switch (action) {
     case MarginActions.OpenOrders:
-      return await openOrders(res, {});
+      return await openOrders(res, {}, client);
     case MarginActions.CancelOrder:
       return await cancelOrder(res, req.body as CancelOrderOptions, client);
     case MarginActions.NewTpOrder:
@@ -147,8 +147,22 @@ async function newOrder(
   }
 }
 
-async function openOrders(res: NextApiResponse, arg1: {}) {
-  throw new Error("Function not implemented.");
+async function openOrders(
+  res: NextApiResponse,
+  options: { symbol?: string; recvWindow?: number; useServerTime?: boolean },
+  client: typeof binanceClient
+) {
+  try {
+    const response = await client.marginOpenOrders({
+      ...options,
+      useServerTime: true,
+    });
+    return res.status(200).json(response);
+  } catch (err: any) {
+    return res.status(500).json({
+      error: `Error happened: ${err.message} | ${err?.response?.data}`,
+    });
+  }
 }
 
 function isValidAction(value: any): value is MarginActions {
