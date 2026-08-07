@@ -10,6 +10,7 @@ const basePath = process.env.BAPI_HTTPBASE;
 type OfficialResponse<T> = { data(): Promise<T> };
 
 type SpotRestApi = {
+  [method: string]: unknown;
   ping(): Promise<OfficialResponse<unknown>>;
   time(): Promise<OfficialResponse<{ serverTime: number }>>;
   account(options?: Record<string, unknown>): Promise<OfficialResponse<any>>;
@@ -36,6 +37,10 @@ type SpotRestApi = {
   ): Promise<OfficialResponse<any>>;
 };
 
+type RestMethod<T> = (
+  options?: Record<string, unknown>
+) => Promise<OfficialResponse<T>>;
+
 const sdk = new Spot({
   configurationRestAPI: {
     apiKey,
@@ -57,6 +62,26 @@ const toLegacyJsonValue = (value: unknown): unknown => {
 
 const data = async <T>(request: Promise<OfficialResponse<T>>): Promise<T> =>
   toLegacyJsonValue(await (await request).data()) as T;
+
+const callRestMethod = <T>(
+  rest: SpotRestApi,
+  methodNames: string[],
+  options?: Record<string, unknown>
+): Promise<T> => {
+  const methodName = methodNames.find(
+    (candidate) => typeof rest[candidate] === "function"
+  );
+  if (!methodName) {
+    throw new Error(
+      `The installed @binance/spot SDK does not expose any of: ${methodNames.join(
+        ", "
+      )}`
+    );
+  }
+
+  const method = rest[methodName] as RestMethod<T>;
+  return data(method.call(rest, options));
+};
 const withoutLegacyOptions = <T extends Record<string, unknown>>(options: T) => {
   const { useServerTime: _useServerTime, ...sdkOptions } = options;
   return sdkOptions;
@@ -99,7 +124,11 @@ export const createBinanceClient = (rest: SpotRestApi) => ({
     return (await data(rest.time())).serverTime;
   },
   async accountInfo(options: Record<string, unknown>) {
-    return data(rest.account(await signedOptions(rest, options)));
+    return callRestMethod<any>(
+      rest,
+      ["account", "getAccount", "accountInformation"],
+      await signedOptions(rest, options)
+    );
   },
   async allOrders(options: Record<string, unknown>) {
     return data(rest.allOrders(await signedOptions(rest, options)));
@@ -116,21 +145,40 @@ export const createBinanceClient = (rest: SpotRestApi) => ({
     return data(rest.deleteOrder(await signedOptions(rest, options)));
   },
   async marginAllOrders(options: Record<string, unknown>) {
-    return data(rest.getAllMarginOrders(await signedOptions(rest, options)));
+    return callRestMethod<any[]>(
+      rest,
+      [
+        "queryMarginAccountAllOrders",
+        "getAllMarginOrders",
+        "marginAllOrders",
+        "allMarginOrders",
+      ],
+      await signedOptions(rest, options)
+    );
   },
   async marginOpenOrders(options: Record<string, unknown>) {
-    return data(rest.getMarginOpenOrders(await signedOptions(rest, options)));
+    return callRestMethod<any[]>(
+      rest,
+      [
+        "queryMarginAccountOpenOrders",
+        "getMarginOpenOrders",
+        "marginOpenOrders",
+      ],
+      await signedOptions(rest, options)
+    );
   },
   async marginOrder(options: Record<string, unknown>) {
-    return data(
-      rest.marginAccountNewOrder(
-        await signedOptions(rest, orderOptions(options))
-      )
+    return callRestMethod<any>(
+      rest,
+      ["marginAccountNewOrder", "marginNewOrder", "newMarginOrder"],
+      await signedOptions(rest, orderOptions(options))
     );
   },
   async marginCancelOrder(options: Record<string, unknown>) {
-    return data(
-      rest.marginAccountCancelOrder(await signedOptions(rest, options))
+    return callRestMethod<any>(
+      rest,
+      ["marginAccountCancelOrder", "marginCancelOrder", "cancelMarginOrder"],
+      await signedOptions(rest, options)
     );
   },
   async candles(options: object) {

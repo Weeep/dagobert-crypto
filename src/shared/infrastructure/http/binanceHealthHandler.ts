@@ -61,7 +61,8 @@ export function createBinanceHealthHandler(client: BinanceHealthClient) {
           balances,
         } satisfies BinanceHealth,
       });
-    } catch {
+    } catch (error) {
+      console.error("Binance health check failed", error);
       sendReadApiError(
         res,
         503,

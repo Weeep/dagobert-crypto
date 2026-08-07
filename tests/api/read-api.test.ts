@@ -498,11 +498,27 @@ describe("Binance API SDK migration contracts", () => {
     assert.doesNotThrow(() => JSON.stringify({ serverTime }));
   });
 
+  test("az account facade az SDK account metódusneveit is támogatja", async () => {
+    const client = createBinanceClient({
+      getAccount: async () =>
+        sdkResponse({
+          accountType: "SPOT",
+          canTrade: true,
+          balances: [{ asset: "USDC", free: "12.5" }],
+        }),
+    } as unknown as SpotRestApi);
+
+    const account = await client.accountInfo({ useServerTime: false });
+
+    assert.equal(account.accountType, "SPOT");
+    assert.equal(account.balances[0].free, "12.5");
+  });
+
   test("a margin facade a hivatalos SDK margin végpontjait használja", async () => {
     const calls: unknown[] = [];
     const client = createBinanceClient({
       time: async () => sdkResponse({ serverTime: 123456 }),
-      getAllMarginOrders: async (options: unknown) => {
+      queryMarginAccountAllOrders: async (options: unknown) => {
         calls.push(options);
         return sdkResponse([{ orderId: BigInt("44") }]);
       },

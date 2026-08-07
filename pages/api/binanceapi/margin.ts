@@ -81,6 +81,7 @@ async function allOrders(
       return res.status(500).json("Error: no response from allOrders endpoint");
     }
   } catch (error: any) {
+    console.error("Binance margin all-orders failed", error);
     return res.status(500).json({ message: error?.message, error: error });
     //console.error("Error fetching margin order history:", error);
   }
