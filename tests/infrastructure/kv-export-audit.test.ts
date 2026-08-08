@@ -1,11 +1,59 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { auditKvExport } from "@/scripts/auditKvExport";
+import { confirmKvImport } from "@/scripts/importKvDb";
 import {
+  importKvDump,
   prepareMigrationData,
   describeRowDifferences,
   verifyMigratedPassword,
 } from "@/scripts/kv/kvToPostgresMigration";
+
+test("KV import requires an explicit destructive-operation confirmation", async () => {
+  let prompt = "";
+  const ask = (answer: string) => async (message: string) => {
+    prompt = message;
+    return answer;
+  };
+
+  assert.equal(await confirmKvImport(ask("yes")), false);
+  assert.equal(await confirmKvImport(ask("IMPORT\n")), true);
+  assert.match(prompt, /transactions, transaction_groups, import_cursors/);
+  assert.match(prompt, /candles, pairs, users/);
+  assert.match(prompt, /not restored/);
+});
+
+test("KV import clears candles before replacing pairs", async () => {
+  const calls: string[] = [];
+  const model = (name: string) => ({
+    deleteMany: async () => calls.push(`delete:${name}`),
+    createMany: async () => calls.push(`create:${name}`),
+  });
+  const tx = Object.fromEntries(
+    ["transaction", "transactionGroup", "importCursor", "candle", "pair", "user"]
+      .map((name) => [name, model(name)])
+  );
+  const prisma = {
+    $transaction: async (operation: (client: typeof tx) => Promise<void>) =>
+      operation(tx),
+  };
+
+  await importKvDump(prisma, {
+    users: {},
+    pairs: {},
+    dtransactions: {},
+    dtransactionGroups: {},
+  });
+
+  assert.deepEqual(calls, [
+    "delete:transaction",
+    "delete:transactionGroup",
+    "delete:importCursor",
+    "delete:candle",
+    "delete:pair",
+    "delete:user",
+  ]);
+});
 
 test("KV export audit reports migration blockers without exposing passwords", () => {
   const audit = auditKvExport({

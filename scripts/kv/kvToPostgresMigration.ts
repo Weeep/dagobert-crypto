@@ -304,6 +304,9 @@ export async function importKvDump(
       await tx.transaction.deleteMany();
       await tx.transactionGroup.deleteMany();
       await tx.importCursor.deleteMany();
+      // Candles use a restrictive pair foreign key, so they must be cleared
+      // before the authoritative KV pair set replaces the existing rows.
+      await tx.candle.deleteMany();
       await tx.pair.deleteMany();
       await tx.user.deleteMany();
       if (data.users.length) await tx.user.createMany({ data: data.users });

@@ -60,6 +60,9 @@ test("candle upsert and cursor checkpoint are atomic, corrective, and monotonic"
       ]));
       assert.equal((await repository.findRange(pairSymbol, "1h", openTime, openTime))[0].close, "106");
     } finally {
+      // Candle deliberately restricts pair deletion, so remove the dependent
+      // fixture before its parent. The ingestion cursor cascades with the pair.
+      await prisma.candle.deleteMany({ where: { pairSymbol } });
       await prisma.pair.delete({ where: { symbol: pairSymbol } });
     }
   });

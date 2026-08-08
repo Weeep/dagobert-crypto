@@ -95,6 +95,10 @@ Passwords and hashes must never appear in audit output or migration logs.
    npm run import-kv-db -- path/to/export.json
    ```
 
+   The command lists the tables whose contents will be deleted and only starts
+   after the operator types the exact confirmation token `IMPORT`. Any other
+   response cancels without modifying PostgreSQL.
+
    The atomic import replaces the migration-owned tables. It hashes every
    password and skips transactions, groups, and import cursors for symbols not
    present in the export's `pairs` hash. Thus no trace of deleted pairs is
