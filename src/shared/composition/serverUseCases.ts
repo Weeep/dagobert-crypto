@@ -6,6 +6,8 @@ import { PrismaTransactionGroupRepository } from "@/src/modules/transaction-grou
 import { PrismaBotRepository } from "@/src/modules/bot/infrastructure/prisma/PrismaBotRepository";
 import { PrismaBotRunRepository } from "@/src/modules/bot/infrastructure/prisma/PrismaBotRunRepository";
 import { PrismaBotTradingRecordRepository } from "@/src/modules/bot/infrastructure/prisma/PrismaBotTradingRecordRepository";
+import { PrismaBotLifecycleRepository } from "@/src/modules/bot/infrastructure/prisma/PrismaBotLifecycleRepository";
+import { PrismaBotBudgetRepository } from "@/src/modules/bot/infrastructure/prisma/PrismaBotBudgetRepository";
 import { PrismaCandleRepository } from "@/src/modules/market/infrastructure/prisma/PrismaCandleRepository";
 import { PrismaStrategyRepository } from "@/src/modules/strategy/infrastructure/prisma/PrismaStrategyRepository";
 import { PrismaHealthCheck } from "@/src/shared/infrastructure/prisma/PrismaHealthCheck";
@@ -23,6 +25,8 @@ export const postgresRepositories = {
   botRepository: new PrismaBotRepository(prisma),
   botRunRepository: new PrismaBotRunRepository(prisma),
   botTradingRecordRepository: new PrismaBotTradingRecordRepository(prisma),
+  botLifecycleRepository: new PrismaBotLifecycleRepository(prisma),
+  botBudgetRepository: new PrismaBotBudgetRepository(prisma),
   candleRepository: new PrismaCandleRepository(prisma),
   strategyRepository: new PrismaStrategyRepository(prisma),
 };

@@ -21,7 +21,7 @@ export type BotMutationResult =
   | { ok: false; error: string; bot: null };
 
 export class CreateBotUseCase {
-  constructor(private readonly repository: BotRepository) {}
+  constructor(private readonly repository: BotRepository, private readonly strategyOwner?: (id: string) => Promise<string | null>) {}
 
   async execute(input: CreateBotInput): Promise<BotMutationResult> {
     const name = input.name.trim();
@@ -36,16 +36,24 @@ export class CreateBotUseCase {
     if (!input.userId || !input.strategyVersionId) {
       return { ok: false, error: "Missing owner or strategy version", bot: null };
     }
+    if (input.mode && !["BACKTEST", "PAPER", "SPOT_TEST", "SPOT_LIVE"].includes(input.mode)) {
+      return { ok: false, error: "Unsupported bot mode", bot: null };
+    }
     if (!this.isPositive(input.assignedBudget) || !this.isPositive(input.amountPerPosition)) {
       return { ok: false, error: "Budgets must be positive decimals", bot: null };
-    }
-    if (new Big(input.amountPerPosition).gt(input.assignedBudget)) {
-      return { ok: false, error: "Position amount exceeds assigned budget", bot: null };
     }
     const feeRate = input.feeRate ?? "0";
     const slippageRate = input.slippageRate ?? "0";
     if (!this.isNonNegative(feeRate) || !this.isNonNegative(slippageRate)) {
       return { ok: false, error: "Fee and slippage rates cannot be negative", bot: null };
+    }
+    if (new Big(input.amountPerPosition).times(new Big(1).plus(feeRate)).gt(input.assignedBudget)) {
+      return { ok: false, error: "Position amount plus fees exceeds assigned budget", bot: null };
+    }
+    if (this.strategyOwner) {
+      if (await this.strategyOwner(input.strategyVersionId) !== input.userId) {
+        return { ok: false, error: "Strategy version not found for owner", bot: null };
+      }
     }
     if (await this.repository.findByUserIdAndName(input.userId, name)) {
       return { ok: false, error: `Bot already exists: ${name}`, bot: null };
