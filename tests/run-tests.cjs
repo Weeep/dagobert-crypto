@@ -6,6 +6,7 @@ require('./application/transactions.test.ts');
 require('./application/pairs.test.ts');
 require('./application/transaction-groups.test.ts');
 require('./application/auth-login.test.ts');
+require('./application/trading-bots.test.ts');
 require('./infrastructure/server-kv-repositories.test.ts');
 require('./infrastructure/redis-key-value-store.test.ts');
 require('./infrastructure/redis-health-check.test.ts');

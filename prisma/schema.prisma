@@ -30,12 +30,70 @@ enum OrderStatus {
   NEW
 }
 
+enum BotMode {
+  BACKTEST
+  PAPER
+  SPOT_TEST
+  SPOT_LIVE
+}
+
+enum BotStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  STOPPED
+  ERROR
+}
+
+enum BotRunStatus {
+  RUNNING
+  COMPLETED
+  STOPPED
+  ERROR
+}
+
+enum BotAction {
+  BUY
+  SELL
+  HOLD
+}
+
+enum BotOrderStatus {
+  PENDING
+  SUBMITTED
+  PARTIALLY_FILLED
+  FILLED
+  CANCELED
+  REJECTED
+  RECONCILIATION_REQUIRED
+}
+
+enum PositionStatus {
+  OPENING
+  OPEN
+  CLOSING
+  CLOSED
+  ERROR
+}
+
+enum LedgerEntryType {
+  ALLOCATION
+  RESERVE
+  RELEASE
+  BUY_COST
+  SELL_PROCEEDS
+  FEE
+  CORRECTION
+}
+
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  bots         Bot[]
+  strategies   Strategy[]
 
   @@map("users")
 }
@@ -47,21 +105,268 @@ model Pair {
   transactions  Transaction[]
   groups        TransactionGroup[]
   importCursors ImportCursor[]
+  bots          Bot[]
+  candles       Candle[]
   createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("pairs")
 }
 
+model Bot {
+  id                String          @id @default(uuid()) @db.Uuid
+  userId            String          @map("user_id") @db.Uuid
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  pairSymbol        String          @map("pair_symbol")
+  pair              Pair            @relation(fields: [pairSymbol], references: [symbol], onUpdate: Cascade, onDelete: Restrict)
+  assignedBudget    Decimal         @map("assigned_budget") @db.Decimal(38, 18)
+  amountPerPosition Decimal         @map("amount_per_position") @db.Decimal(38, 18)
+  timeframe         String
+  mode              BotMode         @default(BACKTEST)
+  status            BotStatus       @default(DRAFT)
+  strategyVersionId String          @map("strategy_version_id") @db.Uuid
+  strategyVersion   StrategyVersion @relation(fields: [strategyVersionId], references: [id], onDelete: Restrict)
+  feeRate           Decimal         @default(0) @map("fee_rate") @db.Decimal(20, 12)
+  slippageRate      Decimal         @default(0) @map("slippage_rate") @db.Decimal(20, 12)
+  runs              BotRun[]
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([userId, name])
+  @@index([status, mode])
+  @@index([pairSymbol, timeframe])
+  @@map("bots")
+}
+
+model Strategy {
+  id          String            @id @default(uuid()) @db.Uuid
+  userId      String            @map("user_id") @db.Uuid
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String            @default("")
+  versions    StrategyVersion[]
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([userId, name])
+  @@map("strategies")
+}
+
+model StrategyVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  strategyId    String   @map("strategy_id") @db.Uuid
+  strategy      Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  version       Int
+  schemaVersion Int      @default(1) @map("schema_version")
+  definition    Json
+  bots          Bot[]
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([strategyId, version])
+  @@map("strategy_versions")
+}
+
+model Candle {
+  id          String              @id @default(uuid()) @db.Uuid
+  pairSymbol  String              @map("pair_symbol")
+  pair        Pair                @relation(fields: [pairSymbol], references: [symbol], onUpdate: Cascade, onDelete: Restrict)
+  interval    String
+  openTime    DateTime            @map("open_time") @db.Timestamptz(3)
+  closeTime   DateTime            @map("close_time") @db.Timestamptz(3)
+  open        Decimal             @db.Decimal(38, 18)
+  high        Decimal             @db.Decimal(38, 18)
+  low         Decimal             @db.Decimal(38, 18)
+  close       Decimal             @db.Decimal(38, 18)
+  volume      Decimal             @db.Decimal(38, 18)
+  quoteVolume Decimal             @map("quote_volume") @db.Decimal(38, 18)
+  trades      Int
+  isClosed    Boolean             @default(true) @map("is_closed")
+  source      String              @default("BINANCE")
+  receivedAt  DateTime            @default(now()) @map("received_at") @db.Timestamptz(3)
+  decisions   StrategyDecision[]
+  snapshots   IndicatorSnapshot[]
+
+  @@unique([pairSymbol, interval, openTime])
+  @@index([pairSymbol, interval, closeTime(sort: Desc)])
+  @@map("candles")
+}
+
+model BotRun {
+  id                    String              @id @default(uuid()) @db.Uuid
+  botId                 String              @map("bot_id") @db.Uuid
+  bot                   Bot                 @relation(fields: [botId], references: [id], onDelete: Cascade)
+  mode                  BotMode
+  status                BotRunStatus        @default(RUNNING)
+  configurationSnapshot Json                @map("configuration_snapshot")
+  strategySnapshot      Json                @map("strategy_snapshot")
+  backtestFrom          DateTime?           @map("backtest_from") @db.Timestamptz(3)
+  backtestTo            DateTime?           @map("backtest_to") @db.Timestamptz(3)
+  startedAt             DateTime            @default(now()) @map("started_at") @db.Timestamptz(3)
+  endedAt               DateTime?           @map("ended_at") @db.Timestamptz(3)
+  errorMessage          String?             @map("error_message")
+  positions             Position[]
+  orders                BotOrder[]
+  ledgerEntries         BotLedgerEntry[]
+  decisions             StrategyDecision[]
+  indicatorSnapshots    IndicatorSnapshot[]
+  events                BotEvent[]
+  portfolioSnapshots    PortfolioSnapshot[]
+
+  @@index([botId, startedAt(sort: Desc)])
+  @@index([status])
+  @@map("bot_runs")
+}
+
+model Position {
+  id                String         @id @default(uuid()) @db.Uuid
+  botRunId          String         @map("bot_run_id") @db.Uuid
+  botRun            BotRun         @relation(fields: [botRunId], references: [id], onDelete: Cascade)
+  status            PositionStatus @default(OPENING)
+  entryCost         Decimal        @default(0) @map("entry_cost") @db.Decimal(38, 18)
+  entryQuantity     Decimal        @default(0) @map("entry_quantity") @db.Decimal(38, 18)
+  remainingQuantity Decimal        @default(0) @map("remaining_quantity") @db.Decimal(38, 18)
+  averageEntryPrice Decimal        @default(0) @map("average_entry_price") @db.Decimal(38, 18)
+  averageExitPrice  Decimal?       @map("average_exit_price") @db.Decimal(38, 18)
+  fees              Decimal        @default(0) @db.Decimal(38, 18)
+  realizedPnl       Decimal        @default(0) @map("realized_pnl") @db.Decimal(38, 18)
+  openedAt          DateTime?      @map("opened_at") @db.Timestamptz(3)
+  closedAt          DateTime?      @map("closed_at") @db.Timestamptz(3)
+  orders            BotOrder[]
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([botRunId, status])
+  @@map("positions")
+}
+
+model BotOrder {
+  id                   String         @id @default(uuid()) @db.Uuid
+  botRunId             String         @map("bot_run_id") @db.Uuid
+  botRun               BotRun         @relation(fields: [botRunId], references: [id], onDelete: Cascade)
+  positionId           String?        @map("position_id") @db.Uuid
+  position             Position?      @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  idempotencyKey       String         @unique @map("idempotency_key")
+  exchangeOrderId      String?        @map("exchange_order_id")
+  side                 OrderSide
+  status               BotOrderStatus @default(PENDING)
+  requestedQuoteAmount Decimal?       @map("requested_quote_amount") @db.Decimal(38, 18)
+  requestedQuantity    Decimal?       @map("requested_quantity") @db.Decimal(38, 18)
+  executedQuantity     Decimal        @default(0) @map("executed_quantity") @db.Decimal(38, 18)
+  submittedAt          DateTime?      @map("submitted_at") @db.Timestamptz(3)
+  fills                Fill[]
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([botRunId, status])
+  @@index([exchangeOrderId])
+  @@map("bot_orders")
+}
+
+model Fill {
+  id              String   @id @default(uuid()) @db.Uuid
+  botOrderId      String   @map("bot_order_id") @db.Uuid
+  botOrder        BotOrder @relation(fields: [botOrderId], references: [id], onDelete: Cascade)
+  exchangeTradeId String?  @map("exchange_trade_id")
+  quantity        Decimal  @db.Decimal(38, 18)
+  price           Decimal  @db.Decimal(38, 18)
+  commission      Decimal  @default(0) @db.Decimal(38, 18)
+  commissionAsset String?  @map("commission_asset")
+  filledAt        DateTime @map("filled_at") @db.Timestamptz(3)
+
+  @@unique([botOrderId, exchangeTradeId])
+  @@map("fills")
+}
+
+model BotLedgerEntry {
+  id            String          @id @default(uuid()) @db.Uuid
+  botRunId      String          @map("bot_run_id") @db.Uuid
+  botRun        BotRun          @relation(fields: [botRunId], references: [id], onDelete: Cascade)
+  type          LedgerEntryType
+  amount        Decimal         @db.Decimal(38, 18)
+  balanceAfter  Decimal         @map("balance_after") @db.Decimal(38, 18)
+  referenceType String?         @map("reference_type")
+  referenceId   String?         @map("reference_id")
+  description   String          @default("")
+  occurredAt    DateTime        @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([botRunId, occurredAt])
+  @@map("bot_ledger_entries")
+}
+
+model StrategyDecision {
+  id          String    @id @default(uuid()) @db.Uuid
+  botRunId    String    @map("bot_run_id") @db.Uuid
+  botRun      BotRun    @relation(fields: [botRunId], references: [id], onDelete: Cascade)
+  candleId    String    @map("candle_id") @db.Uuid
+  candle      Candle    @relation(fields: [candleId], references: [id], onDelete: Restrict)
+  action      BotAction
+  reasonCode  String    @map("reason_code")
+  explanation String
+  inputs      Json
+  output      Json
+  evaluatedAt DateTime  @default(now()) @map("evaluated_at") @db.Timestamptz(3)
+
+  @@unique([botRunId, candleId])
+  @@index([botRunId, evaluatedAt])
+  @@map("strategy_decisions")
+}
+
+model IndicatorSnapshot {
+  id           String   @id @default(uuid()) @db.Uuid
+  botRunId     String   @map("bot_run_id") @db.Uuid
+  botRun       BotRun   @relation(fields: [botRunId], references: [id], onDelete: Cascade)
+  candleId     String   @map("candle_id") @db.Uuid
+  candle       Candle   @relation(fields: [candleId], references: [id], onDelete: Restrict)
+  values       Json
+  calculatedAt DateTime @default(now()) @map("calculated_at") @db.Timestamptz(3)
+
+  @@unique([botRunId, candleId])
+  @@map("indicator_snapshots")
+}
+
+model BotEvent {
+  id             String    @id @default(uuid()) @db.Uuid
+  botRunId       String    @map("bot_run_id") @db.Uuid
+  botRun         BotRun    @relation(fields: [botRunId], references: [id], onDelete: Cascade)
+  sequenceNumber BigInt    @map("sequence_number")
+  eventType      String    @map("event_type")
+  candleOpenTime DateTime? @map("candle_open_time") @db.Timestamptz(3)
+  payload        Json
+  occurredAt     DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  @@unique([botRunId, sequenceNumber])
+  @@index([botRunId, occurredAt])
+  @@map("bot_events")
+}
+
+model PortfolioSnapshot {
+  id              String   @id @default(uuid()) @db.Uuid
+  botRunId        String   @map("bot_run_id") @db.Uuid
+  botRun          BotRun   @relation(fields: [botRunId], references: [id], onDelete: Cascade)
+  sequenceNumber  BigInt   @map("sequence_number")
+  availableBudget Decimal  @map("available_budget") @db.Decimal(38, 18)
+  reservedBudget  Decimal  @map("reserved_budget") @db.Decimal(38, 18)
+  investedCost    Decimal  @map("invested_cost") @db.Decimal(38, 18)
+  marketValue     Decimal  @map("market_value") @db.Decimal(38, 18)
+  realizedPnl     Decimal  @map("realized_pnl") @db.Decimal(38, 18)
+  unrealizedPnl   Decimal  @map("unrealized_pnl") @db.Decimal(38, 18)
+  totalEquity     Decimal  @map("total_equity") @db.Decimal(38, 18)
+  capturedAt      DateTime @default(now()) @map("captured_at") @db.Timestamptz(3)
+
+  @@unique([botRunId, sequenceNumber])
+  @@map("portfolio_snapshots")
+}
+
 model Transaction {
-  orderId           String            @id @map("order_id")
+  orderId            String            @id @map("order_id")
   binanceApiId       BigInt            @map("binance_api_id")
   pairSymbol         String            @map("pair_symbol")
   pair               Pair              @relation(fields: [pairSymbol], references: [symbol], onUpdate: Cascade, onDelete: Restrict)
   amount             Decimal           @db.Decimal(38, 18)
   executed           Decimal           @db.Decimal(38, 18)
   date               DateTime          @db.Timestamptz(3)
-  dateEpoch          BigInt             @map("date_epoch")
+  dateEpoch          BigInt            @map("date_epoch")
   side               OrderSide
   price              Decimal           @db.Decimal(38, 18)
   status             OrderStatus
@@ -99,11 +404,11 @@ model TransactionGroup {
 }
 
 model ImportCursor {
-  pairSymbol        String    @map("pair_symbol")
-  pair              Pair      @relation(fields: [pairSymbol], references: [symbol], onUpdate: Cascade, onDelete: Cascade)
-  tradeType         TradeType @map("trade_type")
-  lastProcessedEpoch BigInt   @map("last_processed_epoch")
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  pairSymbol         String    @map("pair_symbol")
+  pair               Pair      @relation(fields: [pairSymbol], references: [symbol], onUpdate: Cascade, onDelete: Cascade)
+  tradeType          TradeType @map("trade_type")
+  lastProcessedEpoch BigInt    @map("last_processed_epoch")
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@id([pairSymbol, tradeType])
   @@index([lastProcessedEpoch])

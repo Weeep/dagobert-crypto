@@ -16,7 +16,7 @@ as the implementation.
 | Phase | Status | Outcome |
 | --- | --- | --- |
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
-| Phase 1: domain and persistence | Not started | Bot configurations and immutable run snapshots can be stored. |
+| Phase 1: domain and persistence | In progress | Core schema, migration, domain contracts, Prisma adapters, DTOs, and initial use cases are implemented; HTTP APIs and transactional budget reservation remain. |
 | Phase 2: market data | Not started | Historical and closed live candles are persisted reliably. |
 | Phase 3: strategy engine | Not started | Versioned JSON strategies produce reproducible decisions. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
@@ -303,6 +303,18 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 
 ### Phase 1: domain and persistence
 
+#### Implementation progress
+
+- [x] Add the bot, strategy, run, position, order, fill, ledger, decision, event,
+  candle, indicator snapshot, and portfolio snapshot Prisma models and migration.
+- [x] Add domain entities and repository contracts.
+- [x] Add Prisma repository adapters and stable DTO mappers.
+- [x] Add initial bot, run, strategy, and candle use cases and server composition.
+- [ ] Add authenticated HTTP APIs for bot and strategy management.
+- [ ] Implement transactional virtual-budget reservation/release and lifecycle
+  transitions that update the bot and run atomically.
+- [ ] Complete the Phase 1 automated integration suite against PostgreSQL.
+
 #### Work
 
 - Add bot, strategy, run, position, order, fill, ledger, decision, event, candle,
@@ -574,4 +586,3 @@ At the start of every bot-related task:
 | 2026-08-08 | Fees and slippage are configurable in all execution modes. |
 | 2026-08-08 | Delivery order is Backtest, Paper test, Spot test, then Spot live. |
 | 2026-08-08 | Basic replay is required; automatic YouTube upload is excluded. |
-
