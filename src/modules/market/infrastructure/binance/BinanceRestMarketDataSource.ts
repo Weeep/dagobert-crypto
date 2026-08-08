@@ -66,11 +66,14 @@ export class BinanceRestMarketDataSource implements MarketDataSource {
   }
 
   async fetchServerTime(signal?: AbortSignal) {
-    const requestedAt = this.now();
-    const serverTimeMs = await this.withRetry(() => this.client.time(), signal);
-    if (!Number.isSafeInteger(serverTimeMs) || serverTimeMs <= 0)
-      throw new Error("Binance returned an invalid server time");
-    const receivedAt = this.now();
+    const measurement = await this.withRetry(async () => {
+      const requestedAt = this.now();
+      const serverTimeMs = await this.client.time();
+      if (!Number.isSafeInteger(serverTimeMs) || serverTimeMs <= 0)
+        throw new Error("Binance returned an invalid server time");
+      return { requestedAt, serverTimeMs, receivedAt: this.now() };
+    }, signal);
+    const { requestedAt, serverTimeMs, receivedAt } = measurement;
     const localMidpoint = Math.trunc(requestedAt + ((receivedAt - requestedAt) / 2));
     return {
       serverTime: new Date(serverTimeMs),

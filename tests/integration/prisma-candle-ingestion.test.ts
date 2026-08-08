@@ -35,6 +35,18 @@ test("candle upsert and cursor checkpoint are atomic, corrective, and monotonic"
       assert.equal((await repository.findRange(pairSymbol, "1h", openTime, openTime))[0].close, "106");
       assert.equal((await repository.find(checkpoint))?.clockOffsetMs, BigInt(123));
 
+      const twoHoursLater = new Date(openTime.getTime() + (2 * 3_600_000));
+      await assert.rejects(() => repository.saveMany([{
+        ...candle(randomUUID(), pairSymbol),
+        openTime: twoHoursLater,
+        closeTime: new Date(twoHoursLater.getTime() + 3_600_000 - 1),
+      }], {
+        ...checkpoint,
+        lastClosedOpenTime: twoHoursLater,
+      }), /missing or duplicated interval/);
+      assert.equal((await repository.find(checkpoint))?.lastClosedOpenTime?.getTime(), openTime.getTime());
+      assert.equal(await prisma.candle.count({ where: { pairSymbol } }), 1);
+
       await repository.saveMany([candle(randomUUID(), pairSymbol)], {
         ...checkpoint,
         lastClosedOpenTime: new Date(openTime.getTime() - 3_600_000),

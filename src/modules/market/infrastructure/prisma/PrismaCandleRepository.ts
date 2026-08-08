@@ -8,6 +8,7 @@ import type {
   CandleRepository,
 } from "@/src/modules/market";
 import { isMarketInterval } from "@/src/modules/market";
+import { MARKET_INTERVAL_MILLISECONDS } from "@/src/modules/market";
 
 type TransactionClient = Prisma.TransactionClient;
 type CandleRow = Awaited<ReturnType<PrismaClient["candle"]["findFirstOrThrow"]>>;
@@ -100,7 +101,10 @@ export class PrismaCandleRepository implements CandleRepository, CandleIngestion
           },
         });
       }
-      if (checkpoint) await this.advanceCursor(transaction, checkpoint);
+      if (checkpoint) {
+        await this.verifyCheckpointContinuity(transaction, candles, checkpoint);
+        await this.advanceCursor(transaction, checkpoint);
+      }
     });
   }
 
@@ -115,6 +119,38 @@ export class PrismaCandleRepository implements CandleRepository, CandleIngestion
       create: { ...key, status: "ERROR", lastError: message },
       update: { status: "ERROR", lastError: message },
     });
+  }
+
+  private async verifyCheckpointContinuity(transaction: TransactionClient, candles: Candle[],
+    checkpoint: CandleIngestionCheckpoint) {
+    const existing = await transaction.candleIngestionCursor.findUnique({ where: cursorWhere(checkpoint) });
+    if (existing?.lastClosedOpenTime &&
+      existing.lastClosedOpenTime.getTime() >= checkpoint.lastClosedOpenTime.getTime()) return;
+
+    const intervalMilliseconds = MARKET_INTERVAL_MILLISECONDS[checkpoint.interval];
+    const batchStart = Math.min(...candles
+      .filter((candle) => candle.pairSymbol === checkpoint.pairSymbol &&
+        candle.interval === checkpoint.interval && candle.source === checkpoint.source)
+      .map((candle) => candle.openTime.getTime()));
+    const expectedStart = existing?.lastClosedOpenTime
+      ? existing.lastClosedOpenTime.getTime() + intervalMilliseconds
+      : batchStart;
+    const checkpointTime = checkpoint.lastClosedOpenTime.getTime();
+    const persisted = await transaction.candle.findMany({
+      where: {
+        pairSymbol: checkpoint.pairSymbol,
+        interval: checkpoint.interval,
+        isClosed: true,
+        openTime: { gte: new Date(expectedStart), lte: checkpoint.lastClosedOpenTime },
+      },
+      select: { openTime: true },
+      orderBy: { openTime: "asc" },
+    });
+    const expectedCount = Math.trunc((checkpointTime - expectedStart) / intervalMilliseconds) + 1;
+    if (!Number.isFinite(expectedStart) || persisted.length !== expectedCount ||
+      persisted.some((candle, index) =>
+        candle.openTime.getTime() !== expectedStart + (index * intervalMilliseconds)))
+      throw new Error("Cannot advance candle cursor across a missing or duplicated interval");
   }
 
   private async advanceCursor(transaction: TransactionClient, checkpoint: CandleIngestionCheckpoint) {

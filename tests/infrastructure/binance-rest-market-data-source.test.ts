@@ -81,6 +81,27 @@ describe("Binance REST market-data adapter", () => {
     assert.deepEqual(delays, [100]);
   });
 
+  test("measures clock offset around the successful server-time retry only", async () => {
+    let attempts = 0;
+    const localTimes = [1_000, 10_000, 10_200];
+    const source = new BinanceRestMarketDataSource({
+      time: async () => {
+        attempts += 1;
+        if (attempts === 1) throw Object.assign(new Error("timed out"), { code: "ETIMEDOUT" });
+        return 10_500;
+      },
+      candles: async () => [],
+    } as never, {
+      now: () => localTimes.shift() ?? 10_200,
+      maxRetries: 1,
+      retryBaseDelayMs: 1,
+      sleep: async () => undefined,
+    });
+    const result = await source.fetchServerTime();
+    assert.equal(result.clockOffsetMs, BigInt(400));
+    assert.equal(attempts, 2);
+  });
+
   test("honors cancellation before making an exchange request", async () => {
     const controller = new AbortController();
     controller.abort();

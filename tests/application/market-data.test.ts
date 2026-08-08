@@ -78,4 +78,24 @@ describe("closed candle persistence validation", () => {
     })).ok, false);
     assert.equal(repository.calls.length, 0);
   });
+
+  test("does not advance a checkpoint over a gap inside its candle batch", async () => {
+    const repository = new RecordingCandleRepository();
+    const twoHoursLater = new Date(openTime.getTime() + (2 * 3_600_000));
+    const result = await new SaveCandlesUseCase(repository).execute([
+      candle(),
+      candle({
+        id: "00000000-0000-0000-0000-000000000002",
+        openTime: twoHoursLater,
+        closeTime: new Date(twoHoursLater.getTime() + 3_600_000 - 1),
+      }),
+    ], {
+      source: "BINANCE", pairSymbol: "BTCUSDC", interval: "1h",
+      lastClosedOpenTime: twoHoursLater, lastSuccessfulPollAt: new Date(),
+      clockOffsetMs: BigInt(0),
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /gap or duplicate/);
+    assert.equal(repository.calls.length, 0);
+  });
 });
