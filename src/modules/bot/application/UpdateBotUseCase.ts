@@ -7,7 +7,11 @@ export type UpdateBotInput = Partial<{ name: string; pairSymbol: string; assigne
   feeRate: string; slippageRate: string }>;
 
 export class UpdateBotUseCase {
-  constructor(private readonly bots: BotRepository, private readonly strategyOwner: (id: string) => Promise<string | null>) {}
+  constructor(
+    private readonly bots: BotRepository,
+    private readonly strategyOwner: (id: string) => Promise<string | null>,
+    private readonly pairExists?: (symbol: string) => Promise<boolean>
+  ) {}
   async execute(userId: string, id: string, input: UpdateBotInput) {
     const bot = await this.bots.findById(id);
     if (!bot || bot.userId !== userId) return { ok: false as const, error: "Bot not found", bot: null };
@@ -15,6 +19,7 @@ export class UpdateBotUseCase {
     const next = { ...bot, ...input, name: input.name?.trim() ?? bot.name,
       pairSymbol: input.pairSymbol?.trim().toUpperCase() ?? bot.pairSymbol, updatedAt: new Date() };
     if (!next.name || !/^[A-Z0-9]+USDC$/.test(next.pairSymbol)) return { ok: false as const, error: "Invalid name or USDC pair", bot: null };
+    if (this.pairExists && !await this.pairExists(next.pairSymbol)) return { ok: false as const, error: "Trading pair not found", bot: null };
     if (!BOT_TIMEFRAMES.includes(next.timeframe as never)) return { ok: false as const, error: "Unsupported timeframe", bot: null };
     const modes: BotMode[] = ["BACKTEST", "PAPER", "SPOT_TEST", "SPOT_LIVE"];
     if (!modes.includes(next.mode) || modes.indexOf(next.mode) > modes.indexOf(bot.mode) + 1 || modes.indexOf(next.mode) < modes.indexOf(bot.mode))

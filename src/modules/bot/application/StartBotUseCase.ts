@@ -25,7 +25,7 @@ export class StartBotUseCase {
     if (bot.status === "STOPPED" || bot.status === "ERROR") return { ok: false as const, error: `Cannot start ${bot.status} bot`, run: null };
     const version = await this.strategies.findVersionById(bot.strategyVersionId);
     if (!version) return { ok: false as const, error: "Strategy version not found", run: null };
-    if (bot.mode === "BACKTEST" && (!range || range.from >= range.to)) {
+    if (bot.mode === "BACKTEST" && (!range || !this.isValidDate(range.from) || !this.isValidDate(range.to) || range.from >= range.to)) {
       return { ok: false as const, error: "A valid backtest range is required", run: null };
     }
 
@@ -43,5 +43,9 @@ export class StartBotUseCase {
       await this.bots.save({ ...bot, status: "RUNNING", updatedAt: new Date() });
     }
     return { ok: true as const, error: "", run };
+  }
+
+  private isValidDate(value: Date): boolean {
+    return value instanceof Date && !Number.isNaN(value.getTime());
   }
 }

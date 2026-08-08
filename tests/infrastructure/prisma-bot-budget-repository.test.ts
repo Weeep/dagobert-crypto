@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { describe } from "node:test";
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { PrismaBotBudgetRepository } from "@/src/modules/bot/infrastructure/prisma/PrismaBotBudgetRepository";
 
 type Reservation = { id: string; walletId: string; botRunId: string; orderIntentKey: string;
@@ -10,6 +10,7 @@ function decimal(value: string) { return { toString: () => value }; }
 
 function budgetPrisma(options: { walletBudget: string; botBudgets: Record<string, string> }): PrismaClient {
   const reservations: Reservation[] = [];
+  const ledgerEntries: Array<{ botRunId: string; type: string; amount: string }> = [];
   const wallet = { id: "00000000-0000-0000-0000-000000000001", userId: "owner",
     lastReconciledFree: decimal(options.walletBudget), reconciliationStatus: "CURRENT" };
   let transactionTail = Promise.resolve();
@@ -25,8 +26,15 @@ function budgetPrisma(options: { walletBudget: string; botBudgets: Record<string
     },
     botRun: { findUnique: async ({ where }: any) => options.botBudgets[where.id]
       ? { id: where.id, status: "RUNNING", bot: { userId: "owner", assignedBudget: decimal(options.botBudgets[where.id]) } } : null },
-    tradingWallet: { findUnique: async ({ where }: any) => where.id === wallet.id ? wallet : null },
-    botLedgerEntry: { aggregate: async ({ where }: any) => ({ _sum: { amount: decimal(options.botBudgets[where.botRunId]) } }) },
+    tradingWallet: {
+      findUnique: async ({ where }: any) => where.id === wallet.id ? wallet : null,
+      update: async ({ data }: any) => { Object.assign(wallet, { reconciliationStatus: data.reconciliationStatus }); return wallet; },
+    },
+    botLedgerEntry: {
+      aggregate: async ({ where }: any) => ({ _sum: { amount: decimal((Number(options.botBudgets[where.botRunId]) + ledgerEntries
+        .filter((entry) => entry.botRunId === where.botRunId).reduce((sum, entry) => sum + Number(entry.amount), 0)).toString()) } }),
+      create: async ({ data }: any) => { ledgerEntries.push({ botRunId: data.botRunId, type: data.type, amount: String(data.amount) }); return data; },
+    },
   };
   return {
     $transaction: (callback: (client: typeof tx) => unknown) => {
@@ -48,6 +56,16 @@ describe("Prisma bot budget reservations", () => {
     assert.equal((await repository.reserve({ botRunId: "run1", walletId: "00000000-0000-0000-0000-000000000001", orderIntentKey: "position-3", amount: "15" })).ok, true);
   });
 
+  test("a filled reservation is consumed once and posts its actual cost and fee", async () => {
+    const repository = new PrismaBotBudgetRepository(budgetPrisma({ walletBudget: "100", botBudgets: { run1: "50" } }));
+    const request = { botRunId: "run1", walletId: "00000000-0000-0000-0000-000000000001", orderIntentKey: "filled-position", amount: "21" };
+    assert.equal((await repository.reserve(request)).ok, true);
+    assert.equal(await repository.consume({ orderIntentKey: request.orderIntentKey, actualCost: "20", fee: "0.5" }), true);
+    assert.equal(await repository.consume({ orderIntentKey: request.orderIntentKey, actualCost: "20", fee: "0.5" }), true);
+    assert.equal(await repository.release(request.orderIntentKey), false);
+    assert.equal((await repository.reserve({ ...request, orderIntentKey: "after-fill", amount: "1" })).ok, false);
+  });
+
   test("concurrent bots cannot over-reserve their shared owner wallet", async () => {
     const repository = new PrismaBotBudgetRepository(budgetPrisma({ walletBudget: "60", botBudgets: { run1: "100", run2: "100" } }));
     const results = await Promise.all([
@@ -55,5 +73,19 @@ describe("Prisma bot budget reservations", () => {
       repository.reserve({ botRunId: "run2", walletId: "00000000-0000-0000-0000-000000000001", orderIntentKey: "bot-2", amount: "40" }),
     ]);
     assert.equal(results.filter((result) => result.ok).length, 1);
+  });
+
+  test("retries bounded serializable write conflicts", async () => {
+    const prisma = budgetPrisma({ walletBudget: "60", botBudgets: { run1: "50" } });
+    const transaction = prisma.$transaction.bind(prisma) as any;
+    let attempts = 0;
+    (prisma as any).$transaction = (...args: unknown[]) => {
+      attempts += 1;
+      if (attempts < 3) throw new Prisma.PrismaClientKnownRequestError("write conflict", { code: "P2034", clientVersion: "test" });
+      return transaction(...args);
+    };
+    const result = await new PrismaBotBudgetRepository(prisma).reserve({ botRunId: "run1",
+      walletId: "00000000-0000-0000-0000-000000000001", orderIntentKey: "retry", amount: "10" });
+    assert.equal(result.ok, true); assert.equal(attempts, 3);
   });
 });

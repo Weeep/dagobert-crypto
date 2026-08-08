@@ -117,6 +117,34 @@ describe("trading bot application", () => {
     assert.equal((await updates.execute("owner", created.bot.id, { mode: "PAPER", strategyVersionId: "v2" })).ok, true);
   });
 
+  test("new bots start at BACKTEST and create/update reject unknown USDC symbols", async () => {
+    const bots = new MemoryBotRepository();
+    const pairExists = async (symbol: string) => symbol === "BTCUSDC";
+    const create = new CreateBotUseCase(bots, async () => "owner", pairExists);
+    const base = { userId: "owner", name: "Validated", pairSymbol: "BTCUSDC", assignedBudget: "20",
+      amountPerPosition: "10", timeframe: "1h", strategyVersionId: "v1" } as const;
+    assert.equal((await create.execute({ ...base, mode: "SPOT_LIVE" })).ok, false);
+    assert.equal((await create.execute({ ...base, pairSymbol: "FAKEUSDC" })).ok, false);
+    const created = await create.execute(base); assert.equal(created.ok, true); if (!created.ok) return;
+    assert.equal(created.bot.mode, "BACKTEST");
+    const update = new UpdateBotUseCase(bots, async () => "owner", pairExists);
+    assert.equal((await update.execute("owner", created.bot.id, { pairSymbol: "FAKEUSDC" })).ok, false);
+  });
+
+  test("rejects invalid backtest timestamps before persistence", async () => {
+    const strategies = new MemoryStrategyRepository();
+    const strategy = await new CreateStrategyUseCase(strategies).execute({ userId: "owner", name: "Dates", definition: {} });
+    assert.equal(strategy.ok, true); if (!strategy.ok) return;
+    const bots = new MemoryBotRepository();
+    const created = await new CreateBotUseCase(bots).execute({ userId: "owner", name: "Dates", pairSymbol: "BTCUSDC",
+      assignedBudget: "20", amountPerPosition: "10", timeframe: "1h", strategyVersionId: strategy.strategy.versions[0].id });
+    assert.equal(created.ok, true); if (!created.ok) return;
+    const runs = new MemoryRunRepository();
+    const result = await new StartBotUseCase(bots, runs, strategies).execute(created.bot.id,
+      { from: new Date("invalid"), to: new Date("2025-01-01T00:00:00Z") });
+    assert.equal(result.ok, false); assert.equal(runs.runs.length, 0);
+  });
+
   test("pause and stop lifecycle operations are idempotent", async () => {
     const bots = new MemoryBotRepository();
     const now = new Date();
