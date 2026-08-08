@@ -42,18 +42,41 @@ as the implementation.
    position; partial position exits and fixed-amount exits are not part of the
    initial scope.
 6. Reserved and spent funds must be accounted for so concurrent decisions
-   cannot exceed the bot's assigned budget.
+   cannot exceed either the bot's virtual budget or the owner's shared Spot
+   wallet balance. The reservation must be atomic at both levels.
 
-The baseline budget invariant is:
+The bot's available budget is derived from its append-only cash ledger, not by
+subtracting current invested cost from the original allocation:
 
 ```text
-availableBudget = assignedBudget - reservedBudget - investedCost
-availableBudget >= 0
+botCashBalance = sum(posted bot cash-ledger entries)
+availableBotBudget = botCashBalance - pendingBotReservations
+availableBotBudget >= 0
 ```
 
-Fees must be included when deciding whether another position can be opened. A
-configuration must therefore be rejected, or an entry skipped, when the
-position amount plus estimated fees exceeds the available budget.
+The initial allocation credits the ledger. A filled buy debits its actual cost
+and fees; a filled sell credits its actual proceeds and separately debits any
+sell fee. Consequently, closing a losing position restores only its lower sale
+proceeds, while closing a winning position makes the realized profit available
+to the bot. `investedCost` remains a reporting value and must not be used to
+reconstruct spendable cash.
+
+Several `SPOT_TEST` or `SPOT_LIVE` bots may share one owner's Binance Spot
+wallet. Passing the per-bot check is therefore not sufficient. Before placing
+an order, the application must also enforce:
+
+```text
+availableOwnerWalletUsdc = lastReconciledFreeUsdc - pendingWalletReservations
+entryCostWithEstimatedFees <= availableBotBudget
+entryCostWithEstimatedFees <= availableOwnerWalletUsdc
+```
+
+The owner-wallet check and reservation must use a database transaction and a
+row-level lock (or an equivalent serializable operation), together with the
+bot-level reservation. This prevents two bots from simultaneously spending the
+same exchange balance. A stale exchange balance, a rejected order, or a
+reconciliation mismatch must stop new reservations until reconciliation
+refreshes or corrects the shared wallet state.
 
 ### Market and execution rules
 
@@ -234,6 +257,21 @@ data must be retained.
 Suggested lifecycle states are `DRAFT`, `RUNNING`, `PAUSED`, `STOPPED`, and
 `ERROR`. Suggested modes are `BACKTEST`, `PAPER`, `SPOT_TEST`, and `SPOT_LIVE`.
 
+### `TradingWallet` and `WalletReservation`
+
+`TradingWallet` represents one owner's shared execution wallet for an exchange,
+account, environment, and quote asset. It stores the last reconciled free USDC,
+the reconciliation timestamp/status, and the version used for optimistic or
+row-level locking. `WalletReservation` records pending spend by bot run and
+order intent. Reservations are consumed by fills or released after rejection,
+cancellation, timeout reconciliation, or an explicit correction.
+
+Backtest and paper modes use a simulated wallet with the same reservation
+contract. Spot test and Spot live modes use a wallet backed by reconciled
+Binance balances. Bot allocations and wallet reservations are separate: an
+allocation limits how much a bot may manage, while a wallet reservation proves
+that the shared execution account can fund a specific pending order.
+
 ### `Strategy` and `StrategyVersion`
 
 `Strategy` owns its identity and display metadata. `StrategyVersion` contains an
@@ -284,8 +322,10 @@ exchange references needed for reconciliation.
 
 Use an append-only virtual USDC ledger instead of deriving available capital
 only from mutable bot fields. Entry types can include allocation, reserve,
-release, buy cost, sell proceeds, fee, and correction. A cached balance may be
-maintained, but it must reconcile to the ledger.
+release, buy cost, sell proceeds, fee, and correction. Buy costs and fees are
+negative cash entries; sell proceeds are positive cash entries. Realized profit
+or loss is therefore naturally carried into the next available budget. A cached
+cash balance may be maintained, but it must reconcile exactly to the ledger.
 
 ### `BotEvent`
 
@@ -312,7 +352,10 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 - [x] Add initial bot, run, strategy, and candle use cases and server composition.
 - [ ] Add authenticated HTTP APIs for bot and strategy management.
 - [ ] Implement transactional virtual-budget reservation/release and lifecycle
-  transitions that update the bot and run atomically.
+  transitions that update the bot and run atomically, including shared
+  owner-wallet locking and reservations across bots.
+- [ ] Add the shared `TradingWallet`/`WalletReservation` persistence model and
+  migration before enabling Spot test or Spot live execution.
 - [ ] Complete the Phase 1 automated integration suite against PostgreSQL.
 
 #### Work
@@ -324,13 +367,17 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 - Add bot create, update, list, detail, start, pause, and stop APIs.
 - Validate `*USDC`, positive budgets, position amount plus fees, timeframe,
   strategy version, and mode transitions.
-- Add transactional virtual-budget reservation and release operations.
+- Add transactional bot-budget and owner-wallet reservation/release operations.
 
 #### Acceptance criteria
 
 - A valid draft bot can be created and retrieved.
 - Invalid pairs and budget configurations are rejected.
 - Multiple positions can reserve capital without exceeding assigned USDC.
+- Multiple bots sharing one owner wallet cannot reserve more than the last
+  reconciled free USDC, even when entry decisions execute concurrently.
+- Closing positions credits actual sale proceeds and fees through the ledger,
+  so subsequent availability includes realized profit or loss.
 - Starting a bot creates immutable configuration and strategy snapshots.
 - Lifecycle operations are idempotent and covered by unit/integration tests.
 
