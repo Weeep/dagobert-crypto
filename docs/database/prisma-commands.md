@@ -40,6 +40,37 @@ step visible and repeatable. When authoring a future schema change, run
 migration; run `generate` explicitly afterward if the development tooling did
 not already do it.
 
+### Unexpected extra migration prompt
+
+After all committed migrations have been applied, `prisma migrate dev` should
+finish without asking for another migration name when `schema.prisma` has not
+been changed. If it does ask, do not enter a placeholder name and commit the
+result automatically. Inspect the generated SQL first: it means the schema
+reconstructed from migration history differs from `schema.prisma`, even when
+the live database itself was previously reported as up to date.
+
+The wallet migrations need
+`20260808191500_align_trading_wallet_constraints`. The earlier handwritten
+wallet migration omitted Prisma's default `ON UPDATE CASCADE` actions, and
+PostgreSQL truncated its long unique-index identifier differently from Prisma.
+The alignment migration records those changes explicitly. On a fresh database,
+applying every committed migration must therefore produce no additional diff.
+
+If a local disposable development database already applied an untracked
+placeholder migration containing the same wallet constraint/index changes,
+remove that untracked directory and reset the development database before
+applying the committed history:
+
+```bash
+rm -rf prisma/migrations/<timestamp>_<placeholder>
+npx prisma migrate reset
+```
+
+`migrate reset` deletes all data. If the database contains data that must be
+kept, do not delete migration files or edit the `_prisma_migrations` table by
+hand. Back up the database and restore/migrate it using an explicitly reviewed
+recovery plan instead.
+
 Useful optional checks and tools:
 
 ```bash
