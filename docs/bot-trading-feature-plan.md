@@ -82,7 +82,7 @@ refreshes or corrects the shared wallet state.
 
 1. Only fully closed candles may produce a trading decision.
 2. The timeframe is configurable. The initial supported set should be explicit,
-   for example `1h`, `4h`, and `1d`, and can be expanded later.
+   initially `15m`, `1h`, `4h`, and `1d`, and can be expanded later.
 3. The initial market type is Spot. Margin is deliberately deferred.
 4. Entries and exits use market orders.
 5. The worker determines when an order must be placed after processing a closed
@@ -385,7 +385,7 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 
 #### Implementation progress
 
-- [ ] Step 0: Phase 1 verification gate and shared market-data contract (temporarily deferred).
+- [ ] Step 0: shared market-data contract implemented; Phase 1 PostgreSQL gate pending.
 - [x] Step 1: ingestion cursor schema/contracts, exact candle validation, and transactional candle/cursor persistence.
 - [x] Step 2: Binance REST server-time and historical-kline adapter with pagination, retries, timeout, cancellation, and closed-candle filtering.
 - [ ] Step 3: historical backfill and gap repair.
@@ -405,7 +405,7 @@ covered by tests before scheduling it.
   the lifecycle and real concurrent budget-reservation cases, then mark the
   remaining Phase 1 integration checkbox complete. Phase 2 should not conceal
   a Phase 1 persistence failure.
-- Make the existing `1h`, `4h`, and `1d` allow-list the shared source of truth
+- Make the `15m`, `1h`, `4h`, and `1d` allow-list the shared source of truth
   for bots, candle ingestion, API input, and cursor records.
 - Document and test these candle semantics before adding an exchange adapter:
   UTC timestamps; Binance kline open time as identity; `[openTime, closeTime]`
@@ -737,7 +737,7 @@ These items do not block Phase 1 but must be resolved before the noted phase:
 
 | Decision | Required by |
 | --- | --- |
-| Exact initial timeframe allow-list (`1h`, `4h`, `1d`) | Resolved in Phase 1; enforce in Phase 2 ingestion |
+| Exact initial timeframe allow-list (`15m`, `1h`, `4h`, `1d`) | Resolved in the shared Step 0 contract; enforce in bot and market-data inputs |
 | Whether an exit signal closes all open positions in one aggregate order or separate orders | Phase 4 |
 | Backtest market-fill timing and slippage formula | Phase 4 |
 | Paper fill price and latency model | Phase 5 |
