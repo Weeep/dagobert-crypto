@@ -44,10 +44,12 @@ export function createBinanceHealthHandler(client: BinanceHealthClient) {
         throw new Error("Binance ping failed");
       }
 
-      const balances = account.balances
-        .filter((balance) => Number(balance.free) > 0)
-        .map(({ asset, free }) => ({ asset, free }))
-        .sort((a, b) => a.asset.localeCompare(b.asset));
+      const usdcBalance = account.balances.find(
+        (balance) => balance.asset === "USDC"
+      );
+      const balances = [
+        { asset: "USDC", free: usdcBalance?.free ?? "0" },
+      ];
 
       res.status(200).json({
         data: {
@@ -59,7 +61,8 @@ export function createBinanceHealthHandler(client: BinanceHealthClient) {
           balances,
         } satisfies BinanceHealth,
       });
-    } catch {
+    } catch (error) {
+      console.error("Binance health check failed", error);
       sendReadApiError(
         res,
         503,

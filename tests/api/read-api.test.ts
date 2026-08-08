@@ -21,7 +21,10 @@ import { generateToken, withAuth } from "@/utils/auth";
 import { createDatabaseHealthHandler } from "@/src/shared/infrastructure/http/databaseHealthHandler";
 import { createBinanceHealthHandler } from "@/src/shared/infrastructure/http/binanceHealthHandler";
 import type { Account } from "binance-api-node";
-import type Binance from "binance-api-node";
+import {
+  createBinanceClient,
+  type binanceClient,
+} from "@/utils/binanceapiutil";
 import { createSpotHandler } from "@/pages/api/binanceapi/spot";
 import { createMarginHandler } from "@/pages/api/binanceapi/margin";
 
@@ -381,7 +384,6 @@ describe("read API integration", () => {
 
     assert.equal(response.statusCode, 200);
     assert.deepEqual((response.body as any).data.balances, [
-      { asset: "BTC", free: "0.002" },
       { asset: "USDC", free: "125.50" },
     ]);
     assert.equal((response.body as any).data.accountType, "SPOT");
@@ -420,7 +422,116 @@ describe("read API integration", () => {
 });
 
 describe("Binance API SDK migration contracts", () => {
-  type BinanceClient = ReturnType<typeof Binance>;
+  type BinanceClient = typeof binanceClient;
+  type SpotRestApi = Parameters<typeof createBinanceClient>[0];
+  const sdkResponse = <T>(value: T) => ({ data: async () => value });
+
+  test("a compatibility facade megtartja a szerveridőt és a legacy order defaultot", async () => {
+    const calls: unknown[] = [];
+    const client = createBinanceClient({
+      time: async () => sdkResponse({ serverTime: 123456 }),
+      newOrder: async (options: unknown) => {
+        calls.push(options);
+        return sdkResponse({ orderId: 42 });
+      },
+    } as unknown as SpotRestApi);
+
+    await client.order({
+      symbol: "SOLUSDC",
+      side: "SELL",
+      type: "STOP_LOSS_LIMIT",
+      quantity: "1",
+      price: "150",
+      stopPrice: "149",
+      useServerTime: true,
+    });
+
+    assert.deepEqual(calls, [
+      {
+        symbol: "SOLUSDC",
+        side: "SELL",
+        type: "STOP_LOSS_LIMIT",
+        quantity: "1",
+        price: "150",
+        stopPrice: "149",
+        timeInForce: "GTC",
+        timestamp: 123456,
+      },
+    ]);
+  });
+
+  test("a compatibility facade a legacy candle volume mezőket állítja elő", async () => {
+    const client = createBinanceClient({
+      klines: async () =>
+        sdkResponse([
+          [
+            1,
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            7,
+            "quote-volume",
+            9,
+            "base-volume",
+            "quote-asset-volume",
+          ],
+        ]),
+    } as unknown as SpotRestApi);
+
+    const [candle] = await client.candles({ symbol: "SOLUSDC", interval: "1h" });
+
+    assert.equal(candle.quoteVolume, "quote-volume");
+    assert.equal(candle.baseAssetVolume, "base-volume");
+    assert.equal(candle.quoteAssetVolume, "quote-asset-volume");
+  });
+
+  test("a compatibility facade JSON-kompatibilissé teszi az SDK bigint mezőit", async () => {
+    const client = createBinanceClient({
+      time: async () => sdkResponse({ serverTime: BigInt("1725000000000") }),
+    } as unknown as SpotRestApi);
+
+    const serverTime = await client.time();
+
+    assert.equal(serverTime, 1_725_000_000_000);
+    assert.doesNotThrow(() => JSON.stringify({ serverTime }));
+  });
+
+  test("az account facade az SDK account metódusneveit is támogatja", async () => {
+    const client = createBinanceClient({
+      getAccount: async () =>
+        sdkResponse({
+          accountType: "SPOT",
+          canTrade: true,
+          balances: [{ asset: "USDC", free: "12.5" }],
+        }),
+    } as unknown as SpotRestApi);
+
+    const account = await client.accountInfo({ useServerTime: false });
+
+    assert.equal(account.accountType, "SPOT");
+    assert.equal(account.balances[0].free, "12.5");
+  });
+
+  test("a margin facade a hivatalos SDK margin végpontjait használja", async () => {
+    const calls: unknown[] = [];
+    const client = createBinanceClient({
+      time: async () => sdkResponse({ serverTime: 123456 }),
+      queryMarginAccountAllOrders: async (options: unknown) => {
+        calls.push(options);
+        return sdkResponse([{ orderId: BigInt("44") }]);
+      },
+    } as unknown as SpotRestApi);
+
+    const orders = await client.marginAllOrders({
+      symbol: "BTCUSDC",
+      useServerTime: true,
+    });
+
+    assert.deepEqual(calls, [{ symbol: "BTCUSDC", timestamp: 123456 }]);
+    assert.deepEqual(orders, [{ orderId: 44 }]);
+  });
 
   test("Spot all-orders változatlan paraméterekkel és válasszal működik", async () => {
     const calls: unknown[] = [];
@@ -527,12 +638,17 @@ describe("Binance API SDK migration contracts", () => {
 
   test("Spot és Margin írás nem hív SDK-t hiányos order esetén", async () => {
     let calls = 0;
-    const client = {
+    const spotClient = {
       order: async () => void (calls += 1),
+    } as unknown as BinanceClient;
+    const marginClient = {
       marginOrder: async () => void (calls += 1),
     } as unknown as BinanceClient;
 
-    for (const handler of [createSpotHandler(client), createMarginHandler(client)]) {
+    for (const handler of [
+      createSpotHandler(spotClient),
+      createMarginHandler(marginClient),
+    ]) {
       const response = createMockResponse();
       await handler(request("POST", {}, { symbol: "SOLUSDC" }), response.response);
       assert.equal(response.statusCode, 400);
