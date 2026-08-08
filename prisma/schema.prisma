@@ -98,6 +98,12 @@ enum WalletReservationStatus {
   RELEASED
 }
 
+enum CandleIngestionStatus {
+  IDLE
+  HEALTHY
+  ERROR
+}
+
 model User {
   id             String          @id @default(uuid()) @db.Uuid
   email          String          @unique
@@ -112,18 +118,38 @@ model User {
 }
 
 model Pair {
-  symbol        String             @id
-  decimals      Int
-  keyLevels     Decimal[]          @default([]) @map("key_levels") @db.Decimal(38, 18)
-  transactions  Transaction[]
-  groups        TransactionGroup[]
-  importCursors ImportCursor[]
-  bots          Bot[]
-  candles       Candle[]
-  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  symbol                 String                  @id
+  decimals               Int
+  keyLevels              Decimal[]               @default([]) @map("key_levels") @db.Decimal(38, 18)
+  transactions           Transaction[]
+  groups                 TransactionGroup[]
+  importCursors          ImportCursor[]
+  bots                   Bot[]
+  candles                Candle[]
+  candleIngestionCursors CandleIngestionCursor[]
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("pairs")
+}
+
+model CandleIngestionCursor {
+  id                   String                @id @default(uuid()) @db.Uuid
+  source               String
+  pairSymbol           String                @map("pair_symbol")
+  pair                 Pair                  @relation(fields: [pairSymbol], references: [symbol], onUpdate: Cascade, onDelete: Cascade)
+  interval             String
+  lastClosedOpenTime   DateTime?             @map("last_closed_open_time") @db.Timestamptz(3)
+  lastSuccessfulPollAt DateTime?             @map("last_successful_poll_at") @db.Timestamptz(3)
+  clockOffsetMs        BigInt                @default(0) @map("clock_offset_ms")
+  status               CandleIngestionStatus @default(IDLE)
+  lastError            String?               @map("last_error")
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([source, pairSymbol, interval])
+  @@index([status, updatedAt])
+  @@map("candle_ingestion_cursors")
 }
 
 model Bot {
