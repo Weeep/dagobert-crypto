@@ -16,8 +16,8 @@ as the implementation.
 | Phase | Status | Outcome |
 | --- | --- | --- |
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
-| Phase 1: domain and persistence | In progress | Core schema, migration, domain contracts, Prisma adapters, DTOs, and initial use cases are implemented; HTTP APIs and transactional budget reservation remain. |
-| Phase 2: market data | Not started | Historical and closed live candles are persisted reliably. |
+| Phase 1: domain and persistence | Complete pending gate verification | The implementation is complete; Step 0 below runs the PostgreSQL acceptance suite and closes the remaining documentation checkbox before Phase 2 code starts. |
+| Phase 2: market data | In progress | Step 1 cursor-backed persistence and Step 2 Binance REST adapter are implemented; backfill and live polling remain. |
 | Phase 3: strategy engine | Not started | Versioned JSON strategies produce reproducible decisions. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
@@ -383,14 +383,154 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 
 ### Phase 2: market-data persistence
 
-#### Work
+#### Implementation progress
 
-- Add historical candle backfill from Binance REST.
-- Add closed-candle ingestion from Binance WebSocket or a resilient scheduled
-  poller.
-- Upsert candles and detect duplicates and gaps.
-- Validate OHLC relationships, timestamps, interval, and closed status.
-- Track ingestion cursors and exchange/server clock drift.
+- [ ] Step 0: Phase 1 verification gate and shared market-data contract (temporarily deferred).
+- [x] Step 1: ingestion cursor schema/contracts, exact candle validation, and transactional candle/cursor persistence.
+- [x] Step 2: Binance REST server-time and historical-kline adapter with pagination, retries, timeout, cancellation, and closed-candle filtering.
+- [ ] Step 3: historical backfill and gap repair.
+- [ ] Step 4: resilient closed-candle polling.
+- [ ] Step 5: operability and the Phase 2 acceptance gate.
+
+#### Recommended implementation sequence
+
+Implement Phase 2 as the following small, independently testable changes. Do
+not combine the Binance transport, persistence changes, and continuously
+running process in one change: the backfill service should already work and be
+covered by tests before scheduling it.
+
+##### Step 0: close the Phase 1 gate and fix the market-data contract
+
+- Run the complete Phase 1 unit and PostgreSQL integration suites, including
+  the lifecycle and real concurrent budget-reservation cases, then mark the
+  remaining Phase 1 integration checkbox complete. Phase 2 should not conceal
+  a Phase 1 persistence failure.
+- Make the existing `1h`, `4h`, and `1d` allow-list the shared source of truth
+  for bots, candle ingestion, API input, and cursor records.
+- Document and test these candle semantics before adding an exchange adapter:
+  UTC timestamps; Binance kline open time as identity; `[openTime, closeTime]`
+  range boundaries; a WebSocket candle is closed only when its exchange close
+  flag is set, while a REST candle is closed only after its close time is at or
+  before corrected server time; decimal strings throughout; and later Binance
+  corrections overwrite the mutable values of the same
+  `(symbol, interval, openTime)` row.
+- Decide the initial process boundary. Use a standalone, restartable scheduled
+  poller for the first version rather than a WebSocket: the initial timeframes
+  are long, REST overlap polling naturally repairs missed updates, and a
+  WebSocket can be added later behind the same ingestion port.
+
+**Exit:** Phase 1 tests pass against PostgreSQL, the old Phase 1 checkbox is
+closed, and the candle/cursor contract has focused unit tests.
+
+##### Step 1: add ingestion state and harden candle persistence
+
+- Add a `CandleIngestionCursor` (or equivalently named) Prisma model and
+  migration, unique by source, symbol, and interval. Store the last contiguous
+  closed candle open time, last successful poll time, exchange/server clock
+  offset, status, and last error. A cursor is an optimization and recovery
+  checkpoint, never evidence that all earlier candles exist.
+- Extend the market-data domain with typed interval/range values, a cursor
+  repository, a market-data source port, and explicit validation errors.
+- Replace `Number`-based OHLC validation with exact decimal comparison. Validate
+  finite non-negative OHLCV values, `low <= open/close <= high`, non-negative
+  trade count, expected interval duration/timestamps, supported symbol and
+  interval, and closed status.
+- Make a batch save transactional: upsert candles first and advance the cursor
+  only to the last contiguous successfully persisted closed candle. Keep the
+  existing database uniqueness constraint as the final idempotency guard.
+
+**Exit:** repository integration tests prove idempotent upsert, correction
+updates, rollback behavior, cursor monotonicity, and rejection of invalid or
+open candles.
+
+##### Step 2: implement the Binance REST adapter
+
+- Implement an adapter for Binance server time and historical klines behind the
+  market-data source port; do not call the legacy Next.js kline route from the
+  application service.
+- Map exchange values to domain candles without converting prices or volumes to
+  JavaScript numbers. Normalize symbols and intervals and derive `isClosed`
+  using the Step 0 clock rule.
+- Support Binance page limits, deterministic ascending pagination, bounded
+  retries with jitter for retryable failures and rate limits, request timeout,
+  and cancellation. Reject malformed, duplicated, or out-of-order responses at
+  the adapter boundary.
+
+**Exit:** fixture-based adapter tests cover mapping, pagination boundaries,
+clock drift, rate limiting, malformed responses, and exclusion of the current
+open candle without requiring live Binance access.
+
+##### Step 3: build the historical backfill and gap-repair service
+
+- Accept a symbol, interval, inclusive start, and exclusive end; split the range
+  into Binance pages and persist each validated page through the application
+  service.
+- Calculate expected open times using interval-aware UTC arithmetic. Compare
+  them with persisted candles to report every missing contiguous range, then
+  refill only those ranges.
+- Re-read the repaired range before advancing the contiguous cursor. Bound work
+  per invocation so a large history can resume safely after interruption.
+- Expose an operator-facing CLI command with dry-run, range, symbol, interval,
+  page/batch limit, and structured summary output. Do not expose arbitrary
+  unauthenticated ingestion over HTTP.
+
+**Exit:** an integration test interrupts a multi-page import, resumes it, and
+proves that reruns create no duplicates and repair deliberately removed
+candles.
+
+##### Step 4: add resilient closed-candle polling
+
+- Add a standalone poller entry point, separate from Next.js. Discover active
+  `(symbol, interval)` subscriptions from running non-backtest bots, while also
+  allowing an explicit configured set during rollout.
+- On every tick, fetch from at least one candle before the cursor through server
+  `now`. This overlap makes corrections and a missed final candle self-healing.
+  Persist only closed candles and reuse the same validation/upsert/backfill
+  service as manual imports.
+- Use a database advisory lock or lease per source/symbol/interval so multiple
+  process instances do not do duplicate work. Duplicate fetches must still be
+  harmless because storage is idempotent.
+- Align polling to interval boundaries with a small close grace period. Apply
+  bounded exponential backoff after failure, persist error state, and re-check
+  server clock instead of advancing the cursor.
+
+**Exit:** fake-clock tests prove boundary scheduling, overlap, retry, lease
+exclusion, restart from the persisted cursor, and that an open candle is never
+made eligible for strategy processing.
+
+##### Step 5: add operability and complete the Phase 2 gate
+
+- Add structured logs and metrics for last closed candle, cursor lag, detected
+  and repaired gaps, clock offset, request latency/rate-limit retries, rejected
+  payloads, and consecutive failures. Add a health check that becomes unhealthy
+  when freshness or clock-drift thresholds are exceeded.
+- Add configuration validation, graceful shutdown, a single-run mode for
+  deployments/diagnostics, and a short runbook for initial backfill, normal
+  startup, gap repair, and cursor recovery. Never log API credentials.
+- Run unit, Prisma integration, and deterministic adapter/worker tests. Perform
+  a staging smoke test against Binance with a small range, then query the
+  database for duplicates, gaps, and accidentally persisted open candles.
+- Update the phase status and decision log only after every acceptance criterion
+  below is demonstrated. Phase 3 may consume candles only through a query that
+  explicitly filters `isClosed = true`.
+
+**Exit:** all Phase 2 acceptance criteria pass and the poller can be stopped,
+restarted, and safely run twice for the same interval.
+
+#### Dependency order
+
+```text
+Step 0 contract/gate
+  -> Step 1 persistence and cursor
+  -> Step 2 Binance REST adapter
+  -> Step 3 backfill and gap repair
+  -> Step 4 scheduled polling
+  -> Step 5 observability and acceptance gate
+```
+
+The schema and ports in Steps 0-1 enable adapter and fixture work, but the main
+delivery path should remain sequential so each later step builds on a tested
+idempotent persistence boundary.
 
 #### Acceptance criteria
 
@@ -597,7 +737,7 @@ These items do not block Phase 1 but must be resolved before the noted phase:
 
 | Decision | Required by |
 | --- | --- |
-| Exact initial timeframe allow-list | Phase 1 |
+| Exact initial timeframe allow-list (`1h`, `4h`, `1d`) | Resolved in Phase 1; enforce in Phase 2 ingestion |
 | Whether an exit signal closes all open positions in one aggregate order or separate orders | Phase 4 |
 | Backtest market-fill timing and slippage formula | Phase 4 |
 | Paper fill price and latency model | Phase 5 |
@@ -633,3 +773,5 @@ At the start of every bot-related task:
 | 2026-08-08 | Fees and slippage are configurable in all execution modes. |
 | 2026-08-08 | Delivery order is Backtest, Paper test, Spot test, then Spot live. |
 | 2026-08-08 | Basic replay is required; automatic YouTube upload is excluded. |
+| 2026-08-08 | Phase 2 starts with a Phase 1 verification gate, then delivers cursor-backed REST backfill, gap repair, and a standalone overlap poller in that order. |
+| 2026-08-08 | The initial live candle source is a resilient scheduled REST poller; WebSocket ingestion may be added later behind the same port. |
