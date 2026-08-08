@@ -13,10 +13,10 @@ CREATE TABLE "wallet_reservations" (
   "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "resolved_at" TIMESTAMPTZ(3),
   CONSTRAINT "wallet_reservations_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "trading_wallets_user_id_exchange_account_environment_quote_asset_key" ON "trading_wallets"("user_id", "exchange", "account", "environment", "quote_asset");
+CREATE UNIQUE INDEX "trading_wallets_user_id_exchange_account_environment_quote__key" ON "trading_wallets"("user_id", "exchange", "account", "environment", "quote_asset");
 CREATE UNIQUE INDEX "wallet_reservations_order_intent_key_key" ON "wallet_reservations"("order_intent_key");
 CREATE INDEX "wallet_reservations_wallet_id_status_idx" ON "wallet_reservations"("wallet_id", "status");
 CREATE INDEX "wallet_reservations_bot_run_id_status_idx" ON "wallet_reservations"("bot_run_id", "status");
-ALTER TABLE "trading_wallets" ADD CONSTRAINT "trading_wallets_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
-ALTER TABLE "wallet_reservations" ADD CONSTRAINT "wallet_reservations_wallet_id_fkey" FOREIGN KEY ("wallet_id") REFERENCES "trading_wallets"("id") ON DELETE CASCADE;
-ALTER TABLE "wallet_reservations" ADD CONSTRAINT "wallet_reservations_bot_run_id_fkey" FOREIGN KEY ("bot_run_id") REFERENCES "bot_runs"("id") ON DELETE CASCADE;
+ALTER TABLE "trading_wallets" ADD CONSTRAINT "trading_wallets_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "wallet_reservations" ADD CONSTRAINT "wallet_reservations_wallet_id_fkey" FOREIGN KEY ("wallet_id") REFERENCES "trading_wallets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "wallet_reservations" ADD CONSTRAINT "wallet_reservations_bot_run_id_fkey" FOREIGN KEY ("bot_run_id") REFERENCES "bot_runs"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -49,20 +49,23 @@ result automatically. Inspect the generated SQL first: it means the schema
 reconstructed from migration history differs from `schema.prisma`, even when
 the live database itself was previously reported as up to date.
 
-The wallet migrations need
-`20260808191500_align_trading_wallet_constraints`. The earlier handwritten
-wallet migration omitted Prisma's default `ON UPDATE CASCADE` actions, and
-PostgreSQL truncated its long unique-index identifier differently from Prisma.
-The alignment migration records those changes explicitly. On a fresh database,
-applying every committed migration must therefore produce no additional diff.
+The wallet migration `20260808160000_add_trading_wallet_reservations` includes
+Prisma's default `ON UPDATE CASCADE` actions and uses Prisma's deterministic
+63-character name for its long unique index. This migration was corrected in
+place before release because the affected development databases can be reset.
+It does not conflict with the later candle-ingestion migration. On a fresh
+database, applying every committed migration must therefore produce no
+additional diff.
 
-If a local disposable development database already applied an untracked
-placeholder migration containing the same wallet constraint/index changes,
-remove that untracked directory and reset the development database before
+If a local disposable development database already applied the previous form
+of `20260808160000_add_trading_wallet_reservations`, or an untracked placeholder
+migration containing the same wallet constraint/index changes, remove the
+placeholder, restore the lock file, and reset the development database before
 applying the committed history:
 
 ```bash
 rm -rf prisma/migrations/<timestamp>_<placeholder>
+git restore prisma/migrations/migration_lock.toml
 npx prisma migrate reset
 ```
 
