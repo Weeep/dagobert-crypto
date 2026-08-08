@@ -350,11 +350,11 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 - [x] Add domain entities and repository contracts.
 - [x] Add Prisma repository adapters and stable DTO mappers.
 - [x] Add initial bot, run, strategy, and candle use cases and server composition.
-- [ ] Add authenticated HTTP APIs for bot and strategy management.
-- [ ] Implement transactional virtual-budget reservation/release and lifecycle
-  transitions that update the bot and run atomically, including shared
-  owner-wallet locking and reservations across bots.
-- [ ] Add the shared `TradingWallet`/`WalletReservation` persistence model and
+- [x] Add authenticated HTTP APIs for bot management (strategy management remains pending).
+- [x] Implement lifecycle transitions that update the bot and run atomically.
+- [x] Implement transactional virtual-budget reservation/release, including
+  shared owner-wallet locking and reservations across bots.
+- [x] Add the shared `TradingWallet`/`WalletReservation` persistence model and
   migration before enabling Spot test or Spot live execution.
 - [ ] Complete the Phase 1 automated integration suite against PostgreSQL.
 

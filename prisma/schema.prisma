@@ -86,14 +86,27 @@ enum LedgerEntryType {
   CORRECTION
 }
 
+enum WalletReconciliationStatus {
+  CURRENT
+  STALE
+  MISMATCH
+}
+
+enum WalletReservationStatus {
+  PENDING
+  CONSUMED
+  RELEASED
+}
+
 model User {
-  id           String     @id @default(uuid()) @db.Uuid
-  email        String     @unique
-  passwordHash String     @map("password_hash")
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
-  bots         Bot[]
-  strategies   Strategy[]
+  id             String          @id @default(uuid()) @db.Uuid
+  email          String          @unique
+  passwordHash   String          @map("password_hash")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  bots           Bot[]
+  strategies     Strategy[]
+  tradingWallets TradingWallet[]
 
   @@map("users")
 }
@@ -212,10 +225,48 @@ model BotRun {
   indicatorSnapshots    IndicatorSnapshot[]
   events                BotEvent[]
   portfolioSnapshots    PortfolioSnapshot[]
+  walletReservations    WalletReservation[]
 
   @@index([botId, startedAt(sort: Desc)])
   @@index([status])
   @@map("bot_runs")
+}
+
+model TradingWallet {
+  id                   String                     @id @default(uuid()) @db.Uuid
+  userId               String                     @map("user_id") @db.Uuid
+  user                 User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exchange             String
+  account              String
+  environment          String
+  quoteAsset           String                     @map("quote_asset")
+  lastReconciledFree   Decimal                    @map("last_reconciled_free") @db.Decimal(38, 18)
+  reconciledAt         DateTime?                  @map("reconciled_at") @db.Timestamptz(3)
+  reconciliationStatus WalletReconciliationStatus @default(STALE) @map("reconciliation_status")
+  version              Int                        @default(0)
+  reservations         WalletReservation[]
+  createdAt            DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([userId, exchange, account, environment, quoteAsset])
+  @@map("trading_wallets")
+}
+
+model WalletReservation {
+  id             String                  @id @default(uuid()) @db.Uuid
+  walletId       String                  @map("wallet_id") @db.Uuid
+  wallet         TradingWallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  botRunId       String                  @map("bot_run_id") @db.Uuid
+  botRun         BotRun                  @relation(fields: [botRunId], references: [id], onDelete: Cascade)
+  orderIntentKey String                  @unique @map("order_intent_key")
+  amount         Decimal                 @db.Decimal(38, 18)
+  status         WalletReservationStatus @default(PENDING)
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  resolvedAt     DateTime?               @map("resolved_at") @db.Timestamptz(3)
+
+  @@index([walletId, status])
+  @@index([botRunId, status])
+  @@map("wallet_reservations")
 }
 
 model Position {

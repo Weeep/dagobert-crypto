@@ -3,33 +3,49 @@ import type { StrategyRepository } from "@/src/modules/strategy";
 import type { BotRepository } from "../domain/BotRepository";
 import type { BotRunRepository } from "../domain/BotRunRepository";
 import type { BotRun } from "../domain/TradingBot";
+import type { BotLifecycleRepository } from "../domain/BotLifecycleRepository";
 
 export class StartBotUseCase {
   constructor(
     private readonly bots: BotRepository,
     private readonly runs: BotRunRepository,
-    private readonly strategies: StrategyRepository
+    private readonly strategies: StrategyRepository,
+    private readonly lifecycle?: BotLifecycleRepository
   ) {}
 
   async execute(botId: string, range?: { from: Date; to: Date }) {
     const bot = await this.bots.findById(botId);
     if (!bot) return { ok: false as const, error: "Bot not found", run: null };
-    if (bot.status === "RUNNING") return { ok: false as const, error: "Bot is already running", run: null };
+    if (bot.status === "RUNNING") {
+      const activeRun = (await this.runs.findAllByBotId(bot.id)).find((candidate) => candidate.status === "RUNNING");
+      return activeRun
+        ? { ok: true as const, error: "", run: activeRun }
+        : { ok: false as const, error: "Running bot has no active run", run: null };
+    }
+    if (bot.status === "STOPPED" || bot.status === "ERROR") return { ok: false as const, error: `Cannot start ${bot.status} bot`, run: null };
     const version = await this.strategies.findVersionById(bot.strategyVersionId);
     if (!version) return { ok: false as const, error: "Strategy version not found", run: null };
-    if (bot.mode === "BACKTEST" && (!range || range.from >= range.to)) {
+    if (bot.mode === "BACKTEST" && (!range || !this.isValidDate(range.from) || !this.isValidDate(range.to) || range.from >= range.to)) {
       return { ok: false as const, error: "A valid backtest range is required", run: null };
     }
 
     const run: BotRun = {
       id: randomUUID(), botId: bot.id, mode: bot.mode, status: "RUNNING",
-      configurationSnapshot: { ...bot, createdAt: bot.createdAt.toISOString(), updatedAt: bot.updatedAt.toISOString() },
-      strategySnapshot: version,
+      configurationSnapshot: structuredClone({ ...bot, createdAt: bot.createdAt.toISOString(), updatedAt: bot.updatedAt.toISOString() }),
+      strategySnapshot: structuredClone({ ...version, definition: version.definition, createdAt: version.createdAt.toISOString() }),
       backtestFrom: range?.from ?? null, backtestTo: range?.to ?? null,
       startedAt: new Date(), endedAt: null, errorMessage: null,
     };
-    await this.runs.save(run);
-    await this.bots.save({ ...bot, status: "RUNNING", updatedAt: new Date() });
+    if (this.lifecycle) {
+      if (!await this.lifecycle.start(bot, run)) return { ok: false as const, error: "Bot lifecycle changed concurrently", run: null };
+    } else {
+      await this.runs.save(run);
+      await this.bots.save({ ...bot, status: "RUNNING", updatedAt: new Date() });
+    }
     return { ok: true as const, error: "", run };
+  }
+
+  private isValidDate(value: Date): boolean {
+    return value instanceof Date && !Number.isNaN(value.getTime());
   }
 }

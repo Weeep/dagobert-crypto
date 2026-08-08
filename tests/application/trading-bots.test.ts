@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { describe } from "node:test";
-import { CreateBotUseCase, StartBotUseCase, type BotRepository, type BotRun, type BotRunRepository, type TradingBot } from "@/src/modules/bot";
+import { CreateBotUseCase, GetBotUseCase, ListBotsUseCase, SetBotStatusUseCase, StartBotUseCase, UpdateBotUseCase, type BotRepository, type BotRun, type BotRunRepository, type TradingBot } from "@/src/modules/bot";
 import { CreateStrategyUseCase, type Strategy, type StrategyRepository, type StrategyVersion } from "@/src/modules/strategy";
 
 class MemoryBotRepository implements BotRepository {
@@ -50,6 +50,9 @@ describe("trading bot application", () => {
     assert.equal(result.bot.assignedBudget, "55");
     assert.equal(result.bot.amountPerPosition, "10");
     assert.equal(repository.bots.length, 1);
+    assert.equal((await new GetBotUseCase(repository).execute("user", result.bot.id))?.status, "DRAFT");
+    assert.equal((await new GetBotUseCase(repository).execute("another-user", result.bot.id)), null);
+    assert.deepEqual((await new ListBotsUseCase(repository).execute("user")).map((bot) => bot.id), [result.bot.id]);
   });
 
   test("creates an immutable strategy version and snapshots it when a backtest starts", async () => {
@@ -74,8 +77,85 @@ describe("trading bot application", () => {
     });
     assert.equal(start.ok, true);
     if (!start.ok) return;
-    assert.deepEqual(start.run.strategySnapshot, strategyResult.strategy.versions[0]);
+    assert.deepEqual(start.run.strategySnapshot, { ...strategyResult.strategy.versions[0], createdAt: strategyResult.strategy.versions[0].createdAt.toISOString() });
     assert.equal((await bots.findById(botResult.bot.id))?.status, "RUNNING");
     assert.equal(runs.runs.length, 1);
+
+    strategyResult.strategy.versions[0].definition = { changed: true };
+    botResult.bot.name = "Changed after start";
+    assert.deepEqual((start.run.strategySnapshot as { definition: unknown }).definition, { entry: { indicator: "RSI" } });
+    assert.equal((start.run.configurationSnapshot as { name: string }).name, "Bot");
+
+    const repeatedStart = await new StartBotUseCase(bots, runs, strategies).execute(botResult.bot.id, {
+      from: new Date("2025-03-01T00:00:00Z"), to: new Date("2025-04-01T00:00:00Z"),
+    });
+    assert.equal(repeatedStart.ok, true);
+    if (repeatedStart.ok) assert.equal(repeatedStart.run.id, start.run.id);
+    assert.equal(runs.runs.length, 1);
+  });
+
+  test("rejects a position whose amount and fee exceed the allocation", async () => {
+    const useCase = new CreateBotUseCase(new MemoryBotRepository());
+    const base = { userId: "user", name: "Fee bot", pairSymbol: "BTCUSDC", assignedBudget: "10",
+      amountPerPosition: "10", timeframe: "1h", strategyVersionId: "strategy", feeRate: "0.001" };
+    const feeOverflow = await useCase.execute(base);
+    assert.equal(feeOverflow.ok, false);
+    assert.match(feeOverflow.error, /plus fees/);
+    assert.equal((await useCase.execute({ ...base, name: "Zero", assignedBudget: "0" })).ok, false);
+    assert.equal((await useCase.execute({ ...base, name: "Negative", amountPerPosition: "-1" })).ok, false);
+    assert.equal((await useCase.execute({ ...base, name: "Malformed", assignedBudget: "not-a-decimal" })).ok, false);
+  });
+
+  test("validates strategy ownership and sequential mode transitions on update", async () => {
+    const bots = new MemoryBotRepository();
+    const created = await new CreateBotUseCase(bots).execute({ userId: "owner", name: "Mode bot", pairSymbol: "BTCUSDC",
+      assignedBudget: "20", amountPerPosition: "10", timeframe: "1h", strategyVersionId: "v1" });
+    assert.equal(created.ok, true); if (!created.ok) return;
+    const updates = new UpdateBotUseCase(bots, async (id) => id === "v2" ? "owner" : null);
+    assert.equal((await updates.execute("owner", created.bot.id, { mode: "SPOT_LIVE", strategyVersionId: "v2" })).ok, false);
+    assert.equal((await updates.execute("owner", created.bot.id, { mode: "PAPER", strategyVersionId: "foreign" })).ok, false);
+    assert.equal((await updates.execute("owner", created.bot.id, { mode: "PAPER", strategyVersionId: "v2" })).ok, true);
+  });
+
+  test("new bots start at BACKTEST and create/update reject unknown USDC symbols", async () => {
+    const bots = new MemoryBotRepository();
+    const pairExists = async (symbol: string) => symbol === "BTCUSDC";
+    const create = new CreateBotUseCase(bots, async () => "owner", pairExists);
+    const base = { userId: "owner", name: "Validated", pairSymbol: "BTCUSDC", assignedBudget: "20",
+      amountPerPosition: "10", timeframe: "1h", strategyVersionId: "v1" } as const;
+    assert.equal((await create.execute({ ...base, mode: "SPOT_LIVE" })).ok, false);
+    assert.equal((await create.execute({ ...base, pairSymbol: "FAKEUSDC" })).ok, false);
+    const created = await create.execute(base); assert.equal(created.ok, true); if (!created.ok) return;
+    assert.equal(created.bot.mode, "BACKTEST");
+    const update = new UpdateBotUseCase(bots, async () => "owner", pairExists);
+    assert.equal((await update.execute("owner", created.bot.id, { pairSymbol: "FAKEUSDC" })).ok, false);
+  });
+
+  test("rejects invalid backtest timestamps before persistence", async () => {
+    const strategies = new MemoryStrategyRepository();
+    const strategy = await new CreateStrategyUseCase(strategies).execute({ userId: "owner", name: "Dates", definition: {} });
+    assert.equal(strategy.ok, true); if (!strategy.ok) return;
+    const bots = new MemoryBotRepository();
+    const created = await new CreateBotUseCase(bots).execute({ userId: "owner", name: "Dates", pairSymbol: "BTCUSDC",
+      assignedBudget: "20", amountPerPosition: "10", timeframe: "1h", strategyVersionId: strategy.strategy.versions[0].id });
+    assert.equal(created.ok, true); if (!created.ok) return;
+    const runs = new MemoryRunRepository();
+    const result = await new StartBotUseCase(bots, runs, strategies).execute(created.bot.id,
+      { from: new Date("invalid"), to: new Date("2025-01-01T00:00:00Z") });
+    assert.equal(result.ok, false); assert.equal(runs.runs.length, 0);
+  });
+
+  test("pause and stop lifecycle operations are idempotent", async () => {
+    const bots = new MemoryBotRepository();
+    const now = new Date();
+    bots.bots.push({ id: "bot", userId: "owner", name: "Lifecycle", pairSymbol: "BTCUSDC", assignedBudget: "20",
+      amountPerPosition: "10", timeframe: "1h", mode: "PAPER", status: "RUNNING", strategyVersionId: "v1",
+      feeRate: "0", slippageRate: "0", createdAt: now, updatedAt: now });
+    const lifecycle = new SetBotStatusUseCase(bots);
+    assert.equal((await lifecycle.execute("bot", "PAUSED")).ok, true);
+    assert.equal((await lifecycle.execute("bot", "PAUSED")).ok, true);
+    assert.equal((await lifecycle.execute("bot", "STOPPED")).ok, true);
+    assert.equal((await lifecycle.execute("bot", "STOPPED")).ok, true);
+    assert.equal((await bots.findById("bot"))?.status, "STOPPED");
   });
 });
