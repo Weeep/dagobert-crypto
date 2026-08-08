@@ -8,3 +8,4 @@ require("./integration/prisma-pair-repository.test.ts");
 require("./integration/prisma-transaction-repository.test.ts");
 require("./integration/prisma-transaction-group-repository.test.ts");
 require("./integration/prisma-bot-lifecycle.test.ts");
+require("./integration/prisma-candle-ingestion.test.ts");
