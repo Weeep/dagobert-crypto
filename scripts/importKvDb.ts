@@ -4,13 +4,14 @@ import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import {
   importKvDump,
+  KV_IMPORT_CLEARED_TABLES,
   type KvDump,
 } from "./kv/kvToPostgresMigration";
 
 const DESTRUCTIVE_IMPORT_WARNING = `WARNING: the KV import replaces PostgreSQL data.
 It deletes every row from these tables before importing the JSON dump:
-  transactions, transaction_groups, import_cursors, candles, pairs, users
-The deleted candle data is not restored from the KV export.
+  ${KV_IMPORT_CLEARED_TABLES.join(", ")}
+Only users, pairs, transaction groups, transactions and import cursors are restored from the KV export.
 Type IMPORT to continue: `;
 
 type Question = (prompt: string) => Promise<string>;

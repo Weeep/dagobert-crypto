@@ -95,17 +95,20 @@ Passwords and hashes must never appear in audit output or migration logs.
    npm run import-kv-db -- path/to/export.json
    ```
 
-   The command lists the tables whose contents will be deleted and only starts
-   after the operator types the exact confirmation token `IMPORT`. Any other
-   response cancels without modifying PostgreSQL.
+   The command lists every directly cleared table, including candle dependents
+   and all bot, strategy, wallet, and ingestion state, and only starts after the
+   operator types the exact confirmation token `IMPORT`. Any other response
+   cancels without modifying PostgreSQL. Only users, pairs, transaction groups,
+   transactions, and import cursors are restored from the KV export.
 
-   The atomic import replaces the migration-owned tables. It hashes every
-   password and skips transactions, groups, and import cursors for symbols not
-   present in the export's `pairs` hash. Thus no trace of deleted pairs is
-   inserted into PostgreSQL. If a retained-pair transaction was embedded in a
-   skipped group, its legacy `grouped` flag remains true so the completed trade
-   does not incorrectly reappear as open, while its `transactionGroupId` is
-   `NULL` because the deleted-pair group itself is not retained.
+   The atomic import clears the disclosed tables and rebuilds the legacy-owned
+   subset. It hashes every password and skips transactions, groups, and import
+   cursors for symbols not present in the export's `pairs` hash. Thus no trace
+   of deleted pairs is inserted into PostgreSQL. If a retained-pair transaction
+   was embedded in a skipped group, its legacy `grouped` flag remains true so
+   the completed trade does not incorrectly reappear as open, while its
+   `transactionGroupId` is `NULL` because the deleted-pair group itself is not
+   retained.
 4. Validate the result against the same immutable export:
 
    ```bash

@@ -4,6 +4,7 @@ import { auditKvExport } from "@/scripts/auditKvExport";
 import { confirmKvImport } from "@/scripts/importKvDb";
 import {
   importKvDump,
+  KV_IMPORT_CLEAR_PLAN,
   prepareMigrationData,
   describeRowDifferences,
   verifyMigratedPassword,
@@ -18,9 +19,8 @@ test("KV import requires an explicit destructive-operation confirmation", async 
 
   assert.equal(await confirmKvImport(ask("yes")), false);
   assert.equal(await confirmKvImport(ask("IMPORT\n")), true);
-  assert.match(prompt, /transactions, transaction_groups, import_cursors/);
-  assert.match(prompt, /candles, pairs, users/);
-  assert.match(prompt, /not restored/);
+  for (const [, table] of KV_IMPORT_CLEAR_PLAN) assert.match(prompt, new RegExp(table));
+  assert.match(prompt, /Only users, pairs, transaction groups, transactions and import cursors are restored/);
 });
 
 test("KV import clears candles before replacing pairs", async () => {
@@ -29,10 +29,8 @@ test("KV import clears candles before replacing pairs", async () => {
     deleteMany: async () => calls.push(`delete:${name}`),
     createMany: async () => calls.push(`create:${name}`),
   });
-  const tx = Object.fromEntries(
-    ["transaction", "transactionGroup", "importCursor", "candle", "pair", "user"]
-      .map((name) => [name, model(name)])
-  );
+  const tx = Object.fromEntries(KV_IMPORT_CLEAR_PLAN
+    .map(([name]) => [name, model(name)]));
   const prisma = {
     $transaction: async (operation: (client: typeof tx) => Promise<void>) =>
       operation(tx),
@@ -45,14 +43,11 @@ test("KV import clears candles before replacing pairs", async () => {
     dtransactionGroups: {},
   });
 
-  assert.deepEqual(calls, [
-    "delete:transaction",
-    "delete:transactionGroup",
-    "delete:importCursor",
-    "delete:candle",
-    "delete:pair",
-    "delete:user",
-  ]);
+  assert.deepEqual(calls, KV_IMPORT_CLEAR_PLAN
+    .map(([name]) => `delete:${name}`));
+  assert.ok(calls.indexOf("delete:strategyDecision") < calls.indexOf("delete:candle"));
+  assert.ok(calls.indexOf("delete:indicatorSnapshot") < calls.indexOf("delete:candle"));
+  assert.ok(calls.indexOf("delete:bot") < calls.indexOf("delete:pair"));
 });
 
 test("KV export audit reports migration blockers without exposing passwords", () => {
