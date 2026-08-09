@@ -77,6 +77,15 @@ class FixtureSource implements MarketDataSource {
   }
 }
 
+class UnsafeFixtureSource extends FixtureSource {
+  override fetchHistoricalCandles(request: HistoricalCandleRequest) {
+    this.requests.push(request);
+    return Promise.resolve({ candles: this.available.filter((value) =>
+      value.openTime >= request.from && value.openTime < request.to),
+    serverTime: this.serverTime, clockOffsetMs: BigInt(25) });
+  }
+}
+
 class FixtureLease implements MarketDataLease {
   acquired = true;
   keys: MarketDataLeaseKey[] = [];
@@ -183,6 +192,34 @@ describe("closed-candle polling", () => {
     assert.equal(result.hasMoreWork, true);
     assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), origin + (10 * hour));
   });
+
+  test("rejects an open candle even if a source incorrectly returns it", async () => {
+    const repository = new MemoryRepository();
+    const source = new UnsafeFixtureSource([candle(origin + (3 * hour), "105", false)]);
+    await assert.rejects(() => new PollClosedCandlesUseCase(repository, repository, source,
+      new FixtureLease()).execute({ pairSymbol: "BTCUSDC", interval: "1h" }), /closed/);
+    assert.equal(repository.candles.size, 0);
+    assert.equal(repository.cursor, null);
+    assert.match(repository.errors[0], /closed/);
+  });
+
+  test("a new poller instance restarts from the persisted cursor with overlap", async () => {
+    const repository = new MemoryRepository();
+    const firstSource = new FixtureSource([candle(origin + (3 * hour))]);
+    await new PollClosedCandlesUseCase(repository, repository, firstSource,
+      new FixtureLease()).execute({ pairSymbol: "BTCUSDC", interval: "1h" });
+    assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), origin + (3 * hour));
+
+    const restartedSource = new FixtureSource([
+      candle(origin + (2 * hour)), candle(origin + (3 * hour)), candle(origin + (4 * hour)),
+    ], new Date(origin + (5 * hour) + 5_000));
+    const restarted = new PollClosedCandlesUseCase(repository, repository, restartedSource,
+      new FixtureLease());
+    await restarted.execute({ pairSymbol: "BTCUSDC", interval: "1h" });
+    assert.equal(restartedSource.requests[0].from.getTime(), origin + (2 * hour));
+    assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), origin + (4 * hour));
+    assert.equal(repository.candles.size, 3);
+  });
 });
 
 describe("market-data polling worker", () => {
@@ -220,6 +257,68 @@ describe("market-data polling worker", () => {
     const recovered = (await worker.runOnce())[0];
     assert.equal(recovered.consecutiveFailures, 0);
     assert.equal(recovered.error, undefined);
+  });
+
+  test("the continuous scheduler sleeps to the exact boundary plus grace", async () => {
+    const discoveryRepository: MarketDataSubscriptionRepository = { findActive: () => Promise.resolve([
+      { pairSymbol: "BTCUSDC", interval: "1h" },
+    ]) };
+    const abortController = new AbortController();
+    let currentTime = Date.parse("2026-08-09T10:42:31.000Z");
+    const calls: number[] = [];
+    const sleeps: number[] = [];
+    const poll = { execute: () => {
+      calls.push(currentTime);
+      if (calls.length === 2) abortController.abort();
+      return Promise.resolve({ status: "completed" as const, source: "BINANCE" as const,
+        pairSymbol: "BTCUSDC", interval: "1h" as const, range: null, previousCursor: null,
+        lastClosedOpenTime: null, candlesFetched: 0, candlesSaved: 0, cursorAdvanced: false,
+        hasMoreWork: false, clockOffsetMs: null });
+    } } as unknown as PollClosedCandlesUseCase;
+    const sleep = (milliseconds: number) => {
+      sleeps.push(milliseconds);
+      currentTime += milliseconds;
+      return Promise.resolve();
+    };
+    const worker = new MarketDataPollingWorker(
+      new DiscoverMarketDataSubscriptionsUseCase(discoveryRepository), poll,
+      { closeGraceMs: 5_000, discoveryIntervalMs: hour }, () => new Date(currentTime), sleep);
+    await worker.run(abortController.signal);
+    assert.deepEqual(calls.map((value) => new Date(value).toISOString()), [
+      "2026-08-09T10:42:31.000Z", "2026-08-09T11:00:05.000Z",
+    ]);
+    assert.deepEqual(sleeps, [1_054_000]);
+  });
+
+  test("the continuous scheduler retries on deterministic exponential backoff", async () => {
+    const discoveryRepository: MarketDataSubscriptionRepository = { findActive: () => Promise.resolve([
+      { pairSymbol: "BTCUSDC", interval: "1h" },
+    ]) };
+    const abortController = new AbortController();
+    let currentTime = origin;
+    const calls: number[] = [];
+    const sleeps: number[] = [];
+    const poll = { execute: () => {
+      calls.push(currentTime);
+      if (calls.length < 3) return Promise.reject(new Error("temporary failure"));
+      abortController.abort();
+      return Promise.resolve({ status: "completed" as const, source: "BINANCE" as const,
+        pairSymbol: "BTCUSDC", interval: "1h" as const, range: null, previousCursor: null,
+        lastClosedOpenTime: null, candlesFetched: 0, candlesSaved: 0, cursorAdvanced: false,
+        hasMoreWork: false, clockOffsetMs: null });
+    } } as unknown as PollClosedCandlesUseCase;
+    const sleep = (milliseconds: number) => {
+      sleeps.push(milliseconds);
+      currentTime += milliseconds;
+      return Promise.resolve();
+    };
+    const worker = new MarketDataPollingWorker(
+      new DiscoverMarketDataSubscriptionsUseCase(discoveryRepository), poll,
+      { baseBackoffMs: 1_000, maxBackoffMs: 10_000, backoffJitterRatio: 0,
+        discoveryIntervalMs: hour }, () => new Date(currentTime), sleep, () => 0.5);
+    await worker.run(abortController.signal);
+    assert.deepEqual(calls, [origin, origin + 1_000, origin + 3_000]);
+    assert.deepEqual(sleeps, [1_000, 2_000]);
   });
 });
 
