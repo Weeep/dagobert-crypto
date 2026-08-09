@@ -6,8 +6,8 @@ This document is the implementation roadmap and development status reference for
 the Dagobert trading bot feature. It is intended to be read at the beginning of
 each new task so that implementation decisions remain consistent across tasks.
 
-The initial product requirements have been agreed. Implementation has not
-started yet. As work progresses, update the status tables, decision log, and
+The initial product requirements have been agreed and implementation is in
+progress. As work progresses, update the status tables, decision log, and
 relevant milestone acceptance criteria in this document in the same change set
 as the implementation.
 
@@ -17,7 +17,7 @@ as the implementation.
 | --- | --- | --- |
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
-| Phase 2: market data | In progress | Steps 0-3 are complete: the PostgreSQL gate, shared contract, cursor-backed persistence, Binance REST adapter, and historical backfill/gap repair are verified; live polling remains. |
+| Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
 | Phase 3: strategy engine | Not started | Versioned JSON strategies produce reproducible decisions. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
@@ -389,7 +389,7 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 - [x] Step 1: ingestion cursor schema/contracts, exact candle validation, and transactional candle/cursor persistence.
 - [x] Step 2: Binance REST server-time and historical-kline adapter with pagination, retries, timeout, cancellation, and closed-candle filtering.
 - [x] Step 3: historical backfill and gap repair, including resumable bounded imports, dry-run CLI, and timeframe defaults.
-- [ ] Step 4: resilient closed-candle polling.
+- [x] Step 4: resilient closed-candle polling, including active-bot/configured subscription discovery, advisory leases, bounded overlap catch-up, boundary scheduling, retry/backoff, one-shot and continuous CLI modes, and operator documentation.
 - [ ] Step 5: operability and the Phase 2 acceptance gate.
 
 #### Recommended implementation sequence
@@ -513,6 +513,16 @@ candles.
 **Exit:** fake-clock tests prove boundary scheduling, overlap, retry, lease
 exclusion, restart from the persisted cursor, and that an open candle is never
 made eligible for strategy processing.
+
+**Completed:** the standalone poller discovers unique subscriptions from
+running non-backtest bots and an optional configured rollout set, processes
+each source/symbol/interval under a PostgreSQL advisory lease, and bounds stale
+cursor recovery to resumable pages. Deterministic worker tests cover exact
+boundary-plus-grace scheduling, exponential retry, overlap, restart, and open
+candle rejection; Prisma integration coverage exercises lease exclusion,
+idempotent corrective reruns, and cursor monotonicity. The CLI supports both a
+single diagnostic run and a continuously supervised worker, with separate
+operator guides for polling and historical backfill.
 
 ##### Step 5: add operability and complete the Phase 2 gate
 
@@ -794,3 +804,4 @@ At the start of every bot-related task:
 | 2026-08-09 | Historical backfill uses a centralized rolling default of 15,000 closed candles for every timeframe, ending at the interval boundary at or before now; explicit range overrides remain supported. |
 | 2026-08-09 | The Phase 1 automated integration suite and the Phase 2 Step 0 gate were verified against a real PostgreSQL database; Phase 1 is complete. |
 | 2026-08-09 | Phase 2 Step 3 historical backfill and gap repair were verified with live Binance data and PostgreSQL, including rolling ranges, pre-listing history, resumable batches, and cursor advancement. |
+| 2026-08-09 | Phase 2 Step 4 resilient closed-candle polling was completed with active-bot plus configured subscription discovery, bounded overlap catch-up, PostgreSQL advisory leases, interval-boundary scheduling, per-subscription backoff, restart-safe cursor handling, standalone one-shot/continuous execution, and deterministic plus Prisma integration coverage. |
