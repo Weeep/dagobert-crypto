@@ -81,6 +81,10 @@ npm run market-data:backfill -- \
   --interval 1h
 ```
 
+See the [historical backfill guide](./market-data-backfill.md) for mandatory
+parameters, explicit ranges, dry-run, bounded resume, output, and deployment
+examples.
+
 Without an existing cursor the poller intentionally bootstraps only the latest
 closed interval; it does not silently start a 15,000-candle import.
 
