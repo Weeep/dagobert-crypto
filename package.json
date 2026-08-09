@@ -14,6 +14,7 @@
     "import-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/importKvDb.ts",
     "validate-kv-import": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/validateKvImport.ts",
     "audit-kv-db": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/auditKvExport.ts",
+    "market-data:backfill": "ts-node --project tsconfig.scripts.json --require tsconfig-paths/register scripts/backfillCandles.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:validate": "prisma validate",

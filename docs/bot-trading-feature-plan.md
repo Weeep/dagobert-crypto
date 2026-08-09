@@ -388,7 +388,7 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 - [x] Step 0: shared market-data contract implemented; Phase 1 PostgreSQL gate pending.
 - [x] Step 1: ingestion cursor schema/contracts, exact candle validation, and transactional candle/cursor persistence.
 - [x] Step 2: Binance REST server-time and historical-kline adapter with pagination, retries, timeout, cancellation, and closed-candle filtering.
-- [ ] Step 3: historical backfill and gap repair.
+- [x] Step 3: historical backfill and gap repair, including resumable bounded imports, dry-run CLI, and timeframe defaults.
 - [ ] Step 4: resilient closed-candle polling.
 - [ ] Step 5: operability and the Phase 2 acceptance gate.
 
@@ -462,6 +462,11 @@ open candle without requiring live Binance access.
 
 ##### Step 3: build the historical backfill and gap-repair service
 
+- Keep the initial default backfill start in one shared policy: `15m` and `1h`
+  start at `2025-01-01T00:00:00Z`, `4h` starts at
+  `2023-01-01T00:00:00Z`, and `1d` starts at
+  `2018-01-01T00:00:00Z`. The default end is the current time. Explicit start
+  and end values override these defaults.
 - Accept a symbol, interval, inclusive start, and exclusive end; split the range
   into Binance pages and persist each validated page through the application
   service.
@@ -775,3 +780,4 @@ At the start of every bot-related task:
 | 2026-08-08 | Basic replay is required; automatic YouTube upload is excluded. |
 | 2026-08-08 | Phase 2 starts with a Phase 1 verification gate, then delivers cursor-backed REST backfill, gap repair, and a standalone overlap poller in that order. |
 | 2026-08-08 | The initial live candle source is a resilient scheduled REST poller; WebSocket ingestion may be added later behind the same port. |
+| 2026-08-09 | Historical backfill defaults are centralized by timeframe: 15m/1h from 2025-01-01, 4h from 2023-01-01, and 1d from 2018-01-01, with end defaulting to now and explicit range overrides supported. |
