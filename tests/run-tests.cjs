@@ -9,6 +9,7 @@ require('./application/auth-login.test.ts');
 require('./application/trading-bots.test.ts');
 require('./application/market-data.test.ts');
 require('./application/backfill-candles.test.ts');
+require('./application/poll-closed-candles.test.ts');
 require('./infrastructure/server-kv-repositories.test.ts');
 require('./infrastructure/redis-key-value-store.test.ts');
 require('./infrastructure/redis-health-check.test.ts');
