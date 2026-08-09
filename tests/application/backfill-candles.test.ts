@@ -19,10 +19,11 @@ import {
 const hour = 3_600_000;
 const start = Date.parse("2026-08-01T00:00:00.000Z");
 
-function candle(openTime: number, pairSymbol = "BTCUSDC"): Candle {
+function candle(openTime: number, pairSymbol = "BTCUSDC", interval: "1h" | "1d" = "1h"): Candle {
+  const intervalMilliseconds = interval === "1d" ? 24 * hour : hour;
   return {
-    id: randomUUID(), pairSymbol, interval: "1h", openTime: new Date(openTime),
-    closeTime: new Date(openTime + hour - 1), open: "100", high: "110", low: "90", close: "105",
+    id: randomUUID(), pairSymbol, interval, openTime: new Date(openTime),
+    closeTime: new Date(openTime + intervalMilliseconds - 1), open: "100", high: "110", low: "90", close: "105",
     volume: "10", quoteVolume: "1000", trades: 20, isClosed: true, source: "BINANCE",
     receivedAt: new Date(openTime + hour),
   };
@@ -52,7 +53,7 @@ class MemoryCandleRepository implements CandleRepository {
   find(_key: CandleIngestionKey) { return Promise.resolve(this.cursor); }
   recordError() { return Promise.resolve(); }
   advanceAfterVerifiedRange(checkpoint: CandleIngestionCheckpoint, contiguousFrom: Date) {
-    const interval = hour;
+    const interval = checkpoint.interval === "1d" ? 24 * hour : hour;
     for (let expected = contiguousFrom.getTime();
       expected <= checkpoint.lastClosedOpenTime.getTime(); expected += interval) {
       if (!this.candles.has(expected)) return Promise.reject(new Error("missing interval"));
@@ -121,6 +122,29 @@ describe("historical candle backfill and gap repair", () => {
     assert.equal(result.resumeFrom?.getTime(), start + (15_000 * hour));
     assert.equal(Math.max(...repository.saveBatchSizes), 700);
     assert.equal(repository.saveBatchSizes.at(-1), 300);
+  });
+
+  test("treats the leading default range before a symbol listing as unavailable, not missing", async () => {
+    const day = 24 * hour;
+    const end = new Date("2026-08-10T12:34:56.000Z");
+    const alignedEnd = Math.floor(end.getTime() / day) * day;
+    const repository = new MemoryCandleRepository();
+    const source = new FixtureMarketDataSource([
+      candle(alignedEnd - (2 * day), "SOLUSDC", "1d"),
+      candle(alignedEnd - day, "SOLUSDC", "1d"),
+    ]);
+    const result = await new BackfillCandlesUseCase(repository, repository, source, () => end).execute({
+      pairSymbol: "SOLUSDC",
+      interval: "1d",
+    });
+
+    assert.equal(result.status, "completed");
+    assert.equal(result.expectedCandles, 15_000);
+    assert.equal(result.candlesSaved, 2);
+    assert.equal(result.repairedCandles, 2);
+    assert.equal(result.missingCandlesRemaining, 0);
+    assert.equal(result.unavailableLeadingRange?.expectedCandles, 14_998);
+    assert.deepEqual(result.remainingMissingRanges, []);
   });
 
   test("reports every contiguous gap without writing during dry-run", async () => {

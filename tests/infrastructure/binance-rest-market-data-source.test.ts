@@ -57,6 +57,19 @@ describe("Binance REST market-data adapter", () => {
     assert.deepEqual(result.candles.map((candle) => candle.openTime.getTime()), [start]);
   });
 
+  test("normalizes a daily close boundary from the Binance open-time identity", async () => {
+    const day = 24 * hour;
+    const client = {
+      time: async () => start + (2 * day),
+      candles: async () => [{ ...row(start), closeTime: start + hour - 1 }],
+    };
+    const source = new BinanceRestMarketDataSource(client as never, { now: () => start + day });
+    const result = await source.fetchHistoricalCandles({ pairSymbol: "SOLUSDC", interval: "1d",
+      from: new Date(start), to: new Date(start + day) });
+    assert.equal(result.candles[0].closeTime.getTime(), start + day - 1);
+    assert.equal(result.candles[0].isClosed, true);
+  });
+
   test("retries rate limits with bounded jitter and rejects malformed ordering", async () => {
     let attempts = 0;
     const delays: number[] = [];

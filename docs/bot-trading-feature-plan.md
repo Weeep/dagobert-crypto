@@ -467,6 +467,10 @@ open candle without requiring live Binance access.
   derive a start that includes exactly 15,000 closed candles. Explicit start
   and end values override these defaults. The default invocation page budget
   is also derived from the same 15,000-candle policy.
+- Treat the leading part of a default range before a symbol's first available
+  Binance candle as unavailable history rather than a repairable gap. Report it
+  separately and start continuity/cursor verification at the first available
+  candle. Explicit start overrides retain strict gap semantics.
 - Accept a symbol, interval, inclusive start, and exclusive end; split the range
   into Binance pages and persist each validated page through the application
   service.

@@ -42,6 +42,9 @@ export type BackfillCandlesResult = {
   existingCandles: number;
   missingCandlesDetected: number;
   missingRanges: CandleGap[];
+  missingCandlesRemaining: number;
+  repairedCandles: number;
+  unavailableLeadingRange: CandleGap | null;
   pagesFetched: number;
   candlesFetched: number;
   candlesSaved: number;
@@ -73,11 +76,13 @@ export class BackfillCandlesUseCase {
   async execute(input: BackfillCandlesInput): Promise<BackfillCandlesResult> {
     const normalized = this.normalizeInput(input);
     const { pairSymbol, interval, start, end, effectiveEnd, pageSize, maxPages,
-      defaultCandleLimit, dryRun } = normalized;
+      defaultCandleLimit, startWasDefault, dryRun } = normalized;
     const intervalMs = MARKET_INTERVAL_MILLISECONDS[interval];
     const before = await this.repository.findRange(pairSymbol, interval, start,
       new Date(Math.max(start.getTime(), effectiveEnd.getTime() - 1)));
-    const missingRanges = this.findGaps(start, effectiveEnd, interval, before.map(({ openTime }) => openTime));
+    const initialGapStart = startWasDefault && before[0] ? before[0].openTime : start;
+    const missingRanges = this.findGaps(initialGapStart, effectiveEnd, interval,
+      before.map(({ openTime }) => openTime));
     const missingCandlesDetected = missingRanges.reduce((total, gap) => total + gap.expectedCandles, 0);
 
     let pagesFetched = 0;
@@ -124,10 +129,18 @@ export class BackfillCandlesUseCase {
 
     const after = dryRun ? before : await this.repository.findRange(pairSymbol, interval, start,
       new Date(Math.max(start.getTime(), effectiveEnd.getTime() - 1)));
-    const remainingMissingRanges = this.findGaps(start, effectiveEnd, interval,
+    const availableRangeStart = startWasDefault ? after[0]?.openTime ?? effectiveEnd : start;
+    const remainingMissingRanges = this.findGaps(availableRangeStart, effectiveEnd, interval,
       after.map(({ openTime }) => openTime));
+    const unavailableLeadingRange = startWasDefault && availableRangeStart > start
+      ? this.gap(start.getTime(), availableRangeStart.getTime(), intervalMs)
+      : null;
+    const missingCandlesRemaining = remainingMissingRanges.reduce(
+      (total, gap) => total + gap.expectedCandles, 0);
+    const repairedCandles = Math.max(0, missingCandlesDetected - missingCandlesRemaining -
+      (initialGapStart.getTime() === start.getTime() ? unavailableLeadingRange?.expectedCandles ?? 0 : 0));
     const firstGapStart = remainingMissingRanges[0]?.start.getTime() ?? effectiveEnd.getTime();
-    const lastContiguousOpenTime = firstGapStart > start.getTime()
+    const lastContiguousOpenTime = after.length > 0 && firstGapStart > availableRangeStart.getTime()
       ? new Date(firstGapStart - intervalMs)
       : null;
     let cursorAdvanced = false;
@@ -135,10 +148,11 @@ export class BackfillCandlesUseCase {
     if (!dryRun && lastContiguousOpenTime) {
       const currentCursor = await this.cursorRepository.find({ source: SOURCE, pairSymbol, interval });
       const cursorTime = currentCursor?.lastClosedOpenTime?.getTime();
-      const cursorCanReachRange = cursorTime === undefined || cursorTime + intervalMs >= start.getTime();
+      const cursorCanReachRange = cursorTime === undefined || cursorTime + intervalMs >= availableRangeStart.getTime();
       if (cursorCanReachRange && (cursorTime === undefined || cursorTime < lastContiguousOpenTime.getTime())) {
         const clock = await this.source.fetchServerTime(input.signal);
-        await input.onProgress?.({ type: "verifying", range: { start, end: lastContiguousOpenTime } });
+        await input.onProgress?.({ type: "verifying",
+          range: { start: availableRangeStart, end: lastContiguousOpenTime } });
         await this.cursorRepository.advanceAfterVerifiedRange({
           source: SOURCE,
           pairSymbol,
@@ -146,7 +160,7 @@ export class BackfillCandlesUseCase {
           lastClosedOpenTime: lastContiguousOpenTime,
           lastSuccessfulPollAt: this.now(),
           clockOffsetMs: clock.clockOffsetMs,
-        }, start);
+        }, availableRangeStart);
         cursorAdvanced = true;
       }
     }
@@ -164,6 +178,9 @@ export class BackfillCandlesUseCase {
       existingCandles: before.length,
       missingCandlesDetected,
       missingRanges,
+      missingCandlesRemaining,
+      repairedCandles,
+      unavailableLeadingRange,
       pagesFetched,
       candlesFetched,
       candlesSaved,
@@ -201,6 +218,7 @@ export class BackfillCandlesUseCase {
     const interval = input.interval;
     const intervalMs = MARKET_INTERVAL_MILLISECONDS[interval];
     const end = input.end ? new Date(input.end) : this.now();
+    const startWasDefault = input.start === undefined;
     const start = input.start ? new Date(input.start) : defaultBackfillStart(interval, end);
     if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end)
       throw new Error("Historical backfill range is invalid");
@@ -216,7 +234,7 @@ export class BackfillCandlesUseCase {
     if (!Number.isInteger(maxPages) || maxPages < 1)
       throw new Error("maxPages must be a positive integer");
     return { pairSymbol, interval, start, end, effectiveEnd, pageSize, maxPages,
-      defaultCandleLimit, dryRun: input.dryRun ?? false };
+      defaultCandleLimit, startWasDefault, dryRun: input.dryRun ?? false };
   }
 
   private gap(start: number, end: number, intervalMs: number): CandleGap {
