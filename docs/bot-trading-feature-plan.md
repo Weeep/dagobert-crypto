@@ -385,7 +385,7 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 
 #### Implementation progress
 
-- [ ] Step 0: shared market-data contract implemented; Phase 1 PostgreSQL gate pending.
+- [x] Step 0: shared market-data contract implemented; Phase 1 PostgreSQL gate pending.
 - [x] Step 1: ingestion cursor schema/contracts, exact candle validation, and transactional candle/cursor persistence.
 - [x] Step 2: Binance REST server-time and historical-kline adapter with pagination, retries, timeout, cancellation, and closed-candle filtering.
 - [ ] Step 3: historical backfill and gap repair.
