@@ -3,7 +3,8 @@ import { isMarketInterval, MARKET_INTERVAL_MILLISECONDS } from "../domain/Candle
 import type { CandleRepository } from "../domain/CandleRepository";
 import type { CandleIngestionCursorRepository } from "../domain/CandleIngestionCursor";
 import type { MarketDataSource } from "../domain/MarketDataSource";
-import { defaultBackfillStart } from "@/src/shared/domain/HistoricalBackfillPolicy";
+import { DEFAULT_BACKFILL_CANDLE_COUNT,
+  defaultBackfillStart } from "@/src/shared/domain/HistoricalBackfillPolicy";
 import { SaveCandlesUseCase } from "./SaveCandlesUseCase";
 
 export type CandleGap = {
@@ -71,7 +72,8 @@ export class BackfillCandlesUseCase {
 
   async execute(input: BackfillCandlesInput): Promise<BackfillCandlesResult> {
     const normalized = this.normalizeInput(input);
-    const { pairSymbol, interval, start, end, effectiveEnd, pageSize, maxPages, dryRun } = normalized;
+    const { pairSymbol, interval, start, end, effectiveEnd, pageSize, maxPages,
+      defaultCandleLimit, dryRun } = normalized;
     const intervalMs = MARKET_INTERVAL_MILLISECONDS[interval];
     const before = await this.repository.findRange(pairSymbol, interval, start,
       new Date(Math.max(start.getTime(), effectiveEnd.getTime() - 1)));
@@ -86,15 +88,17 @@ export class BackfillCandlesUseCase {
     if (!dryRun) {
       for (const gap of missingRanges) {
         for (let pageStartMs = gap.start.getTime(); pageStartMs < gap.end.getTime();) {
-          if (nonEmptyPagesFetched >= maxPages || emptyPagesFetched >= MAX_EMPTY_PAGES_PER_INVOCATION) break;
+          if (nonEmptyPagesFetched >= maxPages || candlesFetched >= defaultCandleLimit ||
+            emptyPagesFetched >= MAX_EMPTY_PAGES_PER_INVOCATION) break;
           if (input.signal?.aborted) throw this.abortError();
-          const pageEndMs = Math.min(gap.end.getTime(), pageStartMs + (pageSize * intervalMs));
+          const pageCapacity = Math.min(pageSize, defaultCandleLimit - candlesFetched);
+          const pageEndMs = Math.min(gap.end.getTime(), pageStartMs + (pageCapacity * intervalMs));
           const batch = await this.source.fetchHistoricalCandles({
             pairSymbol,
             interval,
             from: new Date(pageStartMs),
             to: new Date(pageEndMs),
-            pageSize,
+            pageSize: pageCapacity,
             signal: input.signal,
           });
           pagesFetched += 1;
@@ -113,7 +117,8 @@ export class BackfillCandlesUseCase {
           });
           pageStartMs = pageEndMs;
         }
-        if (nonEmptyPagesFetched >= maxPages || emptyPagesFetched >= MAX_EMPTY_PAGES_PER_INVOCATION) break;
+        if (nonEmptyPagesFetched >= maxPages || candlesFetched >= defaultCandleLimit ||
+          emptyPagesFetched >= MAX_EMPTY_PAGES_PER_INVOCATION) break;
       }
     }
 
@@ -195,8 +200,8 @@ export class BackfillCandlesUseCase {
     if (!isMarketInterval(input.interval)) throw new Error("interval is not supported");
     const interval = input.interval;
     const intervalMs = MARKET_INTERVAL_MILLISECONDS[interval];
-    const start = input.start ? new Date(input.start) : defaultBackfillStart(interval);
     const end = input.end ? new Date(input.end) : this.now();
+    const start = input.start ? new Date(input.start) : defaultBackfillStart(interval, end);
     if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end)
       throw new Error("Historical backfill range is invalid");
     if (start.getTime() % intervalMs !== 0)
@@ -204,12 +209,14 @@ export class BackfillCandlesUseCase {
     const effectiveEnd = new Date(Math.floor(end.getTime() / intervalMs) * intervalMs);
     if (effectiveEnd <= start) throw new Error("Historical backfill range contains no closed interval");
     const pageSize = input.pageSize ?? 1_000;
-    const maxPages = input.maxPages ?? 10;
+    const maxPages = input.maxPages ?? Math.ceil(DEFAULT_BACKFILL_CANDLE_COUNT / pageSize);
+    const defaultCandleLimit = input.maxPages === undefined ? DEFAULT_BACKFILL_CANDLE_COUNT : Infinity;
     if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 1_000)
       throw new Error("pageSize must be an integer between 1 and 1000");
     if (!Number.isInteger(maxPages) || maxPages < 1)
       throw new Error("maxPages must be a positive integer");
-    return { pairSymbol, interval, start, end, effectiveEnd, pageSize, maxPages, dryRun: input.dryRun ?? false };
+    return { pairSymbol, interval, start, end, effectiveEnd, pageSize, maxPages,
+      defaultCandleLimit, dryRun: input.dryRun ?? false };
   }
 
   private gap(start: number, end: number, intervalMs: number): CandleGap {

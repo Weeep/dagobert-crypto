@@ -1,13 +1,11 @@
 import type { MarketInterval } from "./MarketInterval";
+import { MARKET_INTERVAL_MILLISECONDS } from "./MarketInterval";
 
-/** Initial UTC boundary used when an operator does not provide a backfill start. */
-export const DEFAULT_BACKFILL_START_BY_INTERVAL: Readonly<Record<MarketInterval, string>> = {
-  "15m": "2025-01-01T00:00:00.000Z",
-  "1h": "2025-01-01T00:00:00.000Z",
-  "4h": "2023-01-01T00:00:00.000Z",
-  "1d": "2018-01-01T00:00:00.000Z",
-};
+/** Default amount imported by one invocation and selected by a range without an explicit start. */
+export const DEFAULT_BACKFILL_CANDLE_COUNT = 15_000;
 
-export function defaultBackfillStart(interval: MarketInterval): Date {
-  return new Date(DEFAULT_BACKFILL_START_BY_INTERVAL[interval]);
+export function defaultBackfillStart(interval: MarketInterval, exclusiveEnd: Date): Date {
+  const intervalMilliseconds = MARKET_INTERVAL_MILLISECONDS[interval];
+  const alignedEnd = Math.floor(exclusiveEnd.getTime() / intervalMilliseconds) * intervalMilliseconds;
+  return new Date(alignedEnd - (DEFAULT_BACKFILL_CANDLE_COUNT * intervalMilliseconds));
 }

@@ -12,7 +12,7 @@ import type {
 } from "@/src/modules/market";
 import { BackfillCandlesUseCase } from "@/src/modules/market";
 import {
-  DEFAULT_BACKFILL_START_BY_INTERVAL,
+  DEFAULT_BACKFILL_CANDLE_COUNT,
   defaultBackfillStart,
 } from "@/src/shared/domain/HistoricalBackfillPolicy";
 
@@ -83,22 +83,44 @@ class FixtureMarketDataSource implements MarketDataSource {
 }
 
 describe("historical candle backfill and gap repair", () => {
-  test("keeps default starts in one policy and defaults end to now", async () => {
-    assert.deepEqual(DEFAULT_BACKFILL_START_BY_INTERVAL, {
-      "15m": "2025-01-01T00:00:00.000Z",
-      "1h": "2025-01-01T00:00:00.000Z",
-      "4h": "2023-01-01T00:00:00.000Z",
-      "1d": "2018-01-01T00:00:00.000Z",
-    });
+  test("derives a rolling fifteen-thousand-candle range and defaults end to now", async () => {
+    assert.equal(DEFAULT_BACKFILL_CANDLE_COUNT, 15_000);
     const repository = new MemoryCandleRepository();
-    const now = new Date("2025-01-01T02:34:56.000Z");
+    const now = new Date("2026-08-09T02:34:56.000Z");
     const result = await new BackfillCandlesUseCase(repository, repository,
       new FixtureMarketDataSource([]), () => now).execute({
       pairSymbol: "BTCUSDC", interval: "1h", dryRun: true,
     });
-    assert.equal(result.requestedRange.start.toISOString(), defaultBackfillStart("1h").toISOString());
+    assert.equal(result.requestedRange.start.toISOString(), defaultBackfillStart("1h", now).toISOString());
     assert.equal(result.requestedRange.end, now);
-    assert.equal(result.effectiveEnd.toISOString(), "2025-01-01T02:00:00.000Z");
+    assert.equal(result.effectiveEnd.toISOString(), "2026-08-09T02:00:00.000Z");
+    assert.equal(result.expectedCandles, 15_000);
+    assert.equal(result.missingCandlesDetected, 15_000);
+    for (const interval of ["15m", "1h", "4h", "1d"] as const) {
+      const intervalMs = { "15m": 900_000, "1h": hour, "4h": 4 * hour, "1d": 24 * hour }[interval];
+      assert.equal((Math.floor(now.getTime() / intervalMs) * intervalMs -
+        defaultBackfillStart(interval, now).getTime()) / intervalMs, 15_000);
+    }
+  });
+
+  test("caps the default invocation at exactly fifteen thousand candles", async () => {
+    const repository = new MemoryCandleRepository();
+    const available = Array.from({ length: 15_001 }, (_value, index) => candle(start + (index * hour)));
+    const result = await new BackfillCandlesUseCase(repository, repository,
+      new FixtureMarketDataSource(available)).execute({
+      pairSymbol: "BTCUSDC",
+      interval: "1h",
+      start: new Date(start),
+      end: new Date(start + (15_001 * hour)),
+      pageSize: 700,
+    });
+
+    assert.equal(result.candlesFetched, 15_000);
+    assert.equal(result.candlesSaved, 15_000);
+    assert.equal(result.status, "partial");
+    assert.equal(result.resumeFrom?.getTime(), start + (15_000 * hour));
+    assert.equal(Math.max(...repository.saveBatchSizes), 700);
+    assert.equal(repository.saveBatchSizes.at(-1), 300);
   });
 
   test("reports every contiguous gap without writing during dry-run", async () => {
@@ -184,22 +206,22 @@ describe("historical candle backfill and gap repair", () => {
     assert.equal(repository.candles.size, 2);
   });
 
-  test("checkpoints ten thousand existing candles without re-upserting their history", async () => {
+  test("checkpoints fifteen thousand existing candles without re-upserting their history", async () => {
     const repository = new MemoryCandleRepository();
-    for (let index = 0; index < 10_000; index += 1)
+    for (let index = 0; index < 15_000; index += 1)
       repository.candles.set(start + (index * hour), candle(start + (index * hour)));
     const useCase = new BackfillCandlesUseCase(repository, repository, new FixtureMarketDataSource([]),
-      () => new Date(start + (10_001 * hour)));
+      () => new Date(start + (15_001 * hour)));
 
     const result = await useCase.execute({
       pairSymbol: "BTCUSDC",
       interval: "1h",
       start: new Date(start),
-      end: new Date(start + (10_000 * hour)),
+      end: new Date(start + (15_000 * hour)),
     });
 
     assert.equal(result.status, "completed");
-    assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), start + (9_999 * hour));
+    assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), start + (14_999 * hour));
     assert.deepEqual(repository.saveBatchSizes, []);
   });
 
