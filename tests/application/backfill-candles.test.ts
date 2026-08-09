@@ -19,9 +19,9 @@ import {
 const hour = 3_600_000;
 const start = Date.parse("2026-08-01T00:00:00.000Z");
 
-function candle(openTime: number): Candle {
+function candle(openTime: number, pairSymbol = "BTCUSDC"): Candle {
   return {
-    id: randomUUID(), pairSymbol: "BTCUSDC", interval: "1h", openTime: new Date(openTime),
+    id: randomUUID(), pairSymbol, interval: "1h", openTime: new Date(openTime),
     closeTime: new Date(openTime + hour - 1), open: "100", high: "110", low: "90", close: "105",
     volume: "10", quoteVolume: "1000", trades: 20, isClosed: true, source: "BINANCE",
     receivedAt: new Date(openTime + hour),
@@ -138,6 +138,31 @@ describe("historical candle backfill and gap repair", () => {
     assert.deepEqual(repaired.missingRanges.map((gap) => gap.start.getTime()), [start + (3 * hour)]);
     assert.equal(repaired.remainingMissingRanges.length, 0);
     assert.equal(repository.candles.size, 6);
+  });
+
+  test("scans past empty pre-listing pages before applying the non-empty page limit", async () => {
+    const repository = new MemoryCandleRepository();
+    const source = new FixtureMarketDataSource([
+      candle(start + (4 * hour), "SOLUSDC"),
+      candle(start + (5 * hour), "SOLUSDC"),
+    ]);
+    const result = await new BackfillCandlesUseCase(repository, repository, source).execute({
+      pairSymbol: "SOLUSDC",
+      interval: "1h",
+      start: new Date(start),
+      end: new Date(start + (6 * hour)),
+      pageSize: 2,
+      maxPages: 1,
+    });
+
+    assert.deepEqual(source.requests.map((request) => request.from.getTime()), [
+      start,
+      start + (2 * hour),
+      start + (4 * hour),
+    ]);
+    assert.equal(result.pagesFetched, 3);
+    assert.equal(result.candlesFetched, 2);
+    assert.equal(repository.candles.size, 2);
   });
 
   test("supports explicit overrides and rejects invalid boundaries and limits", async () => {

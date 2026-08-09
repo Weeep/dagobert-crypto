@@ -46,6 +46,10 @@ export type BackfillCandlesResult = {
 };
 
 const SOURCE = "BINANCE" as const;
+// Empty exchange pages do not consume the persistence-page budget: a recently
+// listed symbol may have no rows for years of the configured default range.
+// This separate ceiling keeps even pathological explicit ranges bounded.
+const MAX_EMPTY_PAGES_PER_INVOCATION = 10_000;
 
 export class BackfillCandlesUseCase {
   private readonly saveCandles: SaveCandlesUseCase;
@@ -69,12 +73,14 @@ export class BackfillCandlesUseCase {
     const missingCandlesDetected = missingRanges.reduce((total, gap) => total + gap.expectedCandles, 0);
 
     let pagesFetched = 0;
+    let nonEmptyPagesFetched = 0;
+    let emptyPagesFetched = 0;
     let candlesFetched = 0;
     let candlesSaved = 0;
     if (!dryRun) {
       for (const gap of missingRanges) {
         for (let pageStartMs = gap.start.getTime(); pageStartMs < gap.end.getTime();) {
-          if (pagesFetched >= maxPages) break;
+          if (nonEmptyPagesFetched >= maxPages || emptyPagesFetched >= MAX_EMPTY_PAGES_PER_INVOCATION) break;
           if (input.signal?.aborted) throw this.abortError();
           const pageEndMs = Math.min(gap.end.getTime(), pageStartMs + (pageSize * intervalMs));
           const batch = await this.source.fetchHistoricalCandles({
@@ -87,12 +93,14 @@ export class BackfillCandlesUseCase {
           });
           pagesFetched += 1;
           candlesFetched += batch.candles.length;
+          if (batch.candles.length === 0) emptyPagesFetched += 1;
+          else nonEmptyPagesFetched += 1;
           const saved = await this.saveCandles.execute(batch.candles);
           if (!saved.ok) throw new Error(`Cannot persist historical candles: ${saved.error}`);
           candlesSaved += saved.saved;
           pageStartMs = pageEndMs;
         }
-        if (pagesFetched >= maxPages) break;
+        if (nonEmptyPagesFetched >= maxPages || emptyPagesFetched >= MAX_EMPTY_PAGES_PER_INVOCATION) break;
       }
     }
 

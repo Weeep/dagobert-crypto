@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import type { MarketInterval } from "@/src/modules/market";
 import { BackfillCandlesUseCase, isMarketInterval } from "@/src/modules/market";
 
-dotenv.config({ path: ".env.local" });
+dotenv.config({ path: ".env.local", quiet: true });
 
 type CliOptions = {
   symbol?: string;
@@ -22,7 +22,16 @@ function parseArguments(arguments_: string[]): CliOptions {
       options.dryRun = true;
       continue;
     }
-    if (!argument.startsWith("--")) throw new Error(`Unexpected argument: ${argument}`);
+    // `npm run command --symbol SOLUSDC` consumes `--symbol` itself and forwards
+    // only `SOLUSDC`. Accept that single positional value as a convenience,
+    // while `npm run command -- --symbol SOLUSDC` remains the canonical form.
+    if (!argument.startsWith("--")) {
+      if (!options.symbol) {
+        options.symbol = argument;
+        continue;
+      }
+      throw new Error(`Unexpected argument: ${argument}`);
+    }
     const [rawName, inlineValue] = argument.slice(2).split("=", 2);
     const value = inlineValue ?? arguments_[index + 1];
     if (inlineValue === undefined) index += 1;
