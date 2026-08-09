@@ -15,8 +15,10 @@ import type {
 } from "@/src/modules/market";
 import {
   DiscoverMarketDataSubscriptionsUseCase,
+  MarketDataPollingWorker,
   PollClosedCandlesUseCase,
 } from "@/src/modules/market";
+import { parseConfiguration, parseSubscriptions } from "@/scripts/pollMarketData";
 
 const hour = 3_600_000;
 const origin = Date.parse("2026-08-09T08:00:00.000Z");
@@ -120,7 +122,7 @@ describe("closed-candle polling", () => {
     });
 
     assert.equal(source.requests[0].from.getTime(), origin + hour);
-    assert.equal(source.requests[0].to.getTime(), source.serverTime.getTime());
+    assert.equal(source.requests[0].to.getTime(), origin + (4 * hour));
     assert.equal(repository.candles.get(origin + hour)?.close, "106");
     assert.equal(repository.candles.has(origin + (4 * hour)), false);
     assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), origin + (3 * hour));
@@ -164,5 +166,72 @@ describe("closed-candle polling", () => {
       new FixtureLease()).execute({ pairSymbol: "BTCUSDC", interval: "1h" }), /exchange unavailable/);
     assert.deepEqual(repository.errors, ["exchange unavailable"]);
     assert.equal(repository.cursor.lastClosedOpenTime?.getTime(), previous.getTime());
+  });
+
+  test("bounds stale-cursor catch-up to one page and reports remaining work", async () => {
+    const repository = new MemoryRepository();
+    repository.cursor = { id: randomUUID(), source: "BINANCE", pairSymbol: "BTCUSDC", interval: "1h",
+      lastClosedOpenTime: new Date(origin + (2 * hour)), lastSuccessfulPollAt: new Date(),
+      clockOffsetMs: BigInt(0), status: "HEALTHY", lastError: null, createdAt: new Date(), updatedAt: new Date() };
+    const available = Array.from({ length: 10 }, (_value, index) => candle(origin + ((index + 1) * hour)));
+    const source = new FixtureSource(available, new Date(origin + (2_000 * hour)));
+    const result = await new PollClosedCandlesUseCase(repository, repository, source,
+      new FixtureLease()).execute({ pairSymbol: "BTCUSDC", interval: "1h", maxCandles: 10 });
+    assert.equal(source.requests[0].from.getTime(), origin + hour);
+    assert.equal(source.requests[0].to.getTime(), origin + (11 * hour));
+    assert.equal(result.candlesFetched, 10);
+    assert.equal(result.hasMoreWork, true);
+    assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), origin + (10 * hour));
+  });
+});
+
+describe("market-data polling worker", () => {
+  test("aligns successful polling to the interval boundary plus close grace", () => {
+    const repository: MarketDataSubscriptionRepository = { findActive: () => Promise.resolve([]) };
+    const discover = new DiscoverMarketDataSubscriptionsUseCase(repository);
+    const worker = new MarketDataPollingWorker(discover, {} as PollClosedCandlesUseCase,
+      { closeGraceMs: 5_000 }, () => new Date("2026-08-09T10:42:31.000Z"));
+    assert.equal(worker.nextBoundary({ pairSymbol: "BTCUSDC", interval: "1h" }).toISOString(),
+      "2026-08-09T11:00:05.000Z");
+    assert.equal(worker.nextBoundary({ pairSymbol: "BTCUSDC", interval: "1h" },
+      new Date("2026-08-09T11:00:03.000Z")).toISOString(), "2026-08-09T11:00:05.000Z");
+  });
+
+  test("applies bounded per-subscription exponential backoff and resets it after success", async () => {
+    const repository = new MemoryRepository();
+    const source = new FixtureSource([]);
+    source.fail = true;
+    const discoveryRepository: MarketDataSubscriptionRepository = { findActive: () => Promise.resolve([
+      { pairSymbol: "BTCUSDC", interval: "1h" },
+    ]) };
+    const now = new Date("2026-08-09T10:00:00.000Z");
+    const worker = new MarketDataPollingWorker(
+      new DiscoverMarketDataSubscriptionsUseCase(discoveryRepository),
+      new PollClosedCandlesUseCase(repository, repository, source, new FixtureLease()),
+      { baseBackoffMs: 1_000, maxBackoffMs: 2_000, backoffJitterRatio: 0 },
+      () => now, undefined, () => 0.5);
+    const first = (await worker.runOnce())[0];
+    const second = (await worker.runOnce())[0];
+    assert.equal(first.consecutiveFailures, 1);
+    assert.equal(first.nextRunAt.getTime(), now.getTime() + 1_000);
+    assert.equal(second.consecutiveFailures, 2);
+    assert.equal(second.nextRunAt.getTime(), now.getTime() + 2_000);
+    source.fail = false;
+    const recovered = (await worker.runOnce())[0];
+    assert.equal(recovered.consecutiveFailures, 0);
+    assert.equal(recovered.error, undefined);
+  });
+});
+
+describe("market-data poller configuration", () => {
+  test("parses explicit subscriptions and one-shot CLI overrides", () => {
+    assert.deepEqual(parseSubscriptions("btcusdc:15m, ETHUSDC:1h"), [
+      { pairSymbol: "BTCUSDC", interval: "15m" }, { pairSymbol: "ETHUSDC", interval: "1h" },
+    ]);
+    const configuration = parseConfiguration(["--once", "--subscriptions", "BTCUSDC:4h",
+      "--max-candles-per-poll=250"], {});
+    assert.equal(configuration.once, true);
+    assert.equal(configuration.maxCandlesPerPoll, 250);
+    assert.deepEqual(configuration.subscriptions, [{ pairSymbol: "BTCUSDC", interval: "4h" }]);
   });
 });
