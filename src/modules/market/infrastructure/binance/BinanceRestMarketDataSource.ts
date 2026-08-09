@@ -106,7 +106,8 @@ export class BinanceRestMarketDataSource implements MarketDataSource {
       for (const row of rows) {
         this.validateOrder(row, previousOpenTime, nextOpenTime, request.to.getTime());
         previousOpenTime = row.openTime;
-        const isClosed = row.closeTime <= clock.serverTime.getTime();
+        const expectedCloseTime = row.openTime + intervalMs - 1;
+        const isClosed = expectedCloseTime <= clock.serverTime.getTime();
         const candle = this.mapCandle(row, request, isClosed);
         validateCandle(candle);
         if (isClosed) candles.push(candle);
@@ -131,7 +132,10 @@ export class BinanceRestMarketDataSource implements MarketDataSource {
       pairSymbol: request.pairSymbol,
       interval: request.interval,
       openTime: new Date(row.openTime),
-      closeTime: new Date(row.closeTime),
+      // Binance is the source of the open-time identity. Normalize the domain
+      // close boundary from that identity so sparse/pre-listing daily responses
+      // cannot introduce an exchange-specific close timestamp mismatch.
+      closeTime: new Date(row.openTime + MARKET_INTERVAL_MILLISECONDS[request.interval] - 1),
       open: row.open,
       high: row.high,
       low: row.low,

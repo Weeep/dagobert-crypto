@@ -13,3 +13,6 @@ export type { HistoricalCandleBatch, HistoricalCandleRequest, MarketDataSource }
 export { CandleValidationError, validateCandle, validateClosedCandle } from "./domain/CandleValidation";
 export { SaveCandlesUseCase } from "./application/SaveCandlesUseCase";
 export { ListCandlesUseCase } from "./application/ListCandlesUseCase";
+export type { BackfillCandlesInput, BackfillCandlesResult, BackfillProgressEvent,
+  CandleGap } from "./application/BackfillCandlesUseCase";
+export { BackfillCandlesUseCase } from "./application/BackfillCandlesUseCase";
