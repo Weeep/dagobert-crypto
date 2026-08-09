@@ -27,6 +27,7 @@ class PrismaPollingSource implements MarketDataSource {
   fetchHistoricalCandles(request: HistoricalCandleRequest) {
     this.requests.push(request);
     return Promise.resolve({ candles: this.candles.filter((value) =>
+      value.pairSymbol === request.pairSymbol && value.interval === request.interval &&
       value.openTime >= request.from && value.openTime < request.to),
     serverTime: new Date(openTime.getTime() + (2 * hour) + 5_000), clockOffsetMs: BigInt(12) });
   }
@@ -52,7 +53,10 @@ test("PostgreSQL advisory lease excludes concurrent work and releases afterward"
 test("two Prisma-backed polls are idempotent and the cursor remains monotonic",
   { skip: !process.env.DATABASE_URL }, async () => {
     const { prisma } = await import("@/src/shared/infrastructure/prisma/prisma");
-    const pairSymbol = `P${randomUUID().replaceAll("-", "").slice(0, 8)}USDC`;
+    // PollClosedCandlesUseCase normalizes symbols to uppercase before querying
+    // the source and cursor. Keep the relational fixture under that same
+    // canonical identity so the test exercises production behavior.
+    const pairSymbol = `P${randomUUID().replaceAll("-", "").slice(0, 8)}USDC`.toUpperCase();
     await prisma.pair.create({ data: { symbol: pairSymbol, decimals: 8 } });
     const repository = new PrismaCandleRepository(prisma);
     const key = { source: "BINANCE", pairSymbol, interval: "1h" as const };
