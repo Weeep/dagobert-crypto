@@ -21,7 +21,13 @@ export type BackfillCandlesInput = {
   maxPages?: number;
   dryRun?: boolean;
   signal?: AbortSignal;
+  onProgress?: (event: BackfillProgressEvent) => void | Promise<void>;
 };
+
+export type BackfillProgressEvent =
+  | { type: "page-saved"; page: number; range: { start: Date; end: Date }; fetched: number; saved: number }
+  | { type: "verifying"; range: { start: Date; end: Date } }
+  | { type: "completed"; status: BackfillCandlesResult["status"]; pagesFetched: number; candlesSaved: number };
 
 export type BackfillCandlesResult = {
   status: "completed" | "partial" | "dry-run";
@@ -98,6 +104,13 @@ export class BackfillCandlesUseCase {
           const saved = await this.saveCandles.execute(batch.candles);
           if (!saved.ok) throw new Error(`Cannot persist historical candles: ${saved.error}`);
           candlesSaved += saved.saved;
+          await input.onProgress?.({
+            type: "page-saved",
+            page: pagesFetched,
+            range: { start: new Date(pageStartMs), end: new Date(pageEndMs) },
+            fetched: batch.candles.length,
+            saved: saved.saved,
+          });
           pageStartMs = pageEndMs;
         }
         if (nonEmptyPagesFetched >= maxPages || emptyPagesFetched >= MAX_EMPTY_PAGES_PER_INVOCATION) break;
@@ -115,28 +128,26 @@ export class BackfillCandlesUseCase {
     let cursorAdvanced = false;
 
     if (!dryRun && lastContiguousOpenTime) {
-      const contiguousCandles = after.filter(({ openTime }) =>
-        openTime >= start && openTime <= lastContiguousOpenTime);
       const currentCursor = await this.cursorRepository.find({ source: SOURCE, pairSymbol, interval });
       const cursorTime = currentCursor?.lastClosedOpenTime?.getTime();
       const cursorCanReachRange = cursorTime === undefined || cursorTime + intervalMs >= start.getTime();
       if (cursorCanReachRange && (cursorTime === undefined || cursorTime < lastContiguousOpenTime.getTime())) {
         const clock = await this.source.fetchServerTime(input.signal);
-        const checkpointed = await this.saveCandles.execute(contiguousCandles, {
+        await input.onProgress?.({ type: "verifying", range: { start, end: lastContiguousOpenTime } });
+        await this.cursorRepository.advanceAfterVerifiedRange({
           source: SOURCE,
           pairSymbol,
           interval,
           lastClosedOpenTime: lastContiguousOpenTime,
           lastSuccessfulPollAt: this.now(),
           clockOffsetMs: clock.clockOffsetMs,
-        });
-        if (!checkpointed.ok) throw new Error(`Cannot advance historical candle cursor: ${checkpointed.error}`);
+        }, start);
         cursorAdvanced = true;
       }
     }
 
     const hasMoreWork = remainingMissingRanges.length > 0;
-    return {
+    const result: BackfillCandlesResult = {
       status: dryRun ? "dry-run" : hasMoreWork ? "partial" : "completed",
       source: SOURCE,
       pairSymbol,
@@ -157,6 +168,8 @@ export class BackfillCandlesUseCase {
       hasMoreWork,
       resumeFrom: remainingMissingRanges[0]?.start ?? null,
     };
+    await input.onProgress?.({ type: "completed", status: result.status, pagesFetched, candlesSaved });
+    return result;
   }
 
   findGaps(start: Date, end: Date, interval: MarketInterval, persistedOpenTimes: Date[]): CandleGap[] {

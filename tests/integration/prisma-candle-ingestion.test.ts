@@ -35,17 +35,29 @@ test("candle upsert and cursor checkpoint are atomic, corrective, and monotonic"
       assert.equal((await repository.findRange(pairSymbol, "1h", openTime, openTime))[0].close, "106");
       assert.equal((await repository.find(checkpoint))?.clockOffsetMs, BigInt(123));
 
-      const twoHoursLater = new Date(openTime.getTime() + (2 * 3_600_000));
+      const nextOpenTime = new Date(openTime.getTime() + 3_600_000);
+      await repository.saveMany([{
+        ...candle(randomUUID(), pairSymbol, "107"),
+        openTime: nextOpenTime,
+        closeTime: new Date(nextOpenTime.getTime() + 3_600_000 - 1),
+      }]);
+      await repository.advanceAfterVerifiedRange({
+        ...checkpoint,
+        lastClosedOpenTime: nextOpenTime,
+      }, openTime);
+      assert.equal((await repository.find(checkpoint))?.lastClosedOpenTime?.getTime(), nextOpenTime.getTime());
+
+      const threeHoursLater = new Date(openTime.getTime() + (3 * 3_600_000));
       await assert.rejects(() => repository.saveMany([{
         ...candle(randomUUID(), pairSymbol),
-        openTime: twoHoursLater,
-        closeTime: new Date(twoHoursLater.getTime() + 3_600_000 - 1),
+        openTime: threeHoursLater,
+        closeTime: new Date(threeHoursLater.getTime() + 3_600_000 - 1),
       }], {
         ...checkpoint,
-        lastClosedOpenTime: twoHoursLater,
+        lastClosedOpenTime: threeHoursLater,
       }), /missing or duplicated interval/);
-      assert.equal((await repository.find(checkpoint))?.lastClosedOpenTime?.getTime(), openTime.getTime());
-      assert.equal(await prisma.candle.count({ where: { pairSymbol } }), 1);
+      assert.equal((await repository.find(checkpoint))?.lastClosedOpenTime?.getTime(), nextOpenTime.getTime());
+      assert.equal(await prisma.candle.count({ where: { pairSymbol } }), 2);
 
       // This call exercises cursor monotonicity only. Keep the already corrected
       // candle value so the fixture does not accidentally request a correction
@@ -55,7 +67,7 @@ test("candle upsert and cursor checkpoint are atomic, corrective, and monotonic"
         lastClosedOpenTime: new Date(openTime.getTime() - 3_600_000),
         lastSuccessfulPollAt: new Date("2026-08-01T02:00:00.000Z"),
       });
-      assert.equal((await repository.find(checkpoint))?.lastClosedOpenTime?.getTime(), openTime.getTime());
+      assert.equal((await repository.find(checkpoint))?.lastClosedOpenTime?.getTime(), nextOpenTime.getTime());
 
       await assert.rejects(() => repository.saveMany([
         { ...candle(randomUUID(), pairSymbol), close: "107" },

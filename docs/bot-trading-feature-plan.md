@@ -475,12 +475,16 @@ open candle without requiring live Binance access.
   refill only those ranges.
 - Re-read the repaired range before advancing the contiguous cursor. Bound work
   per invocation so a large history can resume safely after interruption.
+- Advance the cursor with a targeted stored-range continuity check and cursor
+  update; never re-upsert the complete historical prefix merely to checkpoint it.
 - Do not let empty pre-listing Binance pages exhaust the persistence-page limit:
   continue scanning the bounded requested range until the symbol's available
   history is reached, while retaining a separate hard ceiling for empty pages.
 - Expose an operator-facing CLI command with dry-run, range, symbol, interval,
   page/batch limit, and structured summary output. Do not expose arbitrary
   unauthenticated ingestion over HTTP.
+- Emit structured page progress to stderr during long CLI imports while keeping
+  the final machine-readable summary on stdout.
 
 **Exit:** an integration test interrupts a multi-page import, resumes it, and
 proves that reruns create no duplicates and repair deliberately removed

@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import type { MarketInterval } from "@/src/modules/market";
+import type { BackfillProgressEvent, MarketInterval } from "@/src/modules/market";
 import { BackfillCandlesUseCase, isMarketInterval } from "@/src/modules/market";
 
 dotenv.config({ path: ".env.local", quiet: true });
@@ -22,16 +22,7 @@ function parseArguments(arguments_: string[]): CliOptions {
       options.dryRun = true;
       continue;
     }
-    // `npm run command --symbol SOLUSDC` consumes `--symbol` itself and forwards
-    // only `SOLUSDC`. Accept that single positional value as a convenience,
-    // while `npm run command -- --symbol SOLUSDC` remains the canonical form.
-    if (!argument.startsWith("--")) {
-      if (!options.symbol) {
-        options.symbol = argument;
-        continue;
-      }
-      throw new Error(`Unexpected argument: ${argument}`);
-    }
+    if (!argument.startsWith("--")) throw new Error(`Unexpected argument: ${argument}`);
     const [rawName, inlineValue] = argument.slice(2).split("=", 2);
     const value = inlineValue ?? arguments_[index + 1];
     if (inlineValue === undefined) index += 1;
@@ -59,6 +50,13 @@ function serialize(value: unknown): string {
   return JSON.stringify(value, (_key, item) => item instanceof Date ? item.toISOString() : item, 2);
 }
 
+function reportProgress(event: BackfillProgressEvent): void {
+  process.stderr.write(`${JSON.stringify({
+    event: "market-data-backfill-progress",
+    ...event,
+  })}\n`);
+}
+
 async function main(): Promise<void> {
   const options = parseArguments(process.argv.slice(2));
   if (!options.symbol) throw new Error("--symbol is required");
@@ -84,6 +82,7 @@ async function main(): Promise<void> {
       pageSize: integer(options.pageSize),
       maxPages: integer(options.maxPages),
       dryRun: options.dryRun,
+      onProgress: reportProgress,
     });
     process.stdout.write(`${serialize(result)}\n`);
   } finally {

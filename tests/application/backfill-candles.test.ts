@@ -30,6 +30,7 @@ function candle(openTime: number, pairSymbol = "BTCUSDC"): Candle {
 
 class MemoryCandleRepository implements CandleRepository {
   readonly candles = new Map<number, Candle>();
+  readonly saveBatchSizes: number[] = [];
   cursor: CandleIngestionCursor | null = null;
   findById(id: string) {
     return Promise.resolve(Array.from(this.candles.values()).find((value) => value.id === id) ?? null);
@@ -40,6 +41,7 @@ class MemoryCandleRepository implements CandleRepository {
       .sort((left, right) => left.openTime.getTime() - right.openTime.getTime()));
   }
   saveMany(candles: Candle[], checkpoint?: CandleIngestionCheckpoint) {
+    this.saveBatchSizes.push(candles.length);
     for (const value of candles) this.candles.set(value.openTime.getTime(), value);
     if (checkpoint) this.cursor = {
       id: randomUUID(), ...checkpoint, status: "HEALTHY", lastError: null,
@@ -49,6 +51,18 @@ class MemoryCandleRepository implements CandleRepository {
   }
   find(_key: CandleIngestionKey) { return Promise.resolve(this.cursor); }
   recordError() { return Promise.resolve(); }
+  advanceAfterVerifiedRange(checkpoint: CandleIngestionCheckpoint, contiguousFrom: Date) {
+    const interval = hour;
+    for (let expected = contiguousFrom.getTime();
+      expected <= checkpoint.lastClosedOpenTime.getTime(); expected += interval) {
+      if (!this.candles.has(expected)) return Promise.reject(new Error("missing interval"));
+    }
+    this.cursor = {
+      id: randomUUID(), ...checkpoint, status: "HEALTHY", lastError: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    };
+    return Promise.resolve();
+  }
 }
 
 class FixtureMarketDataSource implements MarketDataSource {
@@ -111,22 +125,27 @@ describe("historical candle backfill and gap repair", () => {
     const source = new FixtureMarketDataSource(available);
     const useCase = new BackfillCandlesUseCase(repository, repository, source,
       () => new Date(start + (7 * hour)));
+    const progress: string[] = [];
     const input = {
       pairSymbol: "BTCUSDC", interval: "1h" as const, start: new Date(start),
       end: new Date(start + (6 * hour)), pageSize: 2, maxPages: 1,
     };
 
-    const interrupted = await useCase.execute(input);
+    const interrupted = await useCase.execute({ ...input,
+      onProgress: (event) => { progress.push(event.type); } });
     assert.equal(interrupted.status, "partial");
     assert.equal(interrupted.candlesSaved, 2);
     assert.equal(interrupted.resumeFrom?.getTime(), start + (2 * hour));
     assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), start + hour);
+    assert.deepEqual(repository.saveBatchSizes, [2]);
+    assert.deepEqual(progress, ["page-saved", "verifying", "completed"]);
 
     await useCase.execute(input);
     const completed = await useCase.execute({ ...input, maxPages: 1 });
     assert.equal(completed.status, "completed");
     assert.equal(repository.candles.size, 6);
     assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), start + (5 * hour));
+    assert.equal(Math.max(...repository.saveBatchSizes), 2);
 
     const rerun = await useCase.execute(input);
     assert.equal(rerun.candlesFetched, 0);
@@ -163,6 +182,25 @@ describe("historical candle backfill and gap repair", () => {
     assert.equal(result.pagesFetched, 3);
     assert.equal(result.candlesFetched, 2);
     assert.equal(repository.candles.size, 2);
+  });
+
+  test("checkpoints ten thousand existing candles without re-upserting their history", async () => {
+    const repository = new MemoryCandleRepository();
+    for (let index = 0; index < 10_000; index += 1)
+      repository.candles.set(start + (index * hour), candle(start + (index * hour)));
+    const useCase = new BackfillCandlesUseCase(repository, repository, new FixtureMarketDataSource([]),
+      () => new Date(start + (10_001 * hour)));
+
+    const result = await useCase.execute({
+      pairSymbol: "BTCUSDC",
+      interval: "1h",
+      start: new Date(start),
+      end: new Date(start + (10_000 * hour)),
+    });
+
+    assert.equal(result.status, "completed");
+    assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), start + (9_999 * hour));
+    assert.deepEqual(repository.saveBatchSizes, []);
   });
 
   test("supports explicit overrides and rejects invalid boundaries and limits", async () => {

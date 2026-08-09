@@ -28,4 +28,5 @@ export type CandleIngestionCheckpoint = CandleIngestionKey & {
 export interface CandleIngestionCursorRepository {
   find(key: CandleIngestionKey): Promise<CandleIngestionCursor | null>;
   recordError(key: CandleIngestionKey, message: string): Promise<void>;
+  advanceAfterVerifiedRange(checkpoint: CandleIngestionCheckpoint, contiguousFrom: Date): Promise<void>;
 }
