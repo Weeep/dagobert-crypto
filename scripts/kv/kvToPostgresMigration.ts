@@ -7,6 +7,35 @@ import {
 const CURSOR_PREFIX = "last_transaction_epoch_";
 const SCRYPT_OPTIONS = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 
+/** Complete FK-safe deletion plan for the destructive replace import. */
+export const KV_IMPORT_CLEAR_PLAN = [
+  ["transaction", "transactions"],
+  ["transactionGroup", "transaction_groups"],
+  ["importCursor", "import_cursors"],
+  ["indicatorSnapshot", "indicator_snapshots"],
+  ["strategyDecision", "strategy_decisions"],
+  ["fill", "fills"],
+  ["botOrder", "bot_orders"],
+  ["position", "positions"],
+  ["walletReservation", "wallet_reservations"],
+  ["botLedgerEntry", "bot_ledger_entries"],
+  ["botEvent", "bot_events"],
+  ["portfolioSnapshot", "portfolio_snapshots"],
+  ["botRun", "bot_runs"],
+  ["bot", "bots"],
+  ["strategyVersion", "strategy_versions"],
+  ["strategy", "strategies"],
+  ["tradingWallet", "trading_wallets"],
+  ["candle", "candles"],
+  ["candleIngestionCursor", "candle_ingestion_cursors"],
+  ["pair", "pairs"],
+  ["user", "users"],
+] as const;
+
+export const KV_IMPORT_CLEARED_TABLES = KV_IMPORT_CLEAR_PLAN.map(
+  ([, table]) => table
+);
+
 type JsonObject = Record<string, any>;
 export type KvDump = Record<string, unknown>;
 type MigrationTransaction = {
@@ -291,7 +320,7 @@ export async function prepareMigrationData(dump: KvDump): Promise<MigrationData>
   };
 }
 
-/** Replaces migration-owned PostgreSQL data atomically with the filtered KV dump. */
+/** Clears the disclosed PostgreSQL tables and atomically imports the filtered KV dump. */
 export async function importKvDump(
   prisma: MigrationPrismaClient,
   dump: KvDump
@@ -301,11 +330,9 @@ export async function importKvDump(
   await transaction.call(
     prisma,
     async (tx) => {
-      await tx.transaction.deleteMany();
-      await tx.transactionGroup.deleteMany();
-      await tx.importCursor.deleteMany();
-      await tx.pair.deleteMany();
-      await tx.user.deleteMany();
+      for (const [model] of KV_IMPORT_CLEAR_PLAN) {
+        await tx[model].deleteMany();
+      }
       if (data.users.length) await tx.user.createMany({ data: data.users });
       if (data.pairs.length) await tx.pair.createMany({ data: data.pairs });
       if (data.groups.length)

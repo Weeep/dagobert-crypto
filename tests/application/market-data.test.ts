@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test, { describe } from "node:test";
 import type { Candle, CandleIngestionCheckpoint, CandleRepository } from "@/src/modules/market";
-import { SaveCandlesUseCase } from "@/src/modules/market";
+import { MARKET_INTERVALS, MARKET_INTERVAL_MILLISECONDS, SaveCandlesUseCase } from "@/src/modules/market";
+import { BOT_TIMEFRAMES } from "@/src/modules/bot";
 
 const openTime = new Date("2026-08-01T00:00:00.000Z");
 
@@ -37,6 +38,22 @@ class RecordingCandleRepository implements CandleRepository {
 }
 
 describe("closed candle persistence validation", () => {
+  test("shares the ordered interval allow-list across bots and market data", () => {
+    assert.strictEqual(BOT_TIMEFRAMES, MARKET_INTERVALS);
+    assert.deepEqual(MARKET_INTERVALS, ["15m", "1h", "4h", "1d"]);
+    assert.equal(MARKET_INTERVAL_MILLISECONDS["15m"], 15 * 60 * 1_000);
+  });
+
+  test("accepts a closed 15-minute candle", async () => {
+    const repository = new RecordingCandleRepository();
+    const result = await new SaveCandlesUseCase(repository).execute([candle({
+      interval: "15m",
+      closeTime: new Date(openTime.getTime() + (15 * 60 * 1_000) - 1),
+    })]);
+    assert.equal(result.ok, true);
+    assert.equal(repository.calls[0].candles[0].interval, "15m");
+  });
+
   test("saves an exact-decimal candle and its matching checkpoint together", async () => {
     const repository = new RecordingCandleRepository();
     const checkpoint: CandleIngestionCheckpoint = {

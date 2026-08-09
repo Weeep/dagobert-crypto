@@ -1,6 +1,9 @@
-export const BOT_TIMEFRAMES = ["1h", "4h", "1d"] as const;
+import type { MarketInterval } from "@/src/shared/domain/MarketInterval";
+import { MARKET_INTERVALS } from "@/src/shared/domain/MarketInterval";
 
-export type BotTimeframe = (typeof BOT_TIMEFRAMES)[number];
+/** Compatibility name for bot callers; the shared market list is authoritative. */
+export const BOT_TIMEFRAMES = MARKET_INTERVALS;
+export type BotTimeframe = MarketInterval;
 export type BotMode = "BACKTEST" | "PAPER" | "SPOT_TEST" | "SPOT_LIVE";
 export type BotStatus = "DRAFT" | "RUNNING" | "PAUSED" | "STOPPED" | "ERROR";
 export type BotRunStatus = "RUNNING" | "COMPLETED" | "STOPPED" | "ERROR";

@@ -47,7 +47,10 @@ test("candle upsert and cursor checkpoint are atomic, corrective, and monotonic"
       assert.equal((await repository.find(checkpoint))?.lastClosedOpenTime?.getTime(), openTime.getTime());
       assert.equal(await prisma.candle.count({ where: { pairSymbol } }), 1);
 
-      await repository.saveMany([candle(randomUUID(), pairSymbol)], {
+      // This call exercises cursor monotonicity only. Keep the already corrected
+      // candle value so the fixture does not accidentally request a correction
+      // back from 106 to its helper default of 105.
+      await repository.saveMany([candle(randomUUID(), pairSymbol, "106")], {
         ...checkpoint,
         lastClosedOpenTime: new Date(openTime.getTime() - 3_600_000),
         lastSuccessfulPollAt: new Date("2026-08-01T02:00:00.000Z"),
@@ -60,6 +63,9 @@ test("candle upsert and cursor checkpoint are atomic, corrective, and monotonic"
       ]));
       assert.equal((await repository.findRange(pairSymbol, "1h", openTime, openTime))[0].close, "106");
     } finally {
+      // Candle deliberately restricts pair deletion, so remove the dependent
+      // fixture before its parent. The ingestion cursor cascades with the pair.
+      await prisma.candle.deleteMany({ where: { pairSymbol } });
       await prisma.pair.delete({ where: { symbol: pairSymbol } });
     }
   });

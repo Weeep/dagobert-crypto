@@ -41,7 +41,7 @@ describe("trading bot application", () => {
     assert.equal(invalid.ok, false);
 
     const result = await useCase.execute({ userId: "user", name: " RSI bot ", pairSymbol: "btcusdc",
-      assignedBudget: "55.00", amountPerPosition: "10.0", timeframe: "4h",
+      assignedBudget: "55.00", amountPerPosition: "10.0", timeframe: "15m",
       strategyVersionId: "strategy", feeRate: "0.001", slippageRate: "0.0005" });
     assert.equal(result.ok, true);
     if (!result.ok) return;
@@ -49,6 +49,7 @@ describe("trading bot application", () => {
     assert.equal(result.bot.pairSymbol, "BTCUSDC");
     assert.equal(result.bot.assignedBudget, "55");
     assert.equal(result.bot.amountPerPosition, "10");
+    assert.equal(result.bot.timeframe, "15m");
     assert.equal(repository.bots.length, 1);
     assert.equal((await new GetBotUseCase(repository).execute("user", result.bot.id))?.status, "DRAFT");
     assert.equal((await new GetBotUseCase(repository).execute("another-user", result.bot.id)), null);
