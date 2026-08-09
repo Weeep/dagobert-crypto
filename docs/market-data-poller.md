@@ -35,6 +35,44 @@ existing application Binance client configuration. No API key is required for
 public server-time and kline endpoints unless the deployment configures the
 client otherwise.
 
+### Required and optional input
+
+`DATABASE_URL` is the only mandatory poller configuration. All CLI options,
+including `--subscriptions`, are optional.
+
+When `--subscriptions` / `MARKET_DATA_SUBSCRIPTIONS` is omitted, the service
+queries PostgreSQL and polls every unique `(pairSymbol, timeframe)` required by
+a bot whose status is `RUNNING` and whose mode is not `BACKTEST`. Draft,
+paused, stopped, errored, and backtest bots do not create subscriptions.
+
+For example, if the database contains these bots:
+
+| Pair | Timeframe | Status | Mode | Polled? |
+| --- | --- | --- | --- | --- |
+| `BTCUSDC` | `15m` | `RUNNING` | `PAPER` | yes |
+| `BTCUSDC` | `15m` | `RUNNING` | `SPOT_TEST` | yes, but deduplicated with the previous row |
+| `ETHUSDC` | `1h` | `RUNNING` | `BACKTEST` | no |
+| `SOLUSDC` | `4h` | `PAUSED` | `SPOT_LIVE` | no |
+
+then an invocation without `--subscriptions` fetches only `BTCUSDC:15m`.
+
+The explicit subscription option is intended for controlled rollout,
+diagnostics, or preloading data before a bot is started:
+
+```bash
+npm run market-data:poll -- --once --subscriptions ETHUSDC:1h,SOLUSDC:4h
+```
+
+Explicit subscriptions are **added to**, rather than substituted for, the
+subscriptions discovered from running non-backtest bots. Duplicate entries are
+normalized and fetched only once. Consequently, the example above also polls
+any subscriptions currently required by eligible bots. To run only an explicit
+set, use a database/environment where no eligible bot is running.
+
+If neither eligible bots nor explicit subscriptions exist, one-shot mode
+returns an empty `outcomes` array and continuous mode remains alive, periodically
+checking the database for newly started bots.
+
 Run a historical backfill before rollout when a full history is required:
 
 ```bash
@@ -94,6 +132,84 @@ Continuous mode writes one structured JSON event per outcome to stderr. Send
 `SIGTERM` or `SIGINT` to abort waits and in-flight Binance requests, then close
 the Prisma connection cleanly.
 
+### Recommended background deployment
+
+Run the poller as a supervised, restartable service, separately from the
+Next.js process. Prefer the deployment platform already used by the project:
+
+- a dedicated Docker Compose service with `restart: unless-stopped`;
+- a Kubernetes Deployment with one or more replicas;
+- or a `systemd` service on a single virtual machine.
+
+Multiple replicas are supported because subscription work is protected by the
+PostgreSQL advisory lease. Start with one replica; add another only when failover
+or subscription throughput requires it.
+
+Example `systemd` unit:
+
+```ini
+[Unit]
+Description=Dagobert market-data poller
+After=network-online.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/dagobert
+EnvironmentFile=/srv/dagobert/.env.local
+ExecStart=/usr/bin/npm run market-data:poll
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+User=dagobert
+Group=dagobert
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and inspect it with:
+
+```bash
+sudo systemctl enable --now dagobert-market-data-poller
+sudo journalctl -u dagobert-market-data-poller -f
+```
+
+For Docker or Kubernetes, keep the process in the foreground and let the
+container runtime supervise it; do not start it with `nohup`, `&`, PM2, or an
+in-container init system unless that is already the platform convention.
+
+### Log routing
+
+In continuous mode each per-subscription structured outcome and each fatal
+process error is written to **stderr**. The recommended destinations are:
+
+- `journald` for `systemd`, queried with `journalctl` as shown above;
+- the container's standard log stream for Docker, collected with
+  `docker logs` or the configured logging driver;
+- the pod log stream for Kubernetes, collected by the cluster's existing log
+  agent.
+
+Do not redirect worker logs to `/dev/null`. If a plain host without `systemd` is
+unavoidable, redirect stderr to a dedicated file managed by `logrotate`:
+
+```bash
+npm run market-data:poll 2>>/var/log/dagobert/market-data-poller.jsonl
+```
+
+One-shot mode is different: its final machine-readable summary goes to
+**stdout**, while fatal errors go to **stderr**. This allows cron or deployment
+automation to archive the result and the errors separately:
+
+```bash
+npm run market-data:poll -- --once \
+  > /var/log/dagobert/market-data-poll-once.json \
+  2> /var/log/dagobert/market-data-poll-once.err
+```
+
+Step 5 observability can later route the same structured events to the project's
+central log and metrics backend without changing the worker invocation.
+
 ## Configuration
 
 Every CLI value also has an environment-variable equivalent:
@@ -135,4 +251,3 @@ expiring at the previous fixed 60-second limit.
    advisory lease while the other completes.
 6. Stop and restart the worker, then verify it resumes from the stored cursor
    with a one-candle overlap.
-
