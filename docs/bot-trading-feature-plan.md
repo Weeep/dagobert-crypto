@@ -16,8 +16,8 @@ as the implementation.
 | Phase | Status | Outcome |
 | --- | --- | --- |
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
-| Phase 1: domain and persistence | Complete pending gate verification | The implementation is complete; Step 0 below runs the PostgreSQL acceptance suite and closes the remaining documentation checkbox before Phase 2 code starts. |
-| Phase 2: market data | In progress | Step 1 cursor-backed persistence and Step 2 Binance REST adapter are implemented; backfill and live polling remain. |
+| Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
+| Phase 2: market data | In progress | Steps 0-3 are complete: the PostgreSQL gate, shared contract, cursor-backed persistence, Binance REST adapter, and historical backfill/gap repair are verified; live polling remains. |
 | Phase 3: strategy engine | Not started | Versioned JSON strategies produce reproducible decisions. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
@@ -356,7 +356,7 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
   shared owner-wallet locking and reservations across bots.
 - [x] Add the shared `TradingWallet`/`WalletReservation` persistence model and
   migration before enabling Spot test or Spot live execution.
-- [ ] Complete the Phase 1 automated integration suite against PostgreSQL.
+- [x] Complete the Phase 1 automated integration suite against PostgreSQL.
 
 #### Work
 
@@ -385,7 +385,7 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 
 #### Implementation progress
 
-- [x] Step 0: shared market-data contract implemented; Phase 1 PostgreSQL gate pending.
+- [x] Step 0: Phase 1 PostgreSQL gate verified and shared market-data contract implemented.
 - [x] Step 1: ingestion cursor schema/contracts, exact candle validation, and transactional candle/cursor persistence.
 - [x] Step 2: Binance REST server-time and historical-kline adapter with pagination, retries, timeout, cancellation, and closed-candle filtering.
 - [x] Step 3: historical backfill and gap repair, including resumable bounded imports, dry-run CLI, and timeframe defaults.
@@ -792,3 +792,5 @@ At the start of every bot-related task:
 | 2026-08-08 | Phase 2 starts with a Phase 1 verification gate, then delivers cursor-backed REST backfill, gap repair, and a standalone overlap poller in that order. |
 | 2026-08-08 | The initial live candle source is a resilient scheduled REST poller; WebSocket ingestion may be added later behind the same port. |
 | 2026-08-09 | Historical backfill uses a centralized rolling default of 15,000 closed candles for every timeframe, ending at the interval boundary at or before now; explicit range overrides remain supported. |
+| 2026-08-09 | The Phase 1 automated integration suite and the Phase 2 Step 0 gate were verified against a real PostgreSQL database; Phase 1 is complete. |
+| 2026-08-09 | Phase 2 Step 3 historical backfill and gap repair were verified with live Binance data and PostgreSQL, including rolling ranges, pre-listing history, resumable batches, and cursor advancement. |
