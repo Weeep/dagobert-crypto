@@ -10,9 +10,15 @@ export type { CandleRepository } from "./domain/CandleRepository";
 export type { CandleIngestionCheckpoint, CandleIngestionCursor,
   CandleIngestionCursorRepository, CandleIngestionKey, CandleIngestionStatus } from "./domain/CandleIngestionCursor";
 export type { HistoricalCandleBatch, HistoricalCandleRequest, MarketDataSource } from "./domain/MarketDataSource";
+export type { MarketDataSubscription,
+  MarketDataSubscriptionRepository } from "./domain/MarketDataSubscription";
+export type { MarketDataLease, MarketDataLeaseKey } from "./domain/MarketDataLease";
 export { CandleValidationError, validateCandle, validateClosedCandle } from "./domain/CandleValidation";
 export { SaveCandlesUseCase } from "./application/SaveCandlesUseCase";
 export { ListCandlesUseCase } from "./application/ListCandlesUseCase";
 export type { BackfillCandlesInput, BackfillCandlesResult, BackfillProgressEvent,
   CandleGap } from "./application/BackfillCandlesUseCase";
 export { BackfillCandlesUseCase } from "./application/BackfillCandlesUseCase";
+export { DiscoverMarketDataSubscriptionsUseCase } from "./application/DiscoverMarketDataSubscriptionsUseCase";
+export type { PollClosedCandlesInput, PollClosedCandlesResult } from "./application/PollClosedCandlesUseCase";
+export { PollClosedCandlesUseCase } from "./application/PollClosedCandlesUseCase";

@@ -10,3 +10,4 @@ require("./integration/prisma-transaction-group-repository.test.ts");
 require("./integration/prisma-bot-lifecycle.test.ts");
 require("./integration/prisma-bot-budget-concurrency.test.ts");
 require("./integration/prisma-candle-ingestion.test.ts");
+require("./integration/prisma-market-data-polling.test.ts");
