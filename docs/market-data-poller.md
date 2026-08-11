@@ -228,6 +228,8 @@ Every CLI value also has an environment-variable equivalent:
 | `--discovery-interval-ms` | `MARKET_DATA_DISCOVERY_INTERVAL_MS` | 60000 | Maximum delay before bot subscriptions are rediscovered. |
 | `--max-candles-per-poll` | `MARKET_DATA_MAX_CANDLES_PER_POLL` | 1000 | Bounded catch-up batch, from 2 through 1000. |
 | `--lease-timeout-ms` | `MARKET_DATA_LEASE_TIMEOUT_MS` | 900000 | Maximum advisory-lock transaction lifetime. |
+| `--max-cursor-lag-intervals` | `MARKET_DATA_MAX_CURSOR_LAG_INTERVALS` | 1 | Maximum tolerated lag, measured in subscription intervals. |
+| `--max-clock-offset-ms` | `MARKET_DATA_MAX_CLOCK_OFFSET_MS` | 5000 | Maximum tolerated absolute Binance/local clock offset. |
 
 Example environment configuration:
 
@@ -239,6 +241,8 @@ MARKET_DATA_BASE_BACKOFF_MS=1000
 MARKET_DATA_MAX_BACKOFF_MS=60000
 MARKET_DATA_MAX_CANDLES_PER_POLL=500
 MARKET_DATA_LEASE_TIMEOUT_MS=900000
+MARKET_DATA_MAX_CURSOR_LAG_INTERVALS=1
+MARKET_DATA_MAX_CLOCK_OFFSET_MS=5000
 ```
 
 The lease timeout must be longer than the maximum expected bounded poll. It is
@@ -255,3 +259,50 @@ expiring at the previous fixed 60-second limit.
    advisory lease while the other completes.
 6. Stop and restart the worker, then verify it resumes from the stored cursor
    with a one-candle overlap.
+
+## Single-maintainer operations checklist
+
+This hobby deployment deliberately uses the structured one-shot outcome as its
+health check instead of running a separate metrics or health HTTP service. Each
+outcome reports cursor lag, detected/repaired/remaining candles, clock offset,
+consecutive failures, and `health` with machine-readable `reasons`. A cursor is
+stale after the configured number of complete subscription intervals; excessive
+absolute clock offset also makes the outcome unhealthy.
+
+1. **Initial startup:** run the historical backfill for every required
+   subscription, then run `npm run market-data:poll -- --once --subscriptions
+   BTCUSDC:1h`. Confirm `health` is `healthy` before starting continuous mode.
+2. **Normal startup:** run `npm run market-data:poll` under the process supervisor
+   described above and retain stderr JSON logs.
+3. **Restart:** send `SIGTERM`, wait for a clean exit, restart the same command,
+   and confirm the next outcome overlaps the stored cursor without duplicates.
+4. **Gap repair:** run a bounded explicit backfill over the affected range, then
+   repeat one-shot polling and confirm `missingCandlesRemaining` is zero.
+5. **Cursor recovery:** never move a cursor forward manually. Inspect it with the
+   query below, repair the missing range, and let verified continuity advance it.
+
+Run these PostgreSQL audits after initial rollout, repair, or cursor recovery:
+
+```sql
+-- The unique constraint should make this return no rows.
+SELECT pair_symbol, interval, open_time, COUNT(*)
+FROM candles
+GROUP BY pair_symbol, interval, open_time
+HAVING COUNT(*) > 1;
+
+-- Closed-candle ingestion should make this return no rows.
+SELECT pair_symbol, interval, open_time
+FROM candles
+WHERE is_closed = false;
+
+-- Inspect persisted restart and health state.
+SELECT source, pair_symbol, interval, last_closed_open_time,
+       last_successful_poll_at, clock_offset_ms, status, last_error
+FROM candle_ingestion_cursors
+ORDER BY pair_symbol, interval;
+```
+
+For a single-user, single-maintainer deployment, dashboards, alerting, a
+Prometheus/OpenTelemetry backend, HTTP liveness/readiness endpoints, and
+persistent metric history are deferred. Add them before multiple maintainers or
+independent users rely on unattended availability.

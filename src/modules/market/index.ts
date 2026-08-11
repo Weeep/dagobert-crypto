@@ -20,7 +20,8 @@ export type { BackfillCandlesInput, BackfillCandlesResult, BackfillProgressEvent
   CandleGap } from "./application/BackfillCandlesUseCase";
 export { BackfillCandlesUseCase } from "./application/BackfillCandlesUseCase";
 export { DiscoverMarketDataSubscriptionsUseCase } from "./application/DiscoverMarketDataSubscriptionsUseCase";
-export type { PollClosedCandlesInput, PollClosedCandlesResult } from "./application/PollClosedCandlesUseCase";
+export type { PollClosedCandlesInput, PollClosedCandlesOptions, PollClosedCandlesResult,
+  PollHealthReason } from "./application/PollClosedCandlesUseCase";
 export { PollClosedCandlesUseCase } from "./application/PollClosedCandlesUseCase";
 export type { MarketDataPollingOutcome,
   MarketDataPollingWorkerOptions } from "./application/MarketDataPollingWorker";

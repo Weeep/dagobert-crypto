@@ -22,12 +22,27 @@ export type PollClosedCandlesResult = {
   range: { from: Date; to: Date } | null;
   previousCursor: Date | null;
   lastClosedOpenTime: Date | null;
+  expectedLastClosedOpenTime: Date | null;
+  cursorLagMs: number | null;
+  health: "healthy" | "unhealthy";
+  reasons: PollHealthReason[];
   candlesFetched: number;
   candlesSaved: number;
+  missingCandlesDetected: number;
+  repairedCandles: number;
+  missingCandlesRemaining: number;
   cursorAdvanced: boolean;
   hasMoreWork: boolean;
   clockOffsetMs: bigint | null;
   skipReason?: "lease-unavailable" | "no-closed-range";
+};
+
+export type PollHealthReason = "cursor-unavailable" | "cursor-stale" | "clock-drift" |
+  "lease-unavailable";
+
+export type PollClosedCandlesOptions = {
+  maxCursorLagIntervals?: number;
+  maxClockOffsetMs?: number;
 };
 
 const SOURCE = "BINANCE" as const;
@@ -42,6 +57,7 @@ export class PollClosedCandlesUseCase {
     private readonly source: MarketDataSource,
     private readonly lease: MarketDataLease,
     private readonly now: () => Date = () => new Date(),
+    private readonly options: PollClosedCandlesOptions = {},
   ) {
     this.saveCandles = new SaveCandlesUseCase(repository);
     this.backfill = new BackfillCandlesUseCase(repository, cursorRepository, source, now);
@@ -59,6 +75,9 @@ export class PollClosedCandlesUseCase {
     return result ?? {
       status: "skipped", source: SOURCE, pairSymbol, interval: input.interval, range: null,
       previousCursor: null, lastClosedOpenTime: null, candlesFetched: 0, candlesSaved: 0,
+      expectedLastClosedOpenTime: null, cursorLagMs: null, health: "unhealthy",
+      reasons: ["lease-unavailable"], missingCandlesDetected: 0, repairedCandles: 0,
+      missingCandlesRemaining: 0,
       cursorAdvanced: false, hasMoreWork: false, clockOffsetMs: null, skipReason: "lease-unavailable",
     };
   }
@@ -70,13 +89,18 @@ export class PollClosedCandlesUseCase {
       const clock = await this.source.fetchServerTime(signal);
       const intervalMs = MARKET_INTERVAL_MILLISECONDS[key.interval];
       const effectiveEndMs = Math.floor(clock.serverTime.getTime() / intervalMs) * intervalMs;
+      const expectedLastClosedOpenTime = new Date(effectiveEndMs - intervalMs);
       const fromMs = cursor?.lastClosedOpenTime
         ? cursor.lastClosedOpenTime.getTime() - intervalMs
         : effectiveEndMs - intervalMs;
       if (fromMs >= effectiveEndMs) return {
         status: "skipped", source: SOURCE, pairSymbol: key.pairSymbol, interval: key.interval, range: null,
         previousCursor: cursor?.lastClosedOpenTime ?? null, lastClosedOpenTime: cursor?.lastClosedOpenTime ?? null,
+        expectedLastClosedOpenTime,
+        ...this.health(cursor?.lastClosedOpenTime ?? null, expectedLastClosedOpenTime,
+          clock.clockOffsetMs, intervalMs),
         candlesFetched: 0, candlesSaved: 0, cursorAdvanced: false, hasMoreWork: false,
+        missingCandlesDetected: 0, repairedCandles: 0, missingCandlesRemaining: 0,
         clockOffsetMs: clock.clockOffsetMs,
         skipReason: "no-closed-range",
       };
@@ -104,8 +128,14 @@ export class PollClosedCandlesUseCase {
         status: "completed", source: SOURCE, pairSymbol: key.pairSymbol, interval: key.interval,
         range: { from, to }, previousCursor: cursor?.lastClosedOpenTime ?? null,
         lastClosedOpenTime: repaired.lastContiguousOpenTime,
+        expectedLastClosedOpenTime,
+        ...this.health(repaired.lastContiguousOpenTime, expectedLastClosedOpenTime,
+          batch.clockOffsetMs, intervalMs),
         candlesFetched: batch.candles.length + repaired.candlesFetched,
         candlesSaved: saved.saved + repaired.candlesSaved,
+        missingCandlesDetected: repaired.missingCandlesDetected,
+        repairedCandles: repaired.repairedCandles,
+        missingCandlesRemaining: repaired.missingCandlesRemaining,
         cursorAdvanced: repaired.cursorAdvanced,
         hasMoreWork: boundedEndMs < effectiveEndMs || repaired.hasMoreWork,
         clockOffsetMs: batch.clockOffsetMs,
@@ -114,5 +144,18 @@ export class PollClosedCandlesUseCase {
       await this.cursorRepository.recordError(key, error instanceof Error ? error.message : String(error));
       throw error;
     }
+  }
+
+  private health(lastClosedOpenTime: Date | null, expectedLastClosedOpenTime: Date,
+    clockOffsetMs: bigint, intervalMs: number) {
+    const cursorLagMs = lastClosedOpenTime === null ? null :
+      Math.max(0, expectedLastClosedOpenTime.getTime() - lastClosedOpenTime.getTime());
+    const reasons: PollHealthReason[] = [];
+    if (cursorLagMs === null) reasons.push("cursor-unavailable");
+    else if (cursorLagMs > (this.options.maxCursorLagIntervals ?? 1) * intervalMs)
+      reasons.push("cursor-stale");
+    if (clockOffsetMs > BigInt(this.options.maxClockOffsetMs ?? 5_000) ||
+      clockOffsetMs < BigInt(-(this.options.maxClockOffsetMs ?? 5_000))) reasons.push("clock-drift");
+    return { cursorLagMs, health: reasons.length === 0 ? "healthy" as const : "unhealthy" as const, reasons };
   }
 }

@@ -543,6 +543,21 @@ operator guides for polling and historical backfill.
 **Exit:** all Phase 2 acceptance criteria pass and the poller can be stopped,
 restarted, and safely run twice for the same interval.
 
+**Implementation ready, external gate pending:** the single-maintainer scope now
+adds structured cursor lag, gap totals, clock drift, consecutive failures, and a
+simple health/reasons result; validates startup configuration; redacts Binance
+credentials; and documents startup, restart, gap repair, and cursor audits.
+Deterministic tests cover stale cursors, clock drift, gap reporting, credential
+redaction, restart overlap, gap repair, and open-candle exclusion. Keep Step 5
+and Phase 2 open until the Prisma suite and the small Binance/PostgreSQL smoke
+test are run in an environment with PostgreSQL and outbound Binance access.
+
+For the current single-user, single-maintainer hobby deployment, the structured
+one-shot result is the health check. Prometheus/OpenTelemetry, dashboards,
+alerts, HTTP liveness/readiness endpoints, and persistent metric history are
+deferred until multiple maintainers or independent users require unattended
+availability.
+
 #### Dependency order
 
 ```text
@@ -805,3 +820,4 @@ At the start of every bot-related task:
 | 2026-08-09 | The Phase 1 automated integration suite and the Phase 2 Step 0 gate were verified against a real PostgreSQL database; Phase 1 is complete. |
 | 2026-08-09 | Phase 2 Step 3 historical backfill and gap repair were verified with live Binance data and PostgreSQL, including rolling ranges, pre-listing history, resumable batches, and cursor advancement. |
 | 2026-08-09 | Phase 2 Step 4 resilient closed-candle polling was completed with active-bot plus configured subscription discovery, bounded overlap catch-up, PostgreSQL advisory leases, interval-boundary scheduling, per-subscription backoff, restart-safe cursor handling, standalone one-shot/continuous execution, and deterministic plus Prisma integration coverage. |
+| 2026-08-11 | Phase 2 Step 5 uses structured one-shot outcomes as the initial single-maintainer health check; dedicated metrics backends, dashboards, alerts, HTTP probes, and persistent metric history are deferred until the project has multiple maintainers/users or unattended availability requirements. |
