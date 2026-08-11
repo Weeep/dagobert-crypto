@@ -18,7 +18,8 @@ import {
   MarketDataPollingWorker,
   PollClosedCandlesUseCase,
 } from "@/src/modules/market";
-import { parseConfiguration, parseSubscriptions, serializeForLog } from "@/scripts/pollMarketData";
+import { MARKET_DATA_ENV_FILES, parseConfiguration, parseSubscriptions,
+  serializeForLog } from "@/scripts/pollMarketData";
 
 const hour = 3_600_000;
 const origin = Date.parse("2026-08-09T08:00:00.000Z");
@@ -363,6 +364,10 @@ describe("market-data polling worker", () => {
 });
 
 describe("market-data poller configuration", () => {
+  test("loads conventional environment files with local overrides first", () => {
+    assert.deepEqual(MARKET_DATA_ENV_FILES, [".env.local", ".env"]);
+  });
+
   test("parses explicit subscriptions and one-shot CLI overrides", () => {
     assert.deepEqual(parseSubscriptions("btcusdc:15m, ETHUSDC:1h"), [
       { pairSymbol: "BTCUSDC", interval: "15m" }, { pairSymbol: "ETHUSDC", interval: "1h" },
