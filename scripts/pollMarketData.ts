@@ -3,7 +3,11 @@ import type { MarketDataPollingOutcome, MarketDataSubscription } from "@/src/mod
 import { DiscoverMarketDataSubscriptionsUseCase, isMarketInterval,
   MarketDataPollingWorker, PollClosedCandlesUseCase } from "@/src/modules/market";
 
-dotenv.config({ path: ".env.local", quiet: true });
+export const MARKET_DATA_ENV_FILES = [".env.local", ".env"] as const;
+
+// Keep Next.js' local override first, while also supporting the conventional
+// .env file used by Prisma and command-line deployments.
+dotenv.config({ path: [...MARKET_DATA_ENV_FILES], quiet: true });
 
 type PollerConfiguration = {
   once: boolean;

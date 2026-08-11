@@ -30,7 +30,9 @@ candle storage is an idempotent upsert.
 
 ## Prerequisites
 
-Set `DATABASE_URL` and apply the Prisma migrations. The Binance adapter uses the
+Set `DATABASE_URL` in the process environment, `.env.local`, or `.env`, and apply
+the Prisma migrations. When both files define a value, `.env.local` takes
+precedence. The Binance adapter uses the
 existing application Binance client configuration. No API key is required for
 public server-time and kline endpoints unless the deployment configures the
 client otherwise.
