@@ -14,6 +14,8 @@ type PollerConfiguration = {
   discoveryIntervalMs: number;
   maxCandlesPerPoll: number;
   leaseTimeoutMs: number;
+  maxCursorLagIntervals: number;
+  maxClockOffsetMs: number;
 };
 
 const integer = (value: string | undefined, fallback: number, name: string) => {
@@ -48,9 +50,11 @@ export function parseConfiguration(arguments_: string[],
     values.set(name, value);
   }
   const known = new Set(["subscriptions", "close-grace-ms", "base-backoff-ms", "max-backoff-ms",
-    "discovery-interval-ms", "max-candles-per-poll", "lease-timeout-ms"]);
+    "discovery-interval-ms", "max-candles-per-poll", "lease-timeout-ms",
+    "max-cursor-lag-intervals", "max-clock-offset-ms"]);
   for (const name of Array.from(values.keys())) if (!known.has(name)) throw new Error(`Unknown option: --${name}`);
-  return {
+  if (!environment.DATABASE_URL?.trim()) throw new Error("DATABASE_URL is required");
+  const configuration = {
     once,
     subscriptions: parseSubscriptions(values.get("subscriptions") ?? environment.MARKET_DATA_SUBSCRIPTIONS),
     closeGraceMs: integer(values.get("close-grace-ms") ?? environment.MARKET_DATA_CLOSE_GRACE_MS,
@@ -65,11 +69,30 @@ export function parseConfiguration(arguments_: string[],
       environment.MARKET_DATA_MAX_CANDLES_PER_POLL, 1_000, "maxCandlesPerPoll"),
     leaseTimeoutMs: integer(values.get("lease-timeout-ms") ?? environment.MARKET_DATA_LEASE_TIMEOUT_MS,
       15 * 60_000, "leaseTimeoutMs"),
+    maxCursorLagIntervals: integer(values.get("max-cursor-lag-intervals") ??
+      environment.MARKET_DATA_MAX_CURSOR_LAG_INTERVALS, 1, "maxCursorLagIntervals"),
+    maxClockOffsetMs: integer(values.get("max-clock-offset-ms") ??
+      environment.MARKET_DATA_MAX_CLOCK_OFFSET_MS, 5_000, "maxClockOffsetMs"),
   };
+  if (configuration.maxBackoffMs < configuration.baseBackoffMs)
+    throw new Error("maxBackoffMs must be greater than or equal to baseBackoffMs");
+  return configuration;
 }
 
-const serialize = (value: unknown) => JSON.stringify(value, (_key, item) =>
-  typeof item === "bigint" ? item.toString() : item instanceof Date ? item.toISOString() : item);
+const SENSITIVE_ENVIRONMENT_KEYS = ["BAPI_KEY", "BAPI_SEC"] as const;
+
+export const serializeForLog = (value: unknown,
+  environment: Record<string, string | undefined> = process.env) => {
+  let serialized = JSON.stringify(value, (key, item) => {
+    if (/api[-_]?key|api[-_]?secret|credential|password|secret/i.test(key)) return "[REDACTED]";
+    return typeof item === "bigint" ? item.toString() : item instanceof Date ? item.toISOString() : item;
+  });
+  for (const key of SENSITIVE_ENVIRONMENT_KEYS) {
+    const secret = environment[key];
+    if (secret) serialized = serialized.replaceAll(secret, "[REDACTED]");
+  }
+  return serialized;
+};
 
 async function main(): Promise<void> {
   const configuration = parseConfiguration(process.argv.slice(2));
@@ -89,17 +112,19 @@ async function main(): Promise<void> {
     const repository = new PrismaCandleRepository(prisma);
     const poll = new PollClosedCandlesUseCase(repository, repository,
       new BinanceRestMarketDataSource(binanceClient),
-      new PrismaMarketDataLease(prisma, configuration.leaseTimeoutMs));
+      new PrismaMarketDataLease(prisma, configuration.leaseTimeoutMs), undefined,
+      { maxCursorLagIntervals: configuration.maxCursorLagIntervals,
+        maxClockOffsetMs: configuration.maxClockOffsetMs });
     const discover = new DiscoverMarketDataSubscriptionsUseCase(
       new PrismaMarketDataSubscriptionRepository(prisma), configuration.subscriptions);
     const report = (outcome: MarketDataPollingOutcome) => {
-      process.stderr.write(`${serialize({ event: "market-data-poll", ...outcome })}\n`);
+      process.stderr.write(`${serializeForLog({ event: "market-data-poll", ...outcome })}\n`);
     };
     const worker = new MarketDataPollingWorker(discover, poll, configuration, undefined, undefined,
       undefined, configuration.once ? undefined : report);
     if (configuration.once) {
       const outcomes = await worker.runOnce(abortController.signal);
-      process.stdout.write(`${serialize({ status: "completed", outcomes })}\n`);
+      process.stdout.write(`${serializeForLog({ status: "completed", outcomes })}\n`);
     } else await worker.run(abortController.signal);
   } finally {
     await prisma.$disconnect();
@@ -107,6 +132,7 @@ async function main(): Promise<void> {
 }
 
 if (require.main === module) main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(`${serializeForLog({ event: "market-data-poll-fatal",
+    error: error instanceof Error ? error.message : String(error) })}\n`);
   process.exitCode = 1;
 });

@@ -81,3 +81,26 @@ test("candle upsert and cursor checkpoint are atomic, corrective, and monotonic"
       await prisma.pair.delete({ where: { symbol: pairSymbol } });
     }
   });
+
+test("strategy-facing candle ranges explicitly exclude open candles",
+  { skip: !process.env.DATABASE_URL }, async () => {
+    const { prisma } = await import("@/src/shared/infrastructure/prisma/prisma");
+    const pairSymbol = `C${randomUUID().replaceAll("-", "").slice(0, 8)}USDC`.toUpperCase();
+    const repository = new PrismaCandleRepository(prisma);
+    const closed = candle(randomUUID(), pairSymbol);
+    const nextOpenTime = new Date(openTime.getTime() + 3_600_000);
+    await prisma.pair.create({ data: { symbol: pairSymbol, decimals: 8 } });
+    try {
+      await prisma.candle.createMany({ data: [
+        { ...closed },
+        { ...closed, id: randomUUID(), openTime: nextOpenTime,
+          closeTime: new Date(nextOpenTime.getTime() + 3_600_000 - 1), isClosed: false },
+      ] });
+      const eligible = await repository.findRange(pairSymbol, "1h", openTime, nextOpenTime);
+      assert.deepEqual(eligible.map(({ openTime: time }) => time.getTime()), [openTime.getTime()]);
+      assert.equal(eligible.every(({ isClosed }) => isClosed), true);
+    } finally {
+      await prisma.candle.deleteMany({ where: { pairSymbol } });
+      await prisma.pair.delete({ where: { symbol: pairSymbol } });
+    }
+  });

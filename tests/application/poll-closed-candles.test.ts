@@ -18,7 +18,7 @@ import {
   MarketDataPollingWorker,
   PollClosedCandlesUseCase,
 } from "@/src/modules/market";
-import { parseConfiguration, parseSubscriptions } from "@/scripts/pollMarketData";
+import { parseConfiguration, parseSubscriptions, serializeForLog } from "@/scripts/pollMarketData";
 
 const hour = 3_600_000;
 const origin = Date.parse("2026-08-09T08:00:00.000Z");
@@ -66,14 +66,15 @@ class MemoryRepository implements CandleRepository {
 class FixtureSource implements MarketDataSource {
   readonly requests: HistoricalCandleRequest[] = [];
   fail = false;
+  clockOffsetMs = BigInt(25);
   constructor(readonly available: Candle[], readonly serverTime = new Date(origin + (4 * hour) + 5_000)) {}
-  fetchServerTime() { return Promise.resolve({ serverTime: this.serverTime, clockOffsetMs: BigInt(25) }); }
+  fetchServerTime() { return Promise.resolve({ serverTime: this.serverTime, clockOffsetMs: this.clockOffsetMs }); }
   fetchHistoricalCandles(request: HistoricalCandleRequest) {
     this.requests.push(request);
     if (this.fail) return Promise.reject(new Error("exchange unavailable"));
     return Promise.resolve({ candles: this.available.filter((value) => value.isClosed &&
       value.openTime >= request.from && value.openTime < request.to),
-    serverTime: this.serverTime, clockOffsetMs: BigInt(25) });
+    serverTime: this.serverTime, clockOffsetMs: this.clockOffsetMs });
   }
 }
 
@@ -190,7 +191,46 @@ describe("closed-candle polling", () => {
     assert.equal(source.requests[0].to.getTime(), origin + (11 * hour));
     assert.equal(result.candlesFetched, 10);
     assert.equal(result.hasMoreWork, true);
+    assert.equal(result.health, "unhealthy");
+    assert.deepEqual(result.reasons, ["cursor-stale"]);
+    assert.equal(result.cursorLagMs, 1_989 * hour);
     assert.equal(repository.cursor?.lastClosedOpenTime?.getTime(), origin + (10 * hour));
+  });
+
+  test("reports excessive exchange clock drift as unhealthy", async () => {
+    const repository = new MemoryRepository();
+    const source = new FixtureSource([candle(origin + (3 * hour))]);
+    source.clockOffsetMs = BigInt(5_001);
+    const result = await new PollClosedCandlesUseCase(repository, repository, source,
+      new FixtureLease()).execute({ pairSymbol: "BTCUSDC", interval: "1h" });
+    assert.equal(result.health, "unhealthy");
+    assert.deepEqual(result.reasons, ["clock-drift"]);
+  });
+
+  test("surfaces detected, repaired, and remaining gap counts in the poll outcome", async () => {
+    const repository = new MemoryRepository();
+    repository.candles.set(origin, candle(origin));
+    repository.cursor = { id: randomUUID(), source: "BINANCE", pairSymbol: "BTCUSDC", interval: "1h",
+      lastClosedOpenTime: new Date(origin), lastSuccessfulPollAt: new Date(), clockOffsetMs: BigInt(0),
+      status: "HEALTHY", lastError: null, createdAt: new Date(), updatedAt: new Date() };
+    const source = new FixtureSource([
+      candle(origin - hour), candle(origin), candle(origin + hour), candle(origin + (2 * hour)),
+      candle(origin + (3 * hour)),
+    ]);
+    const fetch = source.fetchHistoricalCandles.bind(source);
+    let request = 0;
+    source.fetchHistoricalCandles = async (input) => {
+      request += 1;
+      const batch = await fetch(input);
+      return request === 1 ? { ...batch,
+        candles: batch.candles.filter(({ openTime }) => openTime.getTime() !== origin + (2 * hour)) } : batch;
+    };
+    const result = await new PollClosedCandlesUseCase(repository, repository, source,
+      new FixtureLease()).execute({ pairSymbol: "BTCUSDC", interval: "1h" });
+    assert.equal(result.missingCandlesDetected, 1);
+    assert.equal(result.repairedCandles, 1);
+    assert.equal(result.missingCandlesRemaining, 0);
+    assert.equal(result.health, "healthy");
   });
 
   test("rejects an open candle even if a source incorrectly returns it", async () => {
@@ -328,9 +368,23 @@ describe("market-data poller configuration", () => {
       { pairSymbol: "BTCUSDC", interval: "15m" }, { pairSymbol: "ETHUSDC", interval: "1h" },
     ]);
     const configuration = parseConfiguration(["--once", "--subscriptions", "BTCUSDC:4h",
-      "--max-candles-per-poll=250"], {});
+      "--max-candles-per-poll=250"], { DATABASE_URL: "postgresql://localhost/test" });
     assert.equal(configuration.once, true);
     assert.equal(configuration.maxCandlesPerPoll, 250);
     assert.deepEqual(configuration.subscriptions, [{ pairSymbol: "BTCUSDC", interval: "4h" }]);
+  });
+
+  test("rejects missing database configuration and inconsistent backoff limits", () => {
+    assert.throws(() => parseConfiguration([], {}), /DATABASE_URL is required/);
+    assert.throws(() => parseConfiguration(["--base-backoff-ms", "2000", "--max-backoff-ms", "1000"],
+      { DATABASE_URL: "postgresql://localhost/test" }), /maxBackoffMs/);
+  });
+
+  test("redacts Binance credentials from structured fields and error messages", () => {
+    const output = serializeForLog({ apiKey: "public-key", error: "request failed for secret-value" },
+      { BAPI_KEY: "public-key", BAPI_SEC: "secret-value" });
+    assert.equal(output.includes("public-key"), false);
+    assert.equal(output.includes("secret-value"), false);
+    assert.match(output, /\[REDACTED\]/);
   });
 });
