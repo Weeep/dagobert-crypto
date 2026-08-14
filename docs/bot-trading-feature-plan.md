@@ -18,7 +18,7 @@ as the implementation.
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
-| Phase 3: strategy engine | In progress | Steps 0-2 are complete: indicator contracts and calculations plus the versioned strategy AST, JSON Schema, and activation validation are implemented. |
+| Phase 3: strategy engine | In progress | Steps 0-4 are complete: validated versioned strategies now produce deterministic, explainable, position-aware decisions from closed candle history without look-ahead. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
@@ -587,8 +587,8 @@ idempotent persistence boundary.
 - [x] Step 0: indicator warm-up, edge-case, candle-body, and decision-priority contracts fixed.
 - [x] Step 1: shared pure RSI, EMA, candle direction, body-change, and consecutive-sequence calculations implemented.
 - [x] Step 2: versioned strategy TypeScript AST, JSON Schema, and runtime activation validation.
-- [ ] Step 3: nested condition-tree evaluation and explainable results.
-- [ ] Step 4: deterministic strategy engine and look-ahead protection.
+- [x] Step 3: nested condition-tree evaluation and explainable results.
+- [x] Step 4: deterministic position-aware strategy engine and look-ahead protection.
 - [ ] Step 5: closed-candle application service and decision persistence.
 - [ ] Step 6: strategy-version lifecycle APIs, ownership, and concurrency-safe version numbering.
 - [ ] Step 7: strategy API.
@@ -655,6 +655,25 @@ idempotent persistence boundary.
 - Strategy creation, new-version creation, and bot start all validate the schema
   version and complete definition. Unknown versions, fields, indicators, and
   unsupported indicator/operator combinations cannot be saved or activated.
+
+#### Steps 3-4 evaluation and engine contract
+
+- Every condition returns a boolean match, stable machine-readable reason code,
+  human-readable explanation, observed values, and the complete ordered child
+  result tree. `all` and `any` evaluate every child rather than short-circuiting,
+  so an audit retains both matching and non-matching reasons.
+- RSI and EMA-distance leaves use the shared indicator implementations. EMA
+  distance is the absolute ratio `abs(close - EMA) / EMA`; candle sequences use
+  the trailing configured count. Missing warm-up history returns false with
+  `INSUFFICIENT_HISTORY`, never a substituted numeric value.
+- The engine requires strictly ascending, unique, closed candles for one symbol
+  and timeframe. The evaluated candle must occur exactly once as the final
+  history candle, and any later candle, duplicate identity, open candle, mixed
+  market, invalid timestamp, or mismatching evaluated-candle payload is rejected.
+- Both entry and exit trees are retained in every result. The position-aware
+  policy described above then produces exactly one intent and policy reason.
+  Repeating an evaluation with the same definition, candle history, evaluated
+  candle, and position snapshot produces the same complete result.
 
 #### Work
 

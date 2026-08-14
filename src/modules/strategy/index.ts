@@ -27,4 +27,17 @@ export type {
   StrategyValidationResult,
 } from "./domain/StrategyDefinition";
 export { STRATEGY_DEFINITION_V1_JSON_SCHEMA } from "./domain/StrategyDefinitionSchema";
+export { evaluateCondition } from "./domain/ConditionEvaluator";
+export type {
+  ConditionEvaluation,
+  ConditionEvaluationContext,
+  ConditionObservedValues,
+} from "./domain/ConditionEvaluator";
+export { evaluateStrategy, StrategyEngineInputError } from "./domain/StrategyEngine";
+export type {
+  StrategyAction,
+  StrategyEngineInput,
+  StrategyEvaluation,
+  StrategyPositionContext,
+} from "./domain/StrategyEngine";
 export { ListStrategiesUseCase } from "./application/ListStrategiesUseCase";
