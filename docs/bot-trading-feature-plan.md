@@ -18,7 +18,7 @@ as the implementation.
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
-| Phase 3: strategy engine | In progress | Steps 0-7 are complete: authenticated APIs expose validation, owned strategy/version management, and explicit bot version activation. |
+| Phase 3: strategy engine | In progress | Steps 0-8 are complete: the authenticated rule-builder GUI creates and versions the same validated JSON consumed by the engine. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
@@ -592,7 +592,7 @@ idempotent persistence boundary.
 - [x] Step 5: closed-candle application service and atomic decision/snapshot persistence.
 - [x] Step 6: owned immutable strategy-version creation, concurrency-safe numbering, and activation.
 - [x] Step 7: authenticated strategy validation, lifecycle, version, and activation API.
-- [ ] Step 8: form/rule-builder GUI.
+- [x] Step 8: nested form/rule-builder GUI with preview, validation, creation, and versioning.
 - [ ] Step 9: golden acceptance suite and Phase 3 gate.
 
 #### Step 0 indicator and evaluation contract
@@ -719,6 +719,23 @@ idempotent persistence boundary.
   consistent `BAD_REQUEST`, `VALIDATION_ERROR`, `NOT_FOUND`, or
   `INVALID_TRANSITION` errors, and sanitizes unexpected failures as
   `INTERNAL_ERROR` without exposing persistence details.
+
+#### Step 8 strategy rule-builder GUI contract
+
+- The Bot page provides a form-only editor for recursive `all`/`any` groups,
+  RSI comparisons, absolute EMA-distance thresholds, and candle-sequence rules.
+  Users can add, replace, and remove nested rules while groups always retain at
+  least one child; no executable JavaScript or arbitrary formula input exists.
+- The editor continuously renders the exact `StrategyDefinitionV1` JSON it will
+  submit. Validation calls the authenticated backend contract and displays every
+  returned issue with its JSON path; invalid definitions cannot be saved.
+- Creating a new strategy persists version 1. Selecting an existing strategy
+  loads its latest immutable definition, and saving creates a new version rather
+  than mutating history. The strategy list is refreshed after every successful
+  write and timestamps/versions come from the server DTOs.
+- Rule-tree transformations are pure and covered independently from React so
+  nested path replacement, append/removal invariants, and emitted schema validity
+  remain regression-testable.
 
 #### Work
 
