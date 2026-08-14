@@ -22,6 +22,8 @@ export {
 } from "./domain/StrategyDefinition";
 export type {
   ComparisonOperator,
+  EmaDistanceCondition,
+  EmaPosition,
   StrategyCondition,
   StrategyDefinitionV1,
   StrategyValidationIssue,

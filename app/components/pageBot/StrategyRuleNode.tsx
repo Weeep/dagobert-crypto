@@ -62,11 +62,26 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
           onChange={(event) => replace({ ...condition, value: Number(event.target.value) })} /></Field>
       </div>}
 
-      {"indicator" in condition && condition.indicator === "EMA_DISTANCE" && <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      {"indicator" in condition && condition.indicator === "EMA_DISTANCE" && <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <Field label="EMA period"><input className={inputClass} type="number" min={1} step={1} value={condition.period}
           onChange={(event) => replace({ ...condition, period: Number(event.target.value) })} /></Field>
-        <Field label="Maximum absolute distance"><input className={inputClass} type="number" min={0} step="0.001" value={condition.value}
-          onChange={(event) => replace({ ...condition, value: Number(event.target.value) })} /></Field>
+        <Field label="Close position"><select className={inputClass} value={condition.position}
+          onChange={(event) => replace({ ...condition, position: event.target.value as typeof condition.position })}>
+          <option value="ABOVE">Above EMA</option><option value="BELOW">Below EMA</option>
+        </select></Field>
+        <Field label="Maximum distance % (optional)">
+          <div className="flex items-center gap-2">
+            <input aria-label="Limit EMA distance" type="checkbox" checked={condition.maximumDistancePct !== undefined}
+              onChange={(event) => replace(event.target.checked
+                ? { ...condition, maximumDistancePct: 2 }
+                : (({ maximumDistancePct: _removed, ...rest }) => rest)(condition))} />
+            <input className={`${inputClass} min-w-0 flex-1`} type="number" min={0} max={100} step="0.1"
+              disabled={condition.maximumDistancePct === undefined}
+              value={condition.maximumDistancePct ?? ""}
+              onChange={(event) => replace({ ...condition, maximumDistancePct: Number(event.target.value) })} />
+          </div>
+        </Field>
+        <p className="text-xs text-slate-500 sm:col-span-3">The last closed candle must be strictly above or below the EMA. Leave the distance limit off to accept any distance.</p>
       </div>}
 
       {"candleSequence" in condition && <div className="mt-4 grid gap-3 sm:grid-cols-3">

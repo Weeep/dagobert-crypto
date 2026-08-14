@@ -75,16 +75,21 @@ function evaluateNode(
     if (observedEma === null) return insufficient("EMA_DISTANCE", condition.period, context.candles.length);
     const close = new Big(context.candles.at(-1)!.close);
     const ema = new Big(observedEma);
-    const distance = ema.eq(0) ? null : Number(close.minus(ema).abs().div(ema));
-    const matched = distance !== null && new Big(distance).lte(condition.value);
+    const distancePct = ema.eq(0) ? null : Number(close.minus(ema).abs().div(ema).times(100));
+    const sideMatched = condition.position === "ABOVE" ? close.gt(ema) : close.lt(ema);
+    const distanceMatched = condition.maximumDistancePct === undefined ||
+      (distancePct !== null && new Big(distancePct).lte(condition.maximumDistancePct));
+    const matched = sideMatched && distanceMatched;
+    const distanceExplanation = condition.maximumDistancePct === undefined
+      ? "with any distance"
+      : `within ${condition.maximumDistancePct}% (observed ${distancePct ?? "undefined"}%)`;
     return {
       type: "EMA_DISTANCE", matched,
-      reasonCode: distance === null ? "EMA_DISTANCE_UNDEFINED" : `EMA_DISTANCE_${matched ? "MATCHED" : "NOT_MATCHED"}`,
-      explanation: distance === null
-        ? `EMA(${condition.period}) distance is undefined because EMA is zero`
-        : `EMA(${condition.period}) absolute distance ${distance} ${matched ? "matched" : "did not match"} ABS_LTE ${condition.value}`,
-      observedValues: { indicator: "EMA_DISTANCE", period: condition.period, operator: condition.operator,
-        expected: condition.value, close: close.toString(), ema: observedEma, observed: distance }, children: [],
+      reasonCode: `EMA_DISTANCE_${matched ? "MATCHED" : "NOT_MATCHED"}`,
+      explanation: `Close ${close.toString()} ${matched ? "matched" : "did not match"} ${condition.position} EMA(${condition.period}) ${observedEma} ${distanceExplanation}`,
+      observedValues: { indicator: "EMA_DISTANCE", period: condition.period, position: condition.position,
+        maximumDistancePct: condition.maximumDistancePct ?? null, close: close.toString(), ema: observedEma,
+        sideMatched, distanceMatched, distancePct }, children: [],
     };
   }
 

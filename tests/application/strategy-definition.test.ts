@@ -16,7 +16,7 @@ const example = {
   entry: { any: [
     { all: [
       { indicator: "RSI", period: 14, operator: "LT", value: 20 },
-      { indicator: "EMA_DISTANCE", period: 100, operator: "ABS_LTE", value: 0.02 },
+      { indicator: "EMA_DISTANCE", period: 100, position: "ABOVE", maximumDistancePct: 2 },
     ] },
     { candleSequence: { count: 3, direction: "RED", minimumBodyChangePct: 1 } },
   ] },
@@ -43,6 +43,11 @@ describe("strategy definition v1", () => {
     const result = validateStrategyDefinition(example);
     assert.equal(result.ok, true);
     assert.equal(STRATEGY_DEFINITION_V1_JSON_SCHEMA.properties.schemaVersion.const, 1);
+    const emaSchema = STRATEGY_DEFINITION_V1_JSON_SCHEMA.$defs.emaDistance;
+    assert.deepEqual(emaSchema.required, ["indicator", "period", "position"]);
+    assert.deepEqual(emaSchema.properties.position.enum, ["ABOVE", "BELOW"]);
+    assert.equal(emaSchema.properties.maximumDistancePct.maximum, 100);
+    assert.equal(emaSchema.properties.maximumDistancePct.multipleOf, 0.1);
     if (result.ok) assert.deepEqual(result.definition, example);
   });
 
@@ -53,11 +58,21 @@ describe("strategy definition v1", () => {
       { ...example, entry: { indicator: "RSI", period: 0, operator: "LT", value: 20 } },
       { ...example, entry: { indicator: "RSI", period: 14, operator: "LT", value: 101 } },
       { ...example, entry: { indicator: "MACD", period: 14, operator: "LT", value: 20 } },
-      { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, operator: "GTE", value: 0.02 } },
+      { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, operator: "ABS_LTE", value: 0.02 } },
+      { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, position: "SIDEWAYS" } },
+      { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: -0.1 } },
+      { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 100.1 } },
+      { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 2.25 } },
       { ...example, entry: { candleSequence: { count: 3, direction: "BLUE", minimumBodyChangePct: 1 } } },
     ];
     for (const candidate of cases) assert.equal(validateStrategyDefinition(candidate).ok, false);
     assert.equal(validateStrategyDefinition(example, 2).ok, false);
+    assert.equal(validateStrategyDefinition({ ...example,
+      entry: { indicator: "EMA_DISTANCE", period: 14, position: "BELOW" } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example,
+      entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 0 } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example,
+      entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 100 } }).ok, true);
   });
 
   test("validates before creating immutable versions", async () => {

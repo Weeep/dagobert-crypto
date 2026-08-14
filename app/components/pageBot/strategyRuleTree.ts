@@ -14,7 +14,7 @@ export const newCondition = (kind: ConditionKind): StrategyCondition => {
   if (kind === "ANY") return { any: [newCondition("RSI")] };
   if (kind === "RSI") return { indicator: "RSI", period: 14, operator: "LT", value: 20 };
   if (kind === "EMA_DISTANCE")
-    return { indicator: "EMA_DISTANCE", period: 100, operator: "ABS_LTE", value: 0.02 };
+    return { indicator: "EMA_DISTANCE", period: 100, position: "ABOVE", maximumDistancePct: 2 };
   return { candleSequence: { count: 3, direction: "RED", minimumBodyChangePct: 1 } };
 };
 

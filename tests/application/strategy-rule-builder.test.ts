@@ -11,6 +11,9 @@ describe("strategy rule-builder tree operations", () => {
     assert.equal(conditionKind(newCondition("RSI")), "RSI");
     assert.equal(conditionKind(newCondition("EMA_DISTANCE")), "EMA_DISTANCE");
     assert.equal(conditionKind(newCondition("CANDLE_SEQUENCE")), "CANDLE_SEQUENCE");
+    assert.deepEqual(newCondition("EMA_DISTANCE"), {
+      indicator: "EMA_DISTANCE", period: 100, position: "ABOVE", maximumDistancePct: 2,
+    });
   });
 
   test("adds, replaces, locates, and removes nested rules immutably", () => {

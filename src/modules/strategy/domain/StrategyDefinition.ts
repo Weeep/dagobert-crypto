@@ -4,7 +4,13 @@ export const MAX_STRATEGY_NODES = 100;
 
 export type ComparisonOperator = "LT" | "LTE" | "GT" | "GTE";
 export type RsiCondition = { indicator: "RSI"; period: number; operator: ComparisonOperator; value: number };
-export type EmaDistanceCondition = { indicator: "EMA_DISTANCE"; period: number; operator: "ABS_LTE"; value: number };
+export type EmaPosition = "ABOVE" | "BELOW";
+export type EmaDistanceCondition = {
+  indicator: "EMA_DISTANCE";
+  period: number;
+  position: EmaPosition;
+  maximumDistancePct?: number;
+};
 export type CandleSequenceCondition = {
   candleSequence: { count: number; direction: "RED" | "GREEN" | "DOJI"; minimumBodyChangePct: number };
 };
@@ -33,6 +39,8 @@ const exactKeys = (value: Record<string, unknown>, expected: readonly string[]) 
   Object.keys(value).length === expected.length && Object.keys(value).every((key) => expected.includes(key));
 const positiveInteger = (value: unknown) => Number.isSafeInteger(value) && (value as number) > 0;
 const nonNegativeNumber = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0;
+const percentageWithAtMostOneDecimal = (value: unknown) => nonNegativeNumber(value) &&
+  (value as number) <= 100 && Math.abs((value as number) * 10 - Math.round((value as number) * 10)) < 1e-9;
 
 export function validateStrategyDefinition(value: unknown, declaredSchemaVersion = 1): StrategyValidationResult {
   const issues: StrategyValidationIssue[] = [];
@@ -67,18 +75,24 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
       return;
     }
     if ("indicator" in candidate) {
-      if (!exactKeys(candidate, ["indicator", "period", "operator", "value"]))
-        issue(path, "PROPERTIES", "indicator condition contains unsupported properties");
       if (!positiveInteger(candidate.period)) issue(`${path}.period`, "VALUE", "period must be a positive safe integer");
-      if (!nonNegativeNumber(candidate.value)) issue(`${path}.value`, "VALUE", "value must be a non-negative finite number");
       if (candidate.indicator === "RSI") {
+        if (!exactKeys(candidate, ["indicator", "period", "operator", "value"]))
+          issue(path, "PROPERTIES", "RSI condition contains unsupported properties");
+        if (!nonNegativeNumber(candidate.value)) issue(`${path}.value`, "VALUE", "value must be a non-negative finite number");
         if (typeof candidate.value === "number" && candidate.value > 100)
           issue(`${path}.value`, "VALUE", "RSI value cannot exceed 100");
         if (!["LT", "LTE", "GT", "GTE"].includes(candidate.operator as string))
           issue(`${path}.operator`, "UNSUPPORTED_OPERATOR", "RSI supports LT, LTE, GT, and GTE");
       } else if (candidate.indicator === "EMA_DISTANCE") {
-        if (candidate.operator !== "ABS_LTE")
-          issue(`${path}.operator`, "UNSUPPORTED_OPERATOR", "EMA_DISTANCE supports only ABS_LTE");
+        const emaKeys = candidate.maximumDistancePct === undefined
+          ? ["indicator", "period", "position"] : ["indicator", "period", "position", "maximumDistancePct"];
+        if (!exactKeys(candidate, emaKeys))
+          issue(path, "PROPERTIES", "EMA_DISTANCE condition contains unsupported properties");
+        if (!["ABOVE", "BELOW"].includes(candidate.position as string))
+          issue(`${path}.position`, "VALUE", "position must be ABOVE or BELOW");
+        if (candidate.maximumDistancePct !== undefined && !percentageWithAtMostOneDecimal(candidate.maximumDistancePct))
+          issue(`${path}.maximumDistancePct`, "VALUE", "maximumDistancePct must be between 0 and 100 with at most one decimal place");
       } else issue(`${path}.indicator`, "UNSUPPORTED_INDICATOR", "indicator is not supported");
       return;
     }

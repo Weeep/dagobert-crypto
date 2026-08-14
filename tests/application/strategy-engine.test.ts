@@ -34,7 +34,7 @@ describe("pure condition-tree evaluator", () => {
     const result = evaluateCondition({ any: [
       { all: [
         { indicator: "RSI", period: 14, operator: "LT", value: 60 },
-        { indicator: "EMA_DISTANCE", period: 5, operator: "ABS_LTE", value: 0.1 },
+        { indicator: "EMA_DISTANCE", period: 5, position: "BELOW", maximumDistancePct: 10 },
       ] },
       { candleSequence: { count: 3, direction: "GREEN", minimumBodyChangePct: 20 } },
     ] }, { candles: history });
@@ -52,6 +52,23 @@ describe("pure condition-tree evaluator", () => {
     assert.equal(result.matched, false);
     assert.equal(result.reasonCode, "INSUFFICIENT_HISTORY");
     assert.equal(result.observedValues.observed, null);
+  });
+
+  test("evaluates strict EMA side and an optional percentage distance", () => {
+    const above = candles([10, 10, 12]);
+    assert.equal(evaluateCondition({ indicator: "EMA_DISTANCE", period: 2, position: "ABOVE" },
+      { candles: above }).matched, true);
+    assert.equal(evaluateCondition({ indicator: "EMA_DISTANCE", period: 2, position: "BELOW" },
+      { candles: above }).matched, false);
+    assert.equal(evaluateCondition({ indicator: "EMA_DISTANCE", period: 2, position: "ABOVE", maximumDistancePct: 5 },
+      { candles: above }).matched, false);
+    assert.equal(evaluateCondition({ indicator: "EMA_DISTANCE", period: 2, position: "ABOVE", maximumDistancePct: 6 },
+      { candles: above }).matched, true);
+    const equal = candles([10, 10]);
+    assert.equal(evaluateCondition({ indicator: "EMA_DISTANCE", period: 2, position: "ABOVE" },
+      { candles: equal }).matched, false);
+    assert.equal(evaluateCondition({ indicator: "EMA_DISTANCE", period: 2, position: "BELOW" },
+      { candles: equal }).matched, false);
   });
 
   test("rejects open candles even for candle-only conditions", () => {

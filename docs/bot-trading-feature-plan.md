@@ -107,14 +107,18 @@ of remaining orders.
    GUI produces validated JSON; it does not introduce a second strategy format.
 3. User-provided JavaScript or other executable strategy code is not supported.
 4. RSI periods and thresholds are configurable.
-5. EMA periods and distance thresholds are configurable.
-6. The initial EMA proximity calculation uses absolute distance:
+5. EMA periods, required price side, and optional distance thresholds are configurable.
+6. An EMA condition requires the last closed candle's close to be strictly
+   `ABOVE` or `BELOW` the EMA. Equality matches neither side. When the optional
+   maximum distance is present, the proximity calculation is:
 
    ```text
-   abs(close - EMA(period)) / EMA(period) <= configuredDistance
+   abs(close - EMA(period)) / EMA(period) * 100 <= maximumDistancePct
    ```
 
-   For a two-percent threshold, `configuredDistance` is `0.02`.
+   For a two-percent threshold, `maximumDistancePct` is `2.0`. It is optional;
+   without it, any distance on the configured side matches. When present it is
+   between 0 and 100 percent with at most one decimal place.
 7. Strategies can evaluate candle sequences and candle properties. For example,
    a rule may enter after three consecutive red candles, each having fallen by
    more than one percent.
@@ -138,8 +142,8 @@ An illustrative strategy document is:
           {
             "indicator": "EMA_DISTANCE",
             "period": 100,
-            "operator": "ABS_LTE",
-            "value": 0.02
+            "position": "ABOVE",
+            "maximumDistancePct": 2.0
           }
         ]
       },
@@ -646,8 +650,9 @@ idempotent persistence boundary.
   JSON Schema is the external format contract. Both require `schemaVersion`,
   `name`, `entry`, and `exit` and reject unknown properties.
 - Conditions are recursive non-empty `all`/`any` groups, RSI comparisons,
-  absolute EMA-distance comparisons, or candle-sequence rules. RSI supports
-  `LT`, `LTE`, `GT`, and `GTE`; `EMA_DISTANCE` supports only `ABS_LTE`.
+  directional EMA-distance comparisons, or candle-sequence rules. RSI supports
+  `LT`, `LTE`, `GT`, and `GTE`; `EMA_DISTANCE` requires `ABOVE` or `BELOW` and
+  optionally accepts `maximumDistancePct`.
 - Periods and sequence counts are positive safe integers; thresholds are finite
   non-negative numbers and RSI thresholds cannot exceed 100. Runtime validation
   additionally limits a definition to 100 condition nodes and 10 levels of
@@ -663,8 +668,9 @@ idempotent persistence boundary.
   result tree. `all` and `any` evaluate every child rather than short-circuiting,
   so an audit retains both matching and non-matching reasons.
 - RSI and EMA-distance leaves use the shared indicator implementations. EMA
-  distance is the absolute ratio `abs(close - EMA) / EMA`; candle sequences use
-  the trailing configured count. Missing warm-up history returns false with
+  compares the last closed price strictly to the configured side; when present,
+  distance is `abs(close - EMA) / EMA * 100` and cannot exceed
+  `maximumDistancePct`. Candle sequences use the trailing configured count. Missing warm-up history returns false with
   `INSUFFICIENT_HISTORY`, never a substituted numeric value.
 - The engine requires strictly ascending, unique, closed candles for one symbol
   and timeframe. The evaluated candle must occur exactly once as the final
@@ -723,7 +729,7 @@ idempotent persistence boundary.
 #### Step 8 strategy rule-builder GUI contract
 
 - The Bot page provides a form-only editor for recursive `all`/`any` groups,
-  RSI comparisons, absolute EMA-distance thresholds, and candle-sequence rules.
+  RSI comparisons, EMA side plus optional percentage-distance thresholds, and candle-sequence rules.
   Users can add, replace, and remove nested rules while groups always retain at
   least one child; no executable JavaScript or arbitrary formula input exists.
 - The editor continuously renders the exact `StrategyDefinitionV1` JSON it will
@@ -976,3 +982,4 @@ At the start of every bot-related task:
 | 2026-08-09 | Phase 2 Step 3 historical backfill and gap repair were verified with live Binance data and PostgreSQL, including rolling ranges, pre-listing history, resumable batches, and cursor advancement. |
 | 2026-08-09 | Phase 2 Step 4 resilient closed-candle polling was completed with active-bot plus configured subscription discovery, bounded overlap catch-up, PostgreSQL advisory leases, interval-boundary scheduling, per-subscription backoff, restart-safe cursor handling, standalone one-shot/continuous execution, and deterministic plus Prisma integration coverage. |
 | 2026-08-11 | Phase 2 Step 5 uses structured one-shot outcomes as the initial single-maintainer health check; dedicated metrics backends, dashboards, alerts, HTTP probes, and persistent metric history are deferred until the project has multiple maintainers/users or unattended availability requirements. |
+| 2026-08-14 | The v1 EMA rule requires a strict `ABOVE` or `BELOW` close position; equality matches neither. Its optional `maximumDistancePct` is expressed as a percentage from 0 to 100 with at most one decimal place. |
