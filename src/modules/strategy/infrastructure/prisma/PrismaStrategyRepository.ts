@@ -35,9 +35,25 @@ export class PrismaStrategyRepository implements StrategyRepository {
       update: { name: strategy.name, description: strategy.description, updatedAt: strategy.updatedAt },
     });
   }
-  async addVersion(version: StrategyVersion) {
-    await this.prisma.strategyVersion.create({ data: { id: version.id, strategyId: version.strategyId,
-      version: version.version, schemaVersion: version.schemaVersion,
-      definition: json(version.definition), createdAt: version.createdAt } });
+  async createNextVersion(strategyId: string, definition: StrategyVersion["definition"], schemaVersion: number, createdAt: Date) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const row = await this.prisma.$transaction(async (transaction) => {
+          const latest = await transaction.strategyVersion.findFirst({
+            where: { strategyId }, orderBy: { version: "desc" }, select: { version: true },
+          });
+          return transaction.strategyVersion.create({ data: {
+            strategyId, version: (latest?.version ?? 0) + 1, schemaVersion,
+            definition: json(definition), createdAt,
+          } });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        return mapVersion(row);
+      } catch (error) {
+        if (attempt < 3 && error instanceof Prisma.PrismaClientKnownRequestError &&
+            (error.code === "P2034" || error.code === "P2002")) continue;
+        throw error;
+      }
+    }
+    throw new Error("Could not create strategy version");
   }
 }

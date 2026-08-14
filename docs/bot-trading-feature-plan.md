@@ -18,7 +18,7 @@ as the implementation.
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
-| Phase 3: strategy engine | In progress | Steps 0-4 are complete: validated versioned strategies now produce deterministic, explainable, position-aware decisions from closed candle history without look-ahead. |
+| Phase 3: strategy engine | In progress | Steps 0-6 are complete: closed-candle evaluations are persisted idempotently, and owned immutable strategy versions can be created and activated safely. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
@@ -589,8 +589,8 @@ idempotent persistence boundary.
 - [x] Step 2: versioned strategy TypeScript AST, JSON Schema, and runtime activation validation.
 - [x] Step 3: nested condition-tree evaluation and explainable results.
 - [x] Step 4: deterministic position-aware strategy engine and look-ahead protection.
-- [ ] Step 5: closed-candle application service and decision persistence.
-- [ ] Step 6: strategy-version lifecycle APIs, ownership, and concurrency-safe version numbering.
+- [x] Step 5: closed-candle application service and atomic decision/snapshot persistence.
+- [x] Step 6: owned immutable strategy-version creation, concurrency-safe numbering, and activation.
 - [ ] Step 7: strategy API.
 - [ ] Step 8: form/rule-builder GUI.
 - [ ] Step 9: golden acceptance suite and Phase 3 gate.
@@ -674,6 +674,33 @@ idempotent persistence boundary.
   policy described above then produces exactly one intent and policy reason.
   Repeating an evaluation with the same definition, candle history, evaluated
   candle, and position snapshot produces the same complete result.
+
+#### Step 5 closed-candle evaluation and persistence contract
+
+- The application service resolves a running bot run, its immutable configuration
+  and strategy snapshots, and the requested closed candle. It derives the minimum
+  required lookback from both condition trees and queries only closed candles at
+  or before the evaluated candle, in ascending order and with a bounded limit.
+- Current `OPENING`, `OPEN`, and `CLOSING` positions form the immutable position
+  context. The service invokes the pure engine and records every `BUY`, `SELL`,
+  and `HOLD`, including exact candle/configuration inputs, the complete engine
+  output, indicator/condition trees, explanations, and reason codes.
+- Decision and indicator snapshot persistence is one transaction and uses the
+  unique `(botRunId, candleId)` keys. Retrying or concurrently evaluating the
+  same run/candle returns the first complete stored evaluation without overwriting
+  it or creating duplicates; a half-written decision/snapshot pair is an error.
+
+#### Step 6 strategy-version lifecycle and activation contract
+
+- Creating a version requires ownership of the parent strategy and full v1
+  validation. PostgreSQL assigns the next monotonically increasing version in a
+  serializable transaction with bounded retries for write/uniqueness conflicts.
+- Activating a version requires ownership of both bot and strategy, a valid and
+  supported immutable definition, and a bot that is not currently running.
+  Activation changes only the bot's selected version; existing run strategy
+  snapshots remain unchanged.
+- HTTP endpoints for these use cases remain Step 7; Step 6 establishes and tests
+  the application and persistence boundaries they will call.
 
 #### Work
 

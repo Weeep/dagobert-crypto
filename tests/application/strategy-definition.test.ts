@@ -29,7 +29,13 @@ class MemoryStrategyRepository implements StrategyRepository {
   findById(id: string) { return Promise.resolve(this.strategies.find((item) => item.id === id) ?? null); }
   findVersionById(id: string) { return Promise.resolve(this.strategies.flatMap((item) => item.versions).find((item) => item.id === id) ?? null); }
   async save(strategy: Strategy) { this.strategies.push(strategy); }
-  async addVersion(version: StrategyVersion) { (await this.findById(version.strategyId))?.versions.push(version); }
+  async createNextVersion(strategyId: string, definition: StrategyVersion["definition"], schemaVersion: number, createdAt: Date) {
+    const strategy = await this.findById(strategyId); if (!strategy) throw new Error("Strategy not found");
+    const version = { id: `version-${strategy.versions.length + 1}`, strategyId,
+      version: Math.max(0, ...strategy.versions.map((item) => item.version)) + 1,
+      schemaVersion, definition, createdAt };
+    strategy.versions.push(version); return version;
+  }
 }
 
 describe("strategy definition v1", () => {
@@ -63,8 +69,9 @@ describe("strategy definition v1", () => {
     assert.equal(repository.strategies.length, 1);
     if (!created.ok) return;
     const add = new AddStrategyVersionUseCase(repository);
-    assert.equal((await add.execute(created.strategy.id, { ...example, entry: { indicator: "RSI", period: 14, operator: "NOPE", value: 20 } })).ok, false);
-    const added = await add.execute(created.strategy.id, { ...example, name: "v2" });
+    assert.equal((await add.execute("other-user", created.strategy.id, { ...example, name: "foreign" })).ok, false);
+    assert.equal((await add.execute("user", created.strategy.id, { ...example, entry: { indicator: "RSI", period: 14, operator: "NOPE", value: 20 } })).ok, false);
+    const added = await add.execute("user", created.strategy.id, { ...example, name: "v2" });
     assert.equal(added.ok, true);
     if (added.ok) assert.equal(added.version.version, 2);
   });

@@ -10,6 +10,7 @@ import { PrismaBotLifecycleRepository } from "@/src/modules/bot/infrastructure/p
 import { PrismaBotBudgetRepository } from "@/src/modules/bot/infrastructure/prisma/PrismaBotBudgetRepository";
 import { PrismaCandleRepository } from "@/src/modules/market/infrastructure/prisma/PrismaCandleRepository";
 import { PrismaStrategyRepository } from "@/src/modules/strategy/infrastructure/prisma/PrismaStrategyRepository";
+import { PrismaStrategyEvaluationRepository } from "@/src/modules/strategy/infrastructure/prisma/PrismaStrategyEvaluationRepository";
 import { PrismaHealthCheck } from "@/src/shared/infrastructure/prisma/PrismaHealthCheck";
 import { prisma } from "@/src/shared/infrastructure/prisma/prisma";
 import { createUseCases } from "./createUseCases";
@@ -29,6 +30,7 @@ export const postgresRepositories = {
   botBudgetRepository: new PrismaBotBudgetRepository(prisma),
   candleRepository: new PrismaCandleRepository(prisma),
   strategyRepository: new PrismaStrategyRepository(prisma),
+  strategyEvaluationRepository: new PrismaStrategyEvaluationRepository(prisma),
 };
 
 export const databaseHealthCheck = new PrismaHealthCheck(prisma);

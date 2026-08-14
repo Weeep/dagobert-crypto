@@ -5,5 +5,6 @@ export interface StrategyRepository {
   findById(id: string): Promise<Strategy | null>;
   findVersionById(id: string): Promise<StrategyVersion | null>;
   save(strategy: Strategy): Promise<void>;
-  addVersion(version: StrategyVersion): Promise<void>;
+  createNextVersion(strategyId: string, definition: StrategyVersion["definition"],
+    schemaVersion: number, createdAt: Date): Promise<StrategyVersion>;
 }

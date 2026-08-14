@@ -5,6 +5,7 @@ export { toStrategyDto } from "./dto/StrategyDto";
 export { CreateStrategyUseCase } from "./application/CreateStrategyUseCase";
 export type { CreateStrategyInput } from "./application/CreateStrategyUseCase";
 export { AddStrategyVersionUseCase } from "./application/AddStrategyVersionUseCase";
+export { ActivateStrategyVersionUseCase } from "./application/ActivateStrategyVersionUseCase";
 export { calculateEma, calculateRsi } from "./domain/TechnicalIndicators";
 export type { IndicatorPrice } from "./domain/TechnicalIndicators";
 export {
@@ -40,4 +41,10 @@ export type {
   StrategyEvaluation,
   StrategyPositionContext,
 } from "./domain/StrategyEngine";
+export type {
+  ClosedCandleHistoryRepository,
+  PersistedStrategyEvaluation,
+  StrategyEvaluationRepository,
+} from "./domain/StrategyEvaluationRepository";
+export { EvaluateStrategyForClosedCandleUseCase } from "./application/EvaluateStrategyForClosedCandleUseCase";
 export { ListStrategiesUseCase } from "./application/ListStrategiesUseCase";

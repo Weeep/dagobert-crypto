@@ -33,9 +33,12 @@ class MemoryStrategyRepository implements StrategyRepository {
     return this.strategies.flatMap((strategy) => strategy.versions).find((version) => version.id === id) ?? null;
   }
   async save(strategy: Strategy) { this.strategies.push(strategy); }
-  async addVersion(version: StrategyVersion) {
-    const strategy = await this.findById(version.strategyId);
-    if (strategy) strategy.versions.push(version);
+  async createNextVersion(strategyId: string, definition: StrategyVersion["definition"], schemaVersion: number, createdAt: Date) {
+    const strategy = await this.findById(strategyId); if (!strategy) throw new Error("Strategy not found");
+    const version = { id: `version-${strategy.versions.length + 1}`, strategyId,
+      version: Math.max(0, ...strategy.versions.map((item) => item.version)) + 1,
+      schemaVersion, definition, createdAt };
+    strategy.versions.push(version); return version;
   }
 }
 
