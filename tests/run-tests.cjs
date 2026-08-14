@@ -12,6 +12,7 @@ require('./application/strategy-definition.test.ts');
 require('./application/strategy-engine.test.ts');
 require('./application/strategy-lifecycle.test.ts');
 require('./application/strategy-rule-builder.test.ts');
+require('./application/strategy-golden.test.ts');
 require('./application/market-data.test.ts');
 require('./application/backfill-candles.test.ts');
 require('./application/poll-closed-candles.test.ts');

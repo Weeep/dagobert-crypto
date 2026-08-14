@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "name": "Phase 3 golden RSI EMA candle strategy",
+  "entry": {
+    "any": [
+      {
+        "all": [
+          { "indicator": "RSI", "period": 14, "operator": "LTE", "value": 35 },
+          { "indicator": "EMA_DISTANCE", "period": 100, "position": "BELOW", "maximumDistancePct": 15.0 }
+        ]
+      },
+      { "candleSequence": { "count": 3, "direction": "GREEN", "minimumBodyChangePct": 0.1 } }
+    ]
+  },
+  "exit": {
+    "any": [
+      { "indicator": "RSI", "period": 14, "operator": "GTE", "value": 65 },
+      {
+        "all": [
+          { "indicator": "EMA_DISTANCE", "period": 100, "position": "ABOVE", "maximumDistancePct": 15.0 },
+          { "candleSequence": { "count": 2, "direction": "RED", "minimumBodyChangePct": 0.1 } }
+        ]
+      }
+    ]
+  }
+}

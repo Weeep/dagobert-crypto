@@ -18,7 +18,7 @@ as the implementation.
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
-| Phase 3: strategy engine | In progress | Steps 0-8 are complete: the authenticated rule-builder GUI creates and versions the same validated JSON consumed by the engine. |
+| Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
@@ -597,7 +597,7 @@ idempotent persistence boundary.
 - [x] Step 6: owned immutable strategy-version creation, concurrency-safe numbering, and activation.
 - [x] Step 7: authenticated strategy validation, lifecycle, version, and activation API.
 - [x] Step 8: nested form/rule-builder GUI with preview, validation, creation, and versioning.
-- [ ] Step 9: golden acceptance suite and Phase 3 gate.
+- [x] Step 9: golden acceptance suite and Phase 3 gate.
 
 #### Step 0 indicator and evaluation contract
 
@@ -742,6 +742,27 @@ idempotent persistence boundary.
 - Rule-tree transformations are pure and covered independently from React so
   nested path replacement, append/removal invariants, and emitted schema validity
   remain regression-testable.
+
+#### Step 9 golden acceptance contract
+
+- The immutable fixture contains 140 ordered, closed one-hour candles. Its first
+  38 closes reproduce the published Wilder RSI worksheet series and its
+  deterministic synthetic continuation crosses warm-up, trend, reversal,
+  candle-sequence, and EMA-position boundaries.
+- Expected RSI(14), EMA(20), and EMA(100) values are calculated for every candle
+  prefix by an auditable Python `Decimal` reference implementation with 50-digit
+  precision, independently of the production TypeScript indicators. Golden
+  numeric comparisons use an absolute `1e-10` tolerance; warm-up `null` values
+  must match exactly.
+- A fixed valid v1 strategy and fixed position snapshots cover HOLD, BUY, SELL,
+  non-actionable exits, simultaneous entry/exit with exit priority, and
+  insufficient-history reasons. Every scenario also reruns against the identical
+  snapshot and requires a deeply equal complete evaluation.
+- The gate verifies closed/single-market/ordered fixture invariants, rejects the
+  legacy EMA JSON contract, and proves that adding a candle after the evaluated
+  candle is rejected as look-ahead. Fixture provenance and manual update policy
+  are documented beside the data; CI never regenerates expected values from
+  production code.
 
 #### Work
 
@@ -983,3 +1004,4 @@ At the start of every bot-related task:
 | 2026-08-09 | Phase 2 Step 4 resilient closed-candle polling was completed with active-bot plus configured subscription discovery, bounded overlap catch-up, PostgreSQL advisory leases, interval-boundary scheduling, per-subscription backoff, restart-safe cursor handling, standalone one-shot/continuous execution, and deterministic plus Prisma integration coverage. |
 | 2026-08-11 | Phase 2 Step 5 uses structured one-shot outcomes as the initial single-maintainer health check; dedicated metrics backends, dashboards, alerts, HTTP probes, and persistent metric history are deferred until the project has multiple maintainers/users or unattended availability requirements. |
 | 2026-08-14 | The v1 EMA rule requires a strict `ABOVE` or `BELOW` close position; equality matches neither. Its optional `maximumDistancePct` is expressed as a percentage from 0 to 100 with at most one decimal place. |
+| 2026-08-14 | Phase 3 is complete after its golden gate verified independently calculated RSI/EMA prefix series, deterministic position-aware decisions, schema rejection, and look-ahead protection against immutable fixtures. |

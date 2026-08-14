@@ -1,0 +1,74 @@
+{
+  "fixtureVersion": 1,
+  "referenceCandles": "reference-candles.json",
+  "strategy": "strategy-v1.json",
+  "scenarios": [
+    {
+      "name": "indicator warm-up holds without a position",
+      "evaluatedCandleId": "reference-1h-010",
+      "position": { "hasOpenPositions": false, "openPositionCount": 0 },
+      "expected": {
+        "action": "HOLD", "reasonCode": "NO_ACTIONABLE_CONDITION",
+        "policyReasons": ["NO_ACTIONABLE_CONDITION"], "entryMatched": false, "exitMatched": false,
+        "requiredLeafReasons": ["INSUFFICIENT_HISTORY"]
+      }
+    },
+    {
+      "name": "no conditions are actionable after RSI warm-up",
+      "evaluatedCandleId": "reference-1h-037",
+      "position": { "hasOpenPositions": false, "openPositionCount": 0 },
+      "expected": {
+        "action": "HOLD", "reasonCode": "NO_ACTIONABLE_CONDITION",
+        "policyReasons": ["NO_ACTIONABLE_CONDITION"], "entryMatched": false, "exitMatched": false,
+        "requiredLeafReasons": ["INSUFFICIENT_HISTORY"]
+      }
+    },
+    {
+      "name": "entry match buys without an actionable exit",
+      "evaluatedCandleId": "reference-1h-080",
+      "position": { "hasOpenPositions": false, "openPositionCount": 0 },
+      "expected": {
+        "action": "BUY", "reasonCode": "ENTRY_MATCHED", "policyReasons": ["ENTRY_MATCHED"],
+        "entryMatched": true, "exitMatched": false, "requiredLeafReasons": []
+      }
+    },
+    {
+      "name": "matching exit is non-actionable without a position and entry may buy",
+      "evaluatedCandleId": "reference-1h-090",
+      "position": { "hasOpenPositions": false, "openPositionCount": 0 },
+      "expected": {
+        "action": "BUY", "reasonCode": "ENTRY_MATCHED_AFTER_NON_ACTIONABLE_EXIT",
+        "policyReasons": ["EXIT_MATCHED_NO_OPEN_POSITION", "ENTRY_MATCHED_AFTER_NON_ACTIONABLE_EXIT"],
+        "entryMatched": true, "exitMatched": true, "requiredLeafReasons": []
+      }
+    },
+    {
+      "name": "matching exit has priority with open positions",
+      "evaluatedCandleId": "reference-1h-090",
+      "position": { "hasOpenPositions": true, "openPositionCount": 2 },
+      "expected": {
+        "action": "SELL", "reasonCode": "EXIT_MATCHED", "policyReasons": ["EXIT_MATCHED"],
+        "entryMatched": true, "exitMatched": true, "requiredLeafReasons": []
+      }
+    },
+    {
+      "name": "exit-only match holds without a position",
+      "evaluatedCandleId": "reference-1h-100",
+      "position": { "hasOpenPositions": false, "openPositionCount": 0 },
+      "expected": {
+        "action": "HOLD", "reasonCode": "EXIT_MATCHED_NO_OPEN_POSITION",
+        "policyReasons": ["EXIT_MATCHED_NO_OPEN_POSITION"], "entryMatched": false, "exitMatched": true,
+        "requiredLeafReasons": []
+      }
+    },
+    {
+      "name": "exit-only match sells an open position",
+      "evaluatedCandleId": "reference-1h-100",
+      "position": { "hasOpenPositions": true, "openPositionCount": 1 },
+      "expected": {
+        "action": "SELL", "reasonCode": "EXIT_MATCHED", "policyReasons": ["EXIT_MATCHED"],
+        "entryMatched": false, "exitMatched": true, "requiredLeafReasons": []
+      }
+    }
+  ]
+}
