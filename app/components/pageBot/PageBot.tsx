@@ -6,8 +6,13 @@ import type { StrategyDefinitionV1, StrategyValidationIssue } from "@/src/module
 import { StrategyApiClient } from "./StrategyApiClient";
 import { StrategyRuleNode } from "./StrategyRuleNode";
 import { newCondition } from "./strategyRuleTree";
+import type { BotDto } from "@/src/modules/bot/dto/BotDto";
+import type { PairDto } from "@/src/modules/pair/dto/PairDto";
+import { BotApiClient } from "./BotApiClient";
+import { BotCreator } from "./BotCreator";
 
 const api = new StrategyApiClient();
+const botApi = new BotApiClient();
 const freshDefinition = (): StrategyDefinitionV1 => ({
   schemaVersion: 1, name: "New strategy",
   entry: { all: [newCondition("RSI")] },
@@ -23,12 +28,21 @@ export default function PageBot() {
   const [issues, setIssues] = useState<StrategyValidationIssue[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [bots, setBots] = useState<BotDto[]>([]);
+  const [pairs, setPairs] = useState<PairDto[]>([]);
+  const [botDependenciesLoading, setBotDependenciesLoading] = useState(true);
 
   const load = useCallback(async () => {
     try { setStrategies(await api.list()); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Could not load strategies"); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    Promise.all([botApi.list(), botApi.listPairs()])
+      .then(([loadedBots, loadedPairs]) => { setBots(loadedBots); setPairs(loadedPairs); })
+      .catch((error) => setMessage(error instanceof Error ? error.message : "Could not load bot configuration"))
+      .finally(() => setBotDependenciesLoading(false));
+  }, []);
 
   const selectStrategy = (id: string) => {
     setSelectedId(id); setIssues([]); setMessage("");
@@ -70,6 +84,8 @@ export default function PageBot() {
   };
 
   return <div className="mx-auto max-w-7xl text-slate-100">
+    <BotCreator api={botApi} bots={bots} pairs={pairs} strategies={strategies} loading={botDependenciesLoading}
+      onCreated={(bot) => setBots((current) => [bot, ...current])} />
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400">Trading bot</p>
         <h2 className="mt-1 text-3xl font-bold">Strategy rule builder</h2>
