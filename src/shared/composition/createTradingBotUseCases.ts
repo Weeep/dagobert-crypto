@@ -3,15 +3,18 @@ import type { BotRepository, BotRunRepository } from "@/src/modules/bot";
 import type { BotLifecycleRepository } from "@/src/modules/bot";
 import { ListCandlesUseCase, SaveCandlesUseCase } from "@/src/modules/market";
 import type { CandleRepository } from "@/src/modules/market";
-import { AddStrategyVersionUseCase, CreateStrategyUseCase, ListStrategiesUseCase } from "@/src/modules/strategy";
-import type { StrategyRepository } from "@/src/modules/strategy";
+import { ActivateStrategyVersionUseCase, AddStrategyVersionUseCase, CreateStrategyUseCase,
+  EvaluateStrategyForClosedCandleUseCase, GetStrategyUseCase, GetStrategyVersionUseCase,
+  ListStrategiesUseCase, ValidateStrategyDefinitionUseCase } from "@/src/modules/strategy";
+import type { ClosedCandleHistoryRepository, StrategyEvaluationRepository, StrategyRepository } from "@/src/modules/strategy";
 import type { PairRepository } from "@/src/modules/pair";
 
 export type TradingBotRepositories = {
   botRepository: BotRepository;
   botRunRepository: BotRunRepository;
-  candleRepository: CandleRepository;
+  candleRepository: CandleRepository & ClosedCandleHistoryRepository;
   strategyRepository: StrategyRepository;
+  strategyEvaluationRepository: StrategyEvaluationRepository;
   botLifecycleRepository?: BotLifecycleRepository;
   pairRepository: PairRepository;
 };
@@ -34,8 +37,17 @@ export function createTradingBotUseCases(repositories: TradingBotRepositories) {
     setBotStatus: new SetBotStatusUseCase(repositories.botRepository, repositories.botLifecycleRepository),
     createStrategy: new CreateStrategyUseCase(repositories.strategyRepository),
     addStrategyVersion: new AddStrategyVersionUseCase(repositories.strategyRepository),
+    activateStrategyVersion: new ActivateStrategyVersionUseCase(repositories.botRepository, repositories.strategyRepository),
     listStrategies: new ListStrategiesUseCase(repositories.strategyRepository),
+    getStrategy: new GetStrategyUseCase(repositories.strategyRepository),
+    getStrategyVersion: new GetStrategyVersionUseCase(repositories.strategyRepository),
+    validateStrategyDefinition: new ValidateStrategyDefinitionUseCase(),
     saveCandles: new SaveCandlesUseCase(repositories.candleRepository),
     listCandles: new ListCandlesUseCase(repositories.candleRepository),
+    evaluateStrategyForClosedCandle: new EvaluateStrategyForClosedCandleUseCase(
+      repositories.botRunRepository,
+      repositories.candleRepository,
+      repositories.strategyEvaluationRepository,
+    ),
   } as const;
 }

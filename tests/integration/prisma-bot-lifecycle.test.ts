@@ -14,7 +14,11 @@ test("bot start/pause/stop is idempotent and stores immutable snapshots transact
     const user = await prisma.user.create({ data: { email: `bot-${suffix}@example.test`, passwordHash: "test" } });
     await prisma.pair.upsert({ where: { symbol: "BTCUSDC" }, create: { symbol: "BTCUSDC", decimals: 8 }, update: {} });
     const strategy = await prisma.strategy.create({ data: { userId: user.id, name: `strategy-${suffix}`,
-      versions: { create: { version: 1, schemaVersion: 1, definition: { entry: { action: "HOLD" } } } } }, include: { versions: true } });
+      versions: { create: { version: 1, schemaVersion: 1, definition: {
+        schemaVersion: 1, name: "Lifecycle strategy",
+        entry: { all: [{ indicator: "RSI", period: 14, operator: "LT", value: 20 }] },
+        exit: { all: [{ indicator: "RSI", period: 14, operator: "GTE", value: 80 }] },
+      } } } }, include: { versions: true } });
     try {
       const bots = new PrismaBotRepository(prisma); const runs = new PrismaBotRunRepository(prisma);
       const strategies = new PrismaStrategyRepository(prisma); const lifecycleRepository = new PrismaBotLifecycleRepository(prisma);

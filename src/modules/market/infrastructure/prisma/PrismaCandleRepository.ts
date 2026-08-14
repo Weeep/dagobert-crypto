@@ -75,6 +75,14 @@ export class PrismaCandleRepository implements CandleRepository, CandleIngestion
     })).map(mapCandle);
   }
 
+  async findClosedHistoryEndingAt(pairSymbol: string, interval: string, throughOpenTime: Date, limit: number) {
+    const rows = await this.prisma.candle.findMany({
+      where: { pairSymbol, interval, isClosed: true, openTime: { lte: throughOpenTime } },
+      orderBy: { openTime: "desc" }, take: limit,
+    });
+    return rows.reverse().map(mapCandle);
+  }
+
   async saveMany(candles: Candle[], checkpoint?: CandleIngestionCheckpoint) {
     if (candles.length === 0 && !checkpoint) return;
     await this.prisma.$transaction(async (transaction) => {

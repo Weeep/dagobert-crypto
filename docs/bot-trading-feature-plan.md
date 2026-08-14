@@ -18,7 +18,7 @@ as the implementation.
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
-| Phase 3: strategy engine | Not started | Versioned JSON strategies produce reproducible decisions. |
+| Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
@@ -107,14 +107,18 @@ of remaining orders.
    GUI produces validated JSON; it does not introduce a second strategy format.
 3. User-provided JavaScript or other executable strategy code is not supported.
 4. RSI periods and thresholds are configurable.
-5. EMA periods and distance thresholds are configurable.
-6. The initial EMA proximity calculation uses absolute distance:
+5. EMA periods, required price side, and optional distance thresholds are configurable.
+6. An EMA condition requires the last closed candle's close to be strictly
+   `ABOVE` or `BELOW` the EMA. Equality matches neither side. When the optional
+   maximum distance is present, the proximity calculation is:
 
    ```text
-   abs(close - EMA(period)) / EMA(period) <= configuredDistance
+   abs(close - EMA(period)) / EMA(period) * 100 <= maximumDistancePct
    ```
 
-   For a two-percent threshold, `configuredDistance` is `0.02`.
+   For a two-percent threshold, `maximumDistancePct` is `2.0`. It is optional;
+   without it, any distance on the configured side matches. When present it is
+   between 0 and 100 percent with at most one decimal place.
 7. Strategies can evaluate candle sequences and candle properties. For example,
    a rule may enter after three consecutive red candles, each having fallen by
    more than one percent.
@@ -138,8 +142,8 @@ An illustrative strategy document is:
           {
             "indicator": "EMA_DISTANCE",
             "period": 100,
-            "operator": "ABS_LTE",
-            "value": 0.02
+            "position": "ABOVE",
+            "maximumDistancePct": 2.0
           }
         ]
       },
@@ -582,6 +586,184 @@ idempotent persistence boundary.
 
 ### Phase 3: indicator and strategy engine
 
+#### Implementation progress
+
+- [x] Step 0: indicator warm-up, edge-case, candle-body, and decision-priority contracts fixed.
+- [x] Step 1: shared pure RSI, EMA, candle direction, body-change, and consecutive-sequence calculations implemented.
+- [x] Step 2: versioned strategy TypeScript AST, JSON Schema, and runtime activation validation.
+- [x] Step 3: nested condition-tree evaluation and explainable results.
+- [x] Step 4: deterministic position-aware strategy engine and look-ahead protection.
+- [x] Step 5: closed-candle application service and atomic decision/snapshot persistence.
+- [x] Step 6: owned immutable strategy-version creation, concurrency-safe numbering, and activation.
+- [x] Step 7: authenticated strategy validation, lifecycle, version, and activation API.
+- [x] Step 8: nested form/rule-builder GUI with preview, validation, creation, and versioning.
+- [x] Step 9: golden acceptance suite and Phase 3 gate.
+
+#### Step 0 indicator and evaluation contract
+
+- RSI uses Wilder smoothing and defaults to period 14, while the strategy may
+  configure the period. Its first average gain and loss are the simple averages
+  of the first `period` close-to-close changes. Subsequent values use
+  `(previousAverage * (period - 1) + currentChange) / period`.
+- RSI requires `period + 1` closed candles and returns `null` during warm-up. If
+  both average gain and loss are zero RSI is 50; otherwise zero average loss
+  produces 100 and zero average gain produces 0.
+- EMA uses candle close, starts with the simple average of the first `period`
+  closed candles, and then uses `alpha = 2 / (period + 1)`. It requires `period`
+  closed candles and returns `null` during warm-up.
+- Indicators must reject an explicitly open candle rather than silently include
+  or skip it. Candle ingestion rejects an open price of zero before a candle can
+  reach the strategy engine.
+- Candle direction is `RED` when `close < open`, `GREEN` when `close > open`, and
+  `DOJI` when they are equal. Absolute body change percentage is
+  `abs(close - open) / open * 100`.
+- A missing indicator is never coerced to zero. Insufficient history makes its
+  condition false with reason code `INSUFFICIENT_HISTORY`.
+- Exit conditions are evaluated before entry conditions. If both match the same
+  candle, exit has priority and the single decision is `SELL`; the same candle
+  cannot both close and open a position.
+
+#### Position-aware decision contract for Steps 3-5
+
+- Step 3 evaluates the declarative entry and exit condition trees independently
+  and returns their matches, observed values, and reasons. This condition
+  evaluator has no position, repository, database, or exchange dependency.
+- Step 4 receives an immutable evaluation context containing at least
+  `hasOpenPositions` and `openPositionCount`. It combines that context with the
+  condition results to produce one `BUY`, `SELL`, or `HOLD`; the strategy engine
+  never queries position state itself.
+- With open positions, a matching exit produces `SELL` even when entry also
+  matches. Without an open position, an exit match is recorded with
+  `EXIT_MATCHED_NO_OPEN_POSITION` but is not executable; entry is then evaluated
+  and produces `BUY` when it matches, otherwise the result is `HOLD`.
+- Open positions do not by themselves prevent another `BUY`, because a bot may
+  hold multiple independent lots. Risk and budget validation decides whether
+  the resulting buy intent can actually reserve another position amount.
+- Step 5 loads the current position state, constructs the immutable evaluation
+  context, calls the pure engine, and persists the context, condition results,
+  final decision, values, and reasons. Phase 4 first integrates and verifies this
+  contract against a changing virtual portfolio and complete position lifecycle.
+
+#### Step 2 strategy definition v1 contract
+
+- `StrategyDefinitionV1` is the TypeScript AST and the matching Draft 2020-12
+  JSON Schema is the external format contract. Both require `schemaVersion`,
+  `name`, `entry`, and `exit` and reject unknown properties.
+- Conditions are recursive non-empty `all`/`any` groups, RSI comparisons,
+  directional EMA-distance comparisons, or candle-sequence rules. RSI supports
+  `LT`, `LTE`, `GT`, and `GTE`; `EMA_DISTANCE` requires `ABOVE` or `BELOW` and
+  optionally accepts `maximumDistancePct`.
+- Periods and sequence counts are positive safe integers; thresholds are finite
+  non-negative numbers and RSI thresholds cannot exceed 100. Runtime validation
+  additionally limits a definition to 100 condition nodes and 10 levels of
+  nesting.
+- Strategy creation, new-version creation, and bot start all validate the schema
+  version and complete definition. Unknown versions, fields, indicators, and
+  unsupported indicator/operator combinations cannot be saved or activated.
+
+#### Steps 3-4 evaluation and engine contract
+
+- Every condition returns a boolean match, stable machine-readable reason code,
+  human-readable explanation, observed values, and the complete ordered child
+  result tree. `all` and `any` evaluate every child rather than short-circuiting,
+  so an audit retains both matching and non-matching reasons.
+- RSI and EMA-distance leaves use the shared indicator implementations. EMA
+  compares the last closed price strictly to the configured side; when present,
+  distance is `abs(close - EMA) / EMA * 100` and cannot exceed
+  `maximumDistancePct`. Candle sequences use the trailing configured count. Missing warm-up history returns false with
+  `INSUFFICIENT_HISTORY`, never a substituted numeric value.
+- The engine requires strictly ascending, unique, closed candles for one symbol
+  and timeframe. The evaluated candle must occur exactly once as the final
+  history candle, and any later candle, duplicate identity, open candle, mixed
+  market, invalid timestamp, or mismatching evaluated-candle payload is rejected.
+- Both entry and exit trees are retained in every result. The position-aware
+  policy described above then produces exactly one intent and policy reason.
+  Repeating an evaluation with the same definition, candle history, evaluated
+  candle, and position snapshot produces the same complete result.
+
+#### Step 5 closed-candle evaluation and persistence contract
+
+- The application service resolves a running bot run, its immutable configuration
+  and strategy snapshots, and the requested closed candle. It derives the minimum
+  required lookback from both condition trees and queries only closed candles at
+  or before the evaluated candle, in ascending order and with a bounded limit.
+- Current `OPENING`, `OPEN`, and `CLOSING` positions form the immutable position
+  context. The service invokes the pure engine and records every `BUY`, `SELL`,
+  and `HOLD`, including exact candle/configuration inputs, the complete engine
+  output, indicator/condition trees, explanations, and reason codes.
+- Decision and indicator snapshot persistence is one transaction and uses the
+  unique `(botRunId, candleId)` keys. Retrying or concurrently evaluating the
+  same run/candle returns the first complete stored evaluation without overwriting
+  it or creating duplicates; a half-written decision/snapshot pair is an error.
+
+#### Step 6 strategy-version lifecycle and activation contract
+
+- Creating a version requires ownership of the parent strategy and full v1
+  validation. PostgreSQL assigns the next monotonically increasing version in a
+  serializable transaction with bounded retries for write/uniqueness conflicts.
+- Activating a version requires ownership of both bot and strategy, a valid and
+  supported immutable definition, and a bot that is not currently running.
+  Activation changes only the bot's selected version; existing run strategy
+  snapshots remain unchanged.
+- Step 6 establishes and tests the application and persistence boundaries called
+  by the Step 7 HTTP endpoints.
+
+#### Step 7 strategy API contract
+
+- `POST /api/strategies/validate` validates a schema version and definition
+  without persistence and returns either the typed definition or all structured
+  issues with their field paths and machine-readable codes.
+- `GET/POST /api/strategies` lists the authenticated owner's strategies or creates
+  a validated strategy with its immutable first version. `GET /api/strategies/:id`
+  returns owned strategy detail and its ordered versions.
+- `POST /api/strategies/:id/versions` creates the next owned immutable version;
+  `GET /api/strategies/:id/versions/:version` retrieves an owned numeric version.
+- `PUT /api/bots/:id/strategy-version` explicitly activates an owned, supported
+  strategy version on an owned non-running bot. Activation remains distinct from
+  generic bot editing so its ownership and lifecycle policy is auditable.
+- Every route is authenticated, rejects unsupported methods with `Allow`, returns
+  consistent `BAD_REQUEST`, `VALIDATION_ERROR`, `NOT_FOUND`, or
+  `INVALID_TRANSITION` errors, and sanitizes unexpected failures as
+  `INTERNAL_ERROR` without exposing persistence details.
+
+#### Step 8 strategy rule-builder GUI contract
+
+- The Bot page provides a form-only editor for recursive `all`/`any` groups,
+  RSI comparisons, EMA side plus optional percentage-distance thresholds, and candle-sequence rules.
+  Users can add, replace, and remove nested rules while groups always retain at
+  least one child; no executable JavaScript or arbitrary formula input exists.
+- The editor continuously renders the exact `StrategyDefinitionV1` JSON it will
+  submit. Validation calls the authenticated backend contract and displays every
+  returned issue with its JSON path; invalid definitions cannot be saved.
+- Creating a new strategy persists version 1. Selecting an existing strategy
+  loads its latest immutable definition, and saving creates a new version rather
+  than mutating history. The strategy list is refreshed after every successful
+  write and timestamps/versions come from the server DTOs.
+- Rule-tree transformations are pure and covered independently from React so
+  nested path replacement, append/removal invariants, and emitted schema validity
+  remain regression-testable.
+
+#### Step 9 golden acceptance contract
+
+- The immutable fixture contains 140 ordered, closed one-hour candles. Its first
+  38 closes reproduce the published Wilder RSI worksheet series and its
+  deterministic synthetic continuation crosses warm-up, trend, reversal,
+  candle-sequence, and EMA-position boundaries.
+- Expected RSI(14), EMA(20), and EMA(100) values are calculated for every candle
+  prefix by an auditable Python `Decimal` reference implementation with 50-digit
+  precision, independently of the production TypeScript indicators. Golden
+  numeric comparisons use an absolute `1e-10` tolerance; warm-up `null` values
+  must match exactly.
+- A fixed valid v1 strategy and fixed position snapshots cover HOLD, BUY, SELL,
+  non-actionable exits, simultaneous entry/exit with exit priority, and
+  insufficient-history reasons. Every scenario also reruns against the identical
+  snapshot and requires a deeply equal complete evaluation.
+- The gate verifies closed/single-market/ordered fixture invariants, rejects the
+  legacy EMA JSON contract, and proves that adding a candle after the evaluated
+  candle is rejected as look-ahead. Fixture provenance and manual update policy
+  are documented beside the data; CI never regenerates expected values from
+  production code.
+
 #### Work
 
 - Implement pure, configurable RSI and EMA calculations.
@@ -821,3 +1003,5 @@ At the start of every bot-related task:
 | 2026-08-09 | Phase 2 Step 3 historical backfill and gap repair were verified with live Binance data and PostgreSQL, including rolling ranges, pre-listing history, resumable batches, and cursor advancement. |
 | 2026-08-09 | Phase 2 Step 4 resilient closed-candle polling was completed with active-bot plus configured subscription discovery, bounded overlap catch-up, PostgreSQL advisory leases, interval-boundary scheduling, per-subscription backoff, restart-safe cursor handling, standalone one-shot/continuous execution, and deterministic plus Prisma integration coverage. |
 | 2026-08-11 | Phase 2 Step 5 uses structured one-shot outcomes as the initial single-maintainer health check; dedicated metrics backends, dashboards, alerts, HTTP probes, and persistent metric history are deferred until the project has multiple maintainers/users or unattended availability requirements. |
+| 2026-08-14 | The v1 EMA rule requires a strict `ABOVE` or `BELOW` close position; equality matches neither. Its optional `maximumDistancePct` is expressed as a percentage from 0 to 100 with at most one decimal place. |
+| 2026-08-14 | Phase 3 is complete after its golden gate verified independently calculated RSI/EMA prefix series, deterministic position-aware decisions, schema rejection, and look-ahead protection against immutable fixtures. |

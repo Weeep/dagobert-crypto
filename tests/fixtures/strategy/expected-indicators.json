@@ -1,0 +1,1696 @@
+{
+  "fixtureVersion": 1,
+  "referenceCandles": "reference-candles.json",
+  "comparison": {
+    "type": "absoluteTolerance",
+    "tolerance": 1e-10
+  },
+  "series": {
+    "rsi14": [
+      {
+        "candleId": "reference-1h-000",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-001",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-002",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-003",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-004",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-005",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-006",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-007",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-008",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-009",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-010",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-011",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-012",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-013",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-014",
+        "value": 70.46413502109705
+      },
+      {
+        "candleId": "reference-1h-015",
+        "value": 66.24961855355508
+      },
+      {
+        "candleId": "reference-1h-016",
+        "value": 66.48094183471267
+      },
+      {
+        "candleId": "reference-1h-017",
+        "value": 69.3468531629087
+      },
+      {
+        "candleId": "reference-1h-018",
+        "value": 66.29471265892626
+      },
+      {
+        "candleId": "reference-1h-019",
+        "value": 57.91502067008556
+      },
+      {
+        "candleId": "reference-1h-020",
+        "value": 62.8807183099624
+      },
+      {
+        "candleId": "reference-1h-021",
+        "value": 63.20878871828777
+      },
+      {
+        "candleId": "reference-1h-022",
+        "value": 56.01158478954757
+      },
+      {
+        "candleId": "reference-1h-023",
+        "value": 62.33992931089786
+      },
+      {
+        "candleId": "reference-1h-024",
+        "value": 54.67097137765516
+      },
+      {
+        "candleId": "reference-1h-025",
+        "value": 50.386815195114224
+      },
+      {
+        "candleId": "reference-1h-026",
+        "value": 40.01942379131357
+      },
+      {
+        "candleId": "reference-1h-027",
+        "value": 41.49263540422284
+      },
+      {
+        "candleId": "reference-1h-028",
+        "value": 41.902429678458134
+      },
+      {
+        "candleId": "reference-1h-029",
+        "value": 45.49949723868042
+      },
+      {
+        "candleId": "reference-1h-030",
+        "value": 37.322778313379956
+      },
+      {
+        "candleId": "reference-1h-031",
+        "value": 33.090482572723424
+      },
+      {
+        "candleId": "reference-1h-032",
+        "value": 37.7887719820578
+      },
+      {
+        "candleId": "reference-1h-033",
+        "value": 31.252043255441187
+      },
+      {
+        "candleId": "reference-1h-034",
+        "value": 33.35311813563207
+      },
+      {
+        "candleId": "reference-1h-035",
+        "value": 31.293215891151846
+      },
+      {
+        "candleId": "reference-1h-036",
+        "value": 36.919115306191024
+      },
+      {
+        "candleId": "reference-1h-037",
+        "value": 43.88080324807907
+      },
+      {
+        "candleId": "reference-1h-038",
+        "value": 42.18925924798339
+      },
+      {
+        "candleId": "reference-1h-039",
+        "value": 40.681364923211866
+      },
+      {
+        "candleId": "reference-1h-040",
+        "value": 39.348564104450475
+      },
+      {
+        "candleId": "reference-1h-041",
+        "value": 37.65757012075034
+      },
+      {
+        "candleId": "reference-1h-042",
+        "value": 36.163237959811696
+      },
+      {
+        "candleId": "reference-1h-043",
+        "value": 34.85255740392433
+      },
+      {
+        "candleId": "reference-1h-044",
+        "value": 33.20314663824289
+      },
+      {
+        "candleId": "reference-1h-045",
+        "value": 31.757993437752216
+      },
+      {
+        "candleId": "reference-1h-046",
+        "value": 30.49993472167565
+      },
+      {
+        "candleId": "reference-1h-047",
+        "value": 28.92919495687207
+      },
+      {
+        "candleId": "reference-1h-048",
+        "value": 27.564240922520924
+      },
+      {
+        "candleId": "reference-1h-049",
+        "value": 26.384470726990536
+      },
+      {
+        "candleId": "reference-1h-050",
+        "value": 24.922422586333628
+      },
+      {
+        "candleId": "reference-1h-051",
+        "value": 23.661682479045062
+      },
+      {
+        "candleId": "reference-1h-052",
+        "value": 22.579222967078934
+      },
+      {
+        "candleId": "reference-1h-053",
+        "value": 21.24698044562928
+      },
+      {
+        "candleId": "reference-1h-054",
+        "value": 20.10627732917111
+      },
+      {
+        "candleId": "reference-1h-055",
+        "value": 19.132809693914968
+      },
+      {
+        "candleId": "reference-1h-056",
+        "value": 17.942158449599656
+      },
+      {
+        "candleId": "reference-1h-057",
+        "value": 16.929161963104463
+      },
+      {
+        "candleId": "reference-1h-058",
+        "value": 16.06935858148816
+      },
+      {
+        "candleId": "reference-1h-059",
+        "value": 15.023540795657615
+      },
+      {
+        "candleId": "reference-1h-060",
+        "value": 14.138760427341236
+      },
+      {
+        "candleId": "reference-1h-061",
+        "value": 13.391356941735099
+      },
+      {
+        "candleId": "reference-1h-062",
+        "value": 12.486646439295574
+      },
+      {
+        "candleId": "reference-1h-063",
+        "value": 11.724981651771818
+      },
+      {
+        "candleId": "reference-1h-064",
+        "value": 11.084228307554715
+      },
+      {
+        "candleId": "reference-1h-065",
+        "value": 10.311841292728692
+      },
+      {
+        "candleId": "reference-1h-066",
+        "value": 9.664301261861576
+      },
+      {
+        "candleId": "reference-1h-067",
+        "value": 9.121472666029193
+      },
+      {
+        "candleId": "reference-1h-068",
+        "value": 8.46944329826033
+      },
+      {
+        "candleId": "reference-1h-069",
+        "value": 7.9247471889423196
+      },
+      {
+        "candleId": "reference-1h-070",
+        "value": 15.422782075860828
+      },
+      {
+        "candleId": "reference-1h-071",
+        "value": 22.825343058790928
+      },
+      {
+        "candleId": "reference-1h-072",
+        "value": 29.989902894578197
+      },
+      {
+        "candleId": "reference-1h-073",
+        "value": 35.426419738506596
+      },
+      {
+        "candleId": "reference-1h-074",
+        "value": 40.83778937620409
+      },
+      {
+        "candleId": "reference-1h-075",
+        "value": 46.117391356260626
+      },
+      {
+        "candleId": "reference-1h-076",
+        "value": 50.15160620896225
+      },
+      {
+        "candleId": "reference-1h-077",
+        "value": 54.19140839304863
+      },
+      {
+        "candleId": "reference-1h-078",
+        "value": 58.15636610589463
+      },
+      {
+        "candleId": "reference-1h-079",
+        "value": 61.201833068872524
+      },
+      {
+        "candleId": "reference-1h-080",
+        "value": 64.26532723675021
+      },
+      {
+        "candleId": "reference-1h-081",
+        "value": 67.2855928664014
+      },
+      {
+        "candleId": "reference-1h-082",
+        "value": 69.61460266575712
+      },
+      {
+        "candleId": "reference-1h-083",
+        "value": 71.96547084479228
+      },
+      {
+        "candleId": "reference-1h-084",
+        "value": 74.29113253393245
+      },
+      {
+        "candleId": "reference-1h-085",
+        "value": 76.08994123982588
+      },
+      {
+        "candleId": "reference-1h-086",
+        "value": 77.91044566413558
+      },
+      {
+        "candleId": "reference-1h-087",
+        "value": 79.71620757617931
+      },
+      {
+        "candleId": "reference-1h-088",
+        "value": 81.11616490625099
+      },
+      {
+        "candleId": "reference-1h-089",
+        "value": 82.53592201762167
+      },
+      {
+        "candleId": "reference-1h-090",
+        "value": 83.94708744820618
+      },
+      {
+        "candleId": "reference-1h-091",
+        "value": 85.04312208956945
+      },
+      {
+        "candleId": "reference-1h-092",
+        "value": 86.15644422759209
+      },
+      {
+        "candleId": "reference-1h-093",
+        "value": 87.26481576348684
+      },
+      {
+        "candleId": "reference-1h-094",
+        "value": 88.12690591498837
+      },
+      {
+        "candleId": "reference-1h-095",
+        "value": 89.00369844687916
+      },
+      {
+        "candleId": "reference-1h-096",
+        "value": 89.87770031234983
+      },
+      {
+        "candleId": "reference-1h-097",
+        "value": 90.55826380055426
+      },
+      {
+        "candleId": "reference-1h-098",
+        "value": 91.2511223009833
+      },
+      {
+        "candleId": "reference-1h-099",
+        "value": 91.9424675552197
+      },
+      {
+        "candleId": "reference-1h-100",
+        "value": 80.57452132427663
+      },
+      {
+        "candleId": "reference-1h-101",
+        "value": 71.50660694610836
+      },
+      {
+        "candleId": "reference-1h-102",
+        "value": 64.12356059851712
+      },
+      {
+        "candleId": "reference-1h-103",
+        "value": 57.10549099680012
+      },
+      {
+        "candleId": "reference-1h-104",
+        "value": 51.34220773510505
+      },
+      {
+        "candleId": "reference-1h-105",
+        "value": 46.53713438794415
+      },
+      {
+        "candleId": "reference-1h-106",
+        "value": 41.8726242735914
+      },
+      {
+        "candleId": "reference-1h-107",
+        "value": 37.96930208316693
+      },
+      {
+        "candleId": "reference-1h-108",
+        "value": 34.66344390823833
+      },
+      {
+        "candleId": "reference-1h-109",
+        "value": 31.408461510067895
+      },
+      {
+        "candleId": "reference-1h-110",
+        "value": 38.95367169934318
+      },
+      {
+        "candleId": "reference-1h-111",
+        "value": 45.643791564747154
+      },
+      {
+        "candleId": "reference-1h-112",
+        "value": 51.57346207250432
+      },
+      {
+        "candleId": "reference-1h-113",
+        "value": 56.332676733455564
+      },
+      {
+        "candleId": "reference-1h-114",
+        "value": 60.658661167893584
+      },
+      {
+        "candleId": "reference-1h-115",
+        "value": 64.5793119689402
+      },
+      {
+        "candleId": "reference-1h-116",
+        "value": 67.78663321553776
+      },
+      {
+        "candleId": "reference-1h-117",
+        "value": 70.75006118457344
+      },
+      {
+        "candleId": "reference-1h-118",
+        "value": 73.4763071548605
+      },
+      {
+        "candleId": "reference-1h-119",
+        "value": 75.73576381608945
+      },
+      {
+        "candleId": "reference-1h-120",
+        "value": 69.6758157031596
+      },
+      {
+        "candleId": "reference-1h-121",
+        "value": 64.35803374458628
+      },
+      {
+        "candleId": "reference-1h-122",
+        "value": 59.66423978247059
+      },
+      {
+        "candleId": "reference-1h-123",
+        "value": 54.96088526630182
+      },
+      {
+        "candleId": "reference-1h-124",
+        "value": 50.8235698316434
+      },
+      {
+        "candleId": "reference-1h-125",
+        "value": 47.16394563696572
+      },
+      {
+        "candleId": "reference-1h-126",
+        "value": 43.48952611462178
+      },
+      {
+        "candleId": "reference-1h-127",
+        "value": 40.251222613347075
+      },
+      {
+        "candleId": "reference-1h-128",
+        "value": 37.38204535329289
+      },
+      {
+        "candleId": "reference-1h-129",
+        "value": 34.496756440244226
+      },
+      {
+        "candleId": "reference-1h-130",
+        "value": 41.01190300568038
+      },
+      {
+        "candleId": "reference-1h-131",
+        "value": 46.87799405589375
+      },
+      {
+        "candleId": "reference-1h-132",
+        "value": 52.15560519184633
+      },
+      {
+        "candleId": "reference-1h-133",
+        "value": 56.535070531025475
+      },
+      {
+        "candleId": "reference-1h-134",
+        "value": 60.54473424282204
+      },
+      {
+        "candleId": "reference-1h-135",
+        "value": 64.2072993009974
+      },
+      {
+        "candleId": "reference-1h-136",
+        "value": 67.28707407871363
+      },
+      {
+        "candleId": "reference-1h-137",
+        "value": 70.13962074248413
+      },
+      {
+        "candleId": "reference-1h-138",
+        "value": 72.77311973734793
+      },
+      {
+        "candleId": "reference-1h-139",
+        "value": 75.00849027639595
+      }
+    ],
+    "ema20": [
+      {
+        "candleId": "reference-1h-000",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-001",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-002",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-003",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-004",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-005",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-006",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-007",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-008",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-009",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-010",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-011",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-012",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-013",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-014",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-015",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-016",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-017",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-018",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-019",
+        "value": 45.409
+      },
+      {
+        "candleId": "reference-1h-020",
+        "value": 45.485285714285716
+      },
+      {
+        "candleId": "reference-1h-021",
+        "value": 45.5581156462585
+      },
+      {
+        "candleId": "reference-1h-022",
+        "value": 45.572580822805314
+      },
+      {
+        "candleId": "reference-1h-023",
+        "value": 45.65614455396671
+      },
+      {
+        "candleId": "reference-1h-024",
+        "value": 45.66794031073179
+      },
+      {
+        "candleId": "reference-1h-025",
+        "value": 45.63766028113828
+      },
+      {
+        "candleId": "reference-1h-026",
+        "value": 45.484549778172735
+      },
+      {
+        "candleId": "reference-1h-027",
+        "value": 45.360306942156285
+      },
+      {
+        "candleId": "reference-1h-028",
+        "value": 45.25170628099854
+      },
+      {
+        "candleId": "reference-1h-029",
+        "value": 45.186781873284396
+      },
+      {
+        "candleId": "reference-1h-030",
+        "value": 45.01851693297159
+      },
+      {
+        "candleId": "reference-1h-031",
+        "value": 44.793896272688585
+      },
+      {
+        "candleId": "reference-1h-032",
+        "value": 44.63542996100396
+      },
+      {
+        "candleId": "reference-1h-033",
+        "value": 44.36824615519406
+      },
+      {
+        "candleId": "reference-1h-034",
+        "value": 44.147460807080336
+      },
+      {
+        "candleId": "reference-1h-035",
+        "value": 43.905797873072686
+      },
+      {
+        "candleId": "reference-1h-036",
+        "value": 43.74334093278005
+      },
+      {
+        "candleId": "reference-1h-037",
+        "value": 43.675403701086715
+      },
+      {
+        "candleId": "reference-1h-038",
+        "value": 43.58727001526893
+      },
+      {
+        "candleId": "reference-1h-039",
+        "value": 43.48372049000522
+      },
+      {
+        "candleId": "reference-1h-040",
+        "value": 43.369080443338056
+      },
+      {
+        "candleId": "reference-1h-041",
+        "value": 43.238691829686815
+      },
+      {
+        "candleId": "reference-1h-042",
+        "value": 43.09691165543093
+      },
+      {
+        "candleId": "reference-1h-043",
+        "value": 42.947681973961316
+      },
+      {
+        "candleId": "reference-1h-044",
+        "value": 42.78599797644119
+      },
+      {
+        "candleId": "reference-1h-045",
+        "value": 42.61590293106584
+      },
+      {
+        "candleId": "reference-1h-046",
+        "value": 42.441055032869095
+      },
+      {
+        "candleId": "reference-1h-047",
+        "value": 42.256192648786325
+      },
+      {
+        "candleId": "reference-1h-048",
+        "value": 42.065126682235245
+      },
+      {
+        "candleId": "reference-1h-049",
+        "value": 41.871305093450935
+      },
+      {
+        "candleId": "reference-1h-050",
+        "value": 41.6692760369318
+      },
+      {
+        "candleId": "reference-1h-051",
+        "value": 41.46267831912877
+      },
+      {
+        "candleId": "reference-1h-052",
+        "value": 41.254804193497456
+      },
+      {
+        "candleId": "reference-1h-053",
+        "value": 41.04006093697389
+      },
+      {
+        "candleId": "reference-1h-054",
+        "value": 40.82195989535733
+      },
+      {
+        "candleId": "reference-1h-055",
+        "value": 40.603678000561395
+      },
+      {
+        "candleId": "reference-1h-056",
+        "value": 40.379518190984115
+      },
+      {
+        "candleId": "reference-1h-057",
+        "value": 40.15289741089039
+      },
+      {
+        "candleId": "reference-1h-058",
+        "value": 39.926907181281784
+      },
+      {
+        "candleId": "reference-1h-059",
+        "value": 39.69577316401685
+      },
+      {
+        "candleId": "reference-1h-060",
+        "value": 39.46284238649144
+      },
+      {
+        "candleId": "reference-1h-061",
+        "value": 39.23114311158749
+      },
+      {
+        "candleId": "reference-1h-062",
+        "value": 38.994843767626776
+      },
+      {
+        "candleId": "reference-1h-063",
+        "value": 38.75723959928137
+      },
+      {
+        "candleId": "reference-1h-064",
+        "value": 38.52131201839743
+      },
+      {
+        "candleId": "reference-1h-065",
+        "value": 38.281187064264344
+      },
+      {
+        "candleId": "reference-1h-066",
+        "value": 38.040121629572496
+      },
+      {
+        "candleId": "reference-1h-067",
+        "value": 37.80106242675607
+      },
+      {
+        "candleId": "reference-1h-068",
+        "value": 37.55810410039835
+      },
+      {
+        "candleId": "reference-1h-069",
+        "value": 37.31447513845565
+      },
+      {
+        "candleId": "reference-1h-070",
+        "value": 37.1245251252694
+      },
+      {
+        "candleId": "reference-1h-071",
+        "value": 36.98599892286279
+      },
+      {
+        "candleId": "reference-1h-072",
+        "value": 36.896856168304424
+      },
+      {
+        "candleId": "reference-1h-073",
+        "value": 36.846679390370674
+      },
+      {
+        "candleId": "reference-1h-074",
+        "value": 36.834614686525846
+      },
+      {
+        "candleId": "reference-1h-075",
+        "value": 36.85988947828529
+      },
+      {
+        "candleId": "reference-1h-076",
+        "value": 36.913233337496216
+      },
+      {
+        "candleId": "reference-1h-077",
+        "value": 36.99483016249658
+      },
+      {
+        "candleId": "reference-1h-078",
+        "value": 37.1048463374969
+      },
+      {
+        "candleId": "reference-1h-079",
+        "value": 37.234860972021
+      },
+      {
+        "candleId": "reference-1h-080",
+        "value": 37.38582659373329
+      },
+      {
+        "candleId": "reference-1h-081",
+        "value": 37.558605013377736
+      },
+      {
+        "candleId": "reference-1h-082",
+        "value": 37.745404535913195
+      },
+      {
+        "candleId": "reference-1h-083",
+        "value": 37.94774696106432
+      },
+      {
+        "candleId": "reference-1h-084",
+        "value": 38.16700915524867
+      },
+      {
+        "candleId": "reference-1h-085",
+        "value": 38.395865426177366
+      },
+      {
+        "candleId": "reference-1h-086",
+        "value": 38.636259195112856
+      },
+      {
+        "candleId": "reference-1h-087",
+        "value": 38.8899487955783
+      },
+      {
+        "candleId": "reference-1h-088",
+        "value": 39.14995367218989
+      },
+      {
+        "candleId": "reference-1h-089",
+        "value": 39.41852951293371
+      },
+      {
+        "candleId": "reference-1h-090",
+        "value": 39.69771717836859
+      },
+      {
+        "candleId": "reference-1h-091",
+        "value": 39.98079173280968
+      },
+      {
+        "candleId": "reference-1h-092",
+        "value": 40.27024013920876
+      },
+      {
+        "candleId": "reference-1h-093",
+        "value": 40.56831250690316
+      },
+      {
+        "candleId": "reference-1h-094",
+        "value": 40.868473220531435
+      },
+      {
+        "candleId": "reference-1h-095",
+        "value": 41.17338053286177
+      },
+      {
+        "candleId": "reference-1h-096",
+        "value": 41.485439529732076
+      },
+      {
+        "candleId": "reference-1h-097",
+        "value": 41.798254812614736
+      },
+      {
+        "candleId": "reference-1h-098",
+        "value": 42.11461149712762
+      },
+      {
+        "candleId": "reference-1h-099",
+        "value": 42.43702944978213
+      },
+      {
+        "candleId": "reference-1h-100",
+        "value": 42.66874093075526
+      },
+      {
+        "candleId": "reference-1h-101",
+        "value": 42.821241794492856
+      },
+      {
+        "candleId": "reference-1h-102",
+        "value": 42.9049330521602
+      },
+      {
+        "candleId": "reference-1h-103",
+        "value": 42.92065371385923
+      },
+      {
+        "candleId": "reference-1h-104",
+        "value": 42.8777343125393
+      },
+      {
+        "candleId": "reference-1h-105",
+        "value": 42.784616758964134
+      },
+      {
+        "candleId": "reference-1h-106",
+        "value": 42.640367543824695
+      },
+      {
+        "candleId": "reference-1h-107",
+        "value": 42.45271349203186
+      },
+      {
+        "candleId": "reference-1h-108",
+        "value": 42.22864554040978
+      },
+      {
+        "candleId": "reference-1h-109",
+        "value": 41.96591739370409
+      },
+      {
+        "candleId": "reference-1h-110",
+        "value": 41.80154430858941
+      },
+      {
+        "candleId": "reference-1h-111",
+        "value": 41.729016279199946
+      },
+      {
+        "candleId": "reference-1h-112",
+        "value": 41.74244330022852
+      },
+      {
+        "candleId": "reference-1h-113",
+        "value": 41.82792489068295
+      },
+      {
+        "candleId": "reference-1h-114",
+        "value": 41.98145585347505
+      },
+      {
+        "candleId": "reference-1h-115",
+        "value": 42.199412438858374
+      },
+      {
+        "candleId": "reference-1h-116",
+        "value": 42.469944587538535
+      },
+      {
+        "candleId": "reference-1h-117",
+        "value": 42.790902245868196
+      },
+      {
+        "candleId": "reference-1h-118",
+        "value": 43.160340127214084
+      },
+      {
+        "candleId": "reference-1h-119",
+        "value": 43.567926781765124
+      },
+      {
+        "candleId": "reference-1h-120",
+        "value": 43.86717185016845
+      },
+      {
+        "candleId": "reference-1h-121",
+        "value": 44.071250721580974
+      },
+      {
+        "candleId": "reference-1h-122",
+        "value": 44.19208398619231
+      },
+      {
+        "candleId": "reference-1h-123",
+        "value": 44.231885511316854
+      },
+      {
+        "candleId": "reference-1h-124",
+        "value": 44.20122974833429
+      },
+      {
+        "candleId": "reference-1h-125",
+        "value": 44.10968405801674
+      },
+      {
+        "candleId": "reference-1h-126",
+        "value": 43.95733319534848
+      },
+      {
+        "candleId": "reference-1h-127",
+        "value": 43.75282527198196
+      },
+      {
+        "candleId": "reference-1h-128",
+        "value": 43.50398476988844
+      },
+      {
+        "candleId": "reference-1h-129",
+        "value": 43.20931955370859
+      },
+      {
+        "candleId": "reference-1h-130",
+        "value": 43.03509864383158
+      },
+      {
+        "candleId": "reference-1h-131",
+        "value": 42.9727082968
+      },
+      {
+        "candleId": "reference-1h-132",
+        "value": 43.01435512567619
+      },
+      {
+        "candleId": "reference-1h-133",
+        "value": 43.14441654227846
+      },
+      {
+        "candleId": "reference-1h-134",
+        "value": 43.35732925253765
+      },
+      {
+        "candleId": "reference-1h-135",
+        "value": 43.64805979991502
+      },
+      {
+        "candleId": "reference-1h-136",
+        "value": 44.00348267611359
+      },
+      {
+        "candleId": "reference-1h-137",
+        "value": 44.42029384981706
+      },
+      {
+        "candleId": "reference-1h-138",
+        "value": 44.89550395935829
+      },
+      {
+        "candleId": "reference-1h-139",
+        "value": 45.41783691560988
+      }
+    ],
+    "ema100": [
+      {
+        "candleId": "reference-1h-000",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-001",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-002",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-003",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-004",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-005",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-006",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-007",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-008",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-009",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-010",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-011",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-012",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-013",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-014",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-015",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-016",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-017",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-018",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-019",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-020",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-021",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-022",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-023",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-024",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-025",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-026",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-027",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-028",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-029",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-030",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-031",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-032",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-033",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-034",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-035",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-036",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-037",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-038",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-039",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-040",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-041",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-042",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-043",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-044",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-045",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-046",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-047",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-048",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-049",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-050",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-051",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-052",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-053",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-054",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-055",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-056",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-057",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-058",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-059",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-060",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-061",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-062",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-063",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-064",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-065",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-066",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-067",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-068",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-069",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-070",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-071",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-072",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-073",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-074",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-075",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-076",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-077",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-078",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-079",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-080",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-081",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-082",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-083",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-084",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-085",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-086",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-087",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-088",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-089",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-090",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-091",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-092",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-093",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-094",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-095",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-096",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-097",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-098",
+        "value": null
+      },
+      {
+        "candleId": "reference-1h-099",
+        "value": 41.5731
+      },
+      {
+        "candleId": "reference-1h-100",
+        "value": 41.63838514851485
+      },
+      {
+        "candleId": "reference-1h-101",
+        "value": 41.69049633369278
+      },
+      {
+        "candleId": "reference-1h-102",
+        "value": 41.730288485500836
+      },
+      {
+        "candleId": "reference-1h-103",
+        "value": 41.756817426382014
+      },
+      {
+        "candleId": "reference-1h-104",
+        "value": 41.77093985358237
+      },
+      {
+        "candleId": "reference-1h-105",
+        "value": 41.77349550004608
+      },
+      {
+        "candleId": "reference-1h-106",
+        "value": 41.76352529212438
+      },
+      {
+        "candleId": "reference-1h-107",
+        "value": 41.7418713259437
+      },
+      {
+        "candleId": "reference-1h-108",
+        "value": 41.709359022459665
+      },
+      {
+        "candleId": "reference-1h-109",
+        "value": 41.66501527944066
+      },
+      {
+        "candleId": "reference-1h-110",
+        "value": 41.6367971550953
+      },
+      {
+        "candleId": "reference-1h-111",
+        "value": 41.62497938964787
+      },
+      {
+        "candleId": "reference-1h-112",
+        "value": 41.62983128292217
+      },
+      {
+        "candleId": "reference-1h-113",
+        "value": 41.6498346238544
+      },
+      {
+        "candleId": "reference-1h-114",
+        "value": 41.68528344318402
+      },
+      {
+        "candleId": "reference-1h-115",
+        "value": 41.73646594925958
+      },
+      {
+        "candleId": "reference-1h-116",
+        "value": 41.80188246511583
+      },
+      {
+        "candleId": "reference-1h-117",
+        "value": 41.88184518857888
+      },
+      {
+        "candleId": "reference-1h-118",
+        "value": 41.97666013533969
+      },
+      {
+        "candleId": "reference-1h-119",
+        "value": 42.084845083154754
+      },
+      {
+        "candleId": "reference-1h-120",
+        "value": 42.1764323092309
+      },
+      {
+        "candleId": "reference-1h-121",
+        "value": 42.25234454073127
+      },
+      {
+        "candleId": "reference-1h-122",
+        "value": 42.31348623299402
+      },
+      {
+        "candleId": "reference-1h-123",
+        "value": 42.35896175313275
+      },
+      {
+        "candleId": "reference-1h-124",
+        "value": 42.38967538178359
+      },
+      {
+        "candleId": "reference-1h-125",
+        "value": 42.4065134930354
+      },
+      {
+        "candleId": "reference-1h-126",
+        "value": 42.40856273079707
+      },
+      {
+        "candleId": "reference-1h-127",
+        "value": 42.39671000345456
+      },
+      {
+        "candleId": "reference-1h-128",
+        "value": 42.371824656851494
+      },
+      {
+        "candleId": "reference-1h-129",
+        "value": 42.33297664384454
+      },
+      {
+        "candleId": "reference-1h-130",
+        "value": 42.31410581921395
+      },
+      {
+        "candleId": "reference-1h-131",
+        "value": 42.31541065447704
+      },
+      {
+        "candleId": "reference-1h-132",
+        "value": 42.337085691022054
+      },
+      {
+        "candleId": "reference-1h-133",
+        "value": 42.37753943971468
+      },
+      {
+        "candleId": "reference-1h-134",
+        "value": 42.43699410427479
+      },
+      {
+        "candleId": "reference-1h-135",
+        "value": 42.515667488348555
+      },
+      {
+        "candleId": "reference-1h-136",
+        "value": 42.611990904420864
+      },
+      {
+        "candleId": "reference-1h-137",
+        "value": 42.726208906313516
+      },
+      {
+        "candleId": "reference-1h-138",
+        "value": 42.8585612051984
+      },
+      {
+        "candleId": "reference-1h-139",
+        "value": 43.007500587273675
+      }
+    ]
+  }
+}

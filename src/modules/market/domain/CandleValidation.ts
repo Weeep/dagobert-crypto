@@ -38,6 +38,7 @@ export function validateCandle(candle: Candle, requireClosed = false): void {
     throw new CandleValidationError("closeTime does not match the candle interval");
 
   const open = decimal(candle.open, "open");
+  if (open.eq(0)) throw new CandleValidationError("open must be greater than zero");
   const high = decimal(candle.high, "high");
   const low = decimal(candle.low, "low");
   const close = decimal(candle.close, "close");

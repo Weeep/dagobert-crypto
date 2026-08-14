@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { StrategyRepository } from "@/src/modules/strategy";
+import { validateStrategyDefinition, type StrategyRepository } from "@/src/modules/strategy";
 import type { BotRepository } from "../domain/BotRepository";
 import type { BotRunRepository } from "../domain/BotRunRepository";
 import type { BotRun } from "../domain/TradingBot";
@@ -25,6 +25,8 @@ export class StartBotUseCase {
     if (bot.status === "STOPPED" || bot.status === "ERROR") return { ok: false as const, error: `Cannot start ${bot.status} bot`, run: null };
     const version = await this.strategies.findVersionById(bot.strategyVersionId);
     if (!version) return { ok: false as const, error: "Strategy version not found", run: null };
+    const validatedStrategy = validateStrategyDefinition(version.definition, version.schemaVersion);
+    if (!validatedStrategy.ok) return { ok: false as const, error: "Strategy version is invalid or unsupported", run: null };
     if (bot.mode === "BACKTEST" && (!range || !this.isValidDate(range.from) || !this.isValidDate(range.to) || range.from >= range.to)) {
       return { ok: false as const, error: "A valid backtest range is required", run: null };
     }
@@ -32,7 +34,7 @@ export class StartBotUseCase {
     const run: BotRun = {
       id: randomUUID(), botId: bot.id, mode: bot.mode, status: "RUNNING",
       configurationSnapshot: structuredClone({ ...bot, createdAt: bot.createdAt.toISOString(), updatedAt: bot.updatedAt.toISOString() }),
-      strategySnapshot: structuredClone({ ...version, definition: version.definition, createdAt: version.createdAt.toISOString() }),
+      strategySnapshot: structuredClone({ ...version, definition: validatedStrategy.definition, createdAt: version.createdAt.toISOString() }),
       backtestFrom: range?.from ?? null, backtestTo: range?.to ?? null,
       startedAt: new Date(), endedAt: null, errorMessage: null,
     };

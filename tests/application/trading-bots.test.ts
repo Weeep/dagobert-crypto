@@ -3,6 +3,13 @@ import test, { describe } from "node:test";
 import { CreateBotUseCase, GetBotUseCase, ListBotsUseCase, SetBotStatusUseCase, StartBotUseCase, UpdateBotUseCase, type BotRepository, type BotRun, type BotRunRepository, type TradingBot } from "@/src/modules/bot";
 import { CreateStrategyUseCase, type Strategy, type StrategyRepository, type StrategyVersion } from "@/src/modules/strategy";
 
+const validDefinition = (name = "RSI") => ({
+  schemaVersion: 1 as const,
+  name,
+  entry: { all: [{ indicator: "RSI" as const, period: 14, operator: "LT" as const, value: 20 }] },
+  exit: { all: [{ indicator: "RSI" as const, period: 14, operator: "GTE" as const, value: 80 }] },
+});
+
 class MemoryBotRepository implements BotRepository {
   bots: TradingBot[] = [];
   async findAllByUserId(userId: string) { return this.bots.filter((bot) => bot.userId === userId); }
@@ -26,9 +33,12 @@ class MemoryStrategyRepository implements StrategyRepository {
     return this.strategies.flatMap((strategy) => strategy.versions).find((version) => version.id === id) ?? null;
   }
   async save(strategy: Strategy) { this.strategies.push(strategy); }
-  async addVersion(version: StrategyVersion) {
-    const strategy = await this.findById(version.strategyId);
-    if (strategy) strategy.versions.push(version);
+  async createNextVersion(strategyId: string, definition: StrategyVersion["definition"], schemaVersion: number, createdAt: Date) {
+    const strategy = await this.findById(strategyId); if (!strategy) throw new Error("Strategy not found");
+    const version = { id: `version-${strategy.versions.length + 1}`, strategyId,
+      version: Math.max(0, ...strategy.versions.map((item) => item.version)) + 1,
+      schemaVersion, definition, createdAt };
+    strategy.versions.push(version); return version;
   }
 }
 
@@ -59,7 +69,7 @@ describe("trading bot application", () => {
   test("creates an immutable strategy version and snapshots it when a backtest starts", async () => {
     const strategies = new MemoryStrategyRepository();
     const strategyResult = await new CreateStrategyUseCase(strategies).execute({
-      userId: "user", name: "RSI", definition: { entry: { indicator: "RSI" } },
+      userId: "user", name: "RSI", definition: validDefinition(),
     });
     assert.equal(strategyResult.ok, true);
     if (!strategyResult.ok) return;
@@ -82,9 +92,9 @@ describe("trading bot application", () => {
     assert.equal((await bots.findById(botResult.bot.id))?.status, "RUNNING");
     assert.equal(runs.runs.length, 1);
 
-    strategyResult.strategy.versions[0].definition = { changed: true };
+    strategyResult.strategy.versions[0].definition = validDefinition("Changed");
     botResult.bot.name = "Changed after start";
-    assert.deepEqual((start.run.strategySnapshot as { definition: unknown }).definition, { entry: { indicator: "RSI" } });
+    assert.deepEqual((start.run.strategySnapshot as { definition: unknown }).definition, validDefinition());
     assert.equal((start.run.configurationSnapshot as { name: string }).name, "Bot");
 
     const repeatedStart = await new StartBotUseCase(bots, runs, strategies).execute(botResult.bot.id, {
@@ -134,7 +144,7 @@ describe("trading bot application", () => {
 
   test("rejects invalid backtest timestamps before persistence", async () => {
     const strategies = new MemoryStrategyRepository();
-    const strategy = await new CreateStrategyUseCase(strategies).execute({ userId: "owner", name: "Dates", definition: {} });
+    const strategy = await new CreateStrategyUseCase(strategies).execute({ userId: "owner", name: "Dates", definition: validDefinition("Dates") });
     assert.equal(strategy.ok, true); if (!strategy.ok) return;
     const bots = new MemoryBotRepository();
     const created = await new CreateBotUseCase(bots).execute({ userId: "owner", name: "Dates", pairSymbol: "BTCUSDC",
@@ -144,6 +154,30 @@ describe("trading bot application", () => {
     const result = await new StartBotUseCase(bots, runs, strategies).execute(created.bot.id,
       { from: new Date("invalid"), to: new Date("2025-01-01T00:00:00Z") });
     assert.equal(result.ok, false); assert.equal(runs.runs.length, 0);
+  });
+
+  test("does not activate a persisted invalid or unsupported strategy version", async () => {
+    const strategies = new MemoryStrategyRepository();
+    const createdStrategy = await new CreateStrategyUseCase(strategies).execute({
+      userId: "owner", name: "Activation", definition: validDefinition("Activation"),
+    });
+    assert.equal(createdStrategy.ok, true); if (!createdStrategy.ok) return;
+    (createdStrategy.strategy.versions[0] as { definition: unknown }).definition = {
+      ...validDefinition(), entry: { indicator: "RSI", period: 14, operator: "EXEC", value: 20 },
+    };
+    const bots = new MemoryBotRepository();
+    const createdBot = await new CreateBotUseCase(bots).execute({
+      userId: "owner", name: "Invalid strategy", pairSymbol: "BTCUSDC", assignedBudget: "20",
+      amountPerPosition: "10", timeframe: "1h", strategyVersionId: createdStrategy.strategy.versions[0].id,
+    });
+    assert.equal(createdBot.ok, true); if (!createdBot.ok) return;
+    const runs = new MemoryRunRepository();
+    const start = await new StartBotUseCase(bots, runs, strategies).execute(createdBot.bot.id, {
+      from: new Date("2025-01-01T00:00:00Z"), to: new Date("2025-02-01T00:00:00Z"),
+    });
+    assert.equal(start.ok, false);
+    assert.match(start.error, /invalid or unsupported/);
+    assert.equal(runs.runs.length, 0);
   });
 
   test("pause and stop lifecycle operations are idempotent", async () => {

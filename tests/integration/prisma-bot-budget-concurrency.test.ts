@@ -14,7 +14,11 @@ test("concurrent bot runs cannot over-reserve a shared PostgreSQL wallet",
         strategies: {
           create: {
             name: `strategy-${suffix}`,
-            versions: { create: { version: 1, definition: { entry: { action: "HOLD" } } } },
+            versions: { create: { version: 1, definition: {
+              schemaVersion: 1, name: "Budget strategy",
+              entry: { all: [{ indicator: "RSI", period: 14, operator: "LT", value: 20 }] },
+              exit: { all: [{ indicator: "RSI", period: 14, operator: "GTE", value: 80 }] },
+            } } },
           },
         },
       },
