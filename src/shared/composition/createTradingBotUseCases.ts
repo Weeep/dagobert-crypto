@@ -4,7 +4,8 @@ import type { BotLifecycleRepository } from "@/src/modules/bot";
 import { ListCandlesUseCase, SaveCandlesUseCase } from "@/src/modules/market";
 import type { CandleRepository } from "@/src/modules/market";
 import { ActivateStrategyVersionUseCase, AddStrategyVersionUseCase, CreateStrategyUseCase,
-  EvaluateStrategyForClosedCandleUseCase, ListStrategiesUseCase } from "@/src/modules/strategy";
+  EvaluateStrategyForClosedCandleUseCase, GetStrategyUseCase, GetStrategyVersionUseCase,
+  ListStrategiesUseCase, ValidateStrategyDefinitionUseCase } from "@/src/modules/strategy";
 import type { ClosedCandleHistoryRepository, StrategyEvaluationRepository, StrategyRepository } from "@/src/modules/strategy";
 import type { PairRepository } from "@/src/modules/pair";
 
@@ -38,6 +39,9 @@ export function createTradingBotUseCases(repositories: TradingBotRepositories) {
     addStrategyVersion: new AddStrategyVersionUseCase(repositories.strategyRepository),
     activateStrategyVersion: new ActivateStrategyVersionUseCase(repositories.botRepository, repositories.strategyRepository),
     listStrategies: new ListStrategiesUseCase(repositories.strategyRepository),
+    getStrategy: new GetStrategyUseCase(repositories.strategyRepository),
+    getStrategyVersion: new GetStrategyVersionUseCase(repositories.strategyRepository),
+    validateStrategyDefinition: new ValidateStrategyDefinitionUseCase(),
     saveCandles: new SaveCandlesUseCase(repositories.candleRepository),
     listCandles: new ListCandlesUseCase(repositories.candleRepository),
     evaluateStrategyForClosedCandle: new EvaluateStrategyForClosedCandleUseCase(

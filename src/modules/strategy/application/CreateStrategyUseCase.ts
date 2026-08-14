@@ -16,6 +16,8 @@ export class CreateStrategyUseCase {
   async execute(input: CreateStrategyInput) {
     const name = input.name.trim();
     if (!input.userId || !name) return { ok: false as const, error: "Missing owner or strategy name", strategy: null };
+    if ((await this.repository.findAllByUserId(input.userId)).some((strategy) => strategy.name === name))
+      return { ok: false as const, error: `Strategy already exists: ${name}`, strategy: null };
     const validated = validateStrategyDefinition(input.definition, input.schemaVersion ?? 1);
     if (!validated.ok) return { ok: false as const, error: `${validated.issues[0].path}: ${validated.issues[0].message}`, strategy: null };
     const now = new Date();

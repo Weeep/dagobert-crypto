@@ -48,3 +48,6 @@ export type {
 } from "./domain/StrategyEvaluationRepository";
 export { EvaluateStrategyForClosedCandleUseCase } from "./application/EvaluateStrategyForClosedCandleUseCase";
 export { ListStrategiesUseCase } from "./application/ListStrategiesUseCase";
+export { GetStrategyUseCase } from "./application/GetStrategyUseCase";
+export { GetStrategyVersionUseCase } from "./application/GetStrategyVersionUseCase";
+export { ValidateStrategyDefinitionUseCase } from "./application/ValidateStrategyDefinitionUseCase";

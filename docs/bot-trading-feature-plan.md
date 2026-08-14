@@ -18,7 +18,7 @@ as the implementation.
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
-| Phase 3: strategy engine | In progress | Steps 0-6 are complete: closed-candle evaluations are persisted idempotently, and owned immutable strategy versions can be created and activated safely. |
+| Phase 3: strategy engine | In progress | Steps 0-7 are complete: authenticated APIs expose validation, owned strategy/version management, and explicit bot version activation. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
@@ -591,7 +591,7 @@ idempotent persistence boundary.
 - [x] Step 4: deterministic position-aware strategy engine and look-ahead protection.
 - [x] Step 5: closed-candle application service and atomic decision/snapshot persistence.
 - [x] Step 6: owned immutable strategy-version creation, concurrency-safe numbering, and activation.
-- [ ] Step 7: strategy API.
+- [x] Step 7: authenticated strategy validation, lifecycle, version, and activation API.
 - [ ] Step 8: form/rule-builder GUI.
 - [ ] Step 9: golden acceptance suite and Phase 3 gate.
 
@@ -699,8 +699,26 @@ idempotent persistence boundary.
   supported immutable definition, and a bot that is not currently running.
   Activation changes only the bot's selected version; existing run strategy
   snapshots remain unchanged.
-- HTTP endpoints for these use cases remain Step 7; Step 6 establishes and tests
-  the application and persistence boundaries they will call.
+- Step 6 establishes and tests the application and persistence boundaries called
+  by the Step 7 HTTP endpoints.
+
+#### Step 7 strategy API contract
+
+- `POST /api/strategies/validate` validates a schema version and definition
+  without persistence and returns either the typed definition or all structured
+  issues with their field paths and machine-readable codes.
+- `GET/POST /api/strategies` lists the authenticated owner's strategies or creates
+  a validated strategy with its immutable first version. `GET /api/strategies/:id`
+  returns owned strategy detail and its ordered versions.
+- `POST /api/strategies/:id/versions` creates the next owned immutable version;
+  `GET /api/strategies/:id/versions/:version` retrieves an owned numeric version.
+- `PUT /api/bots/:id/strategy-version` explicitly activates an owned, supported
+  strategy version on an owned non-running bot. Activation remains distinct from
+  generic bot editing so its ownership and lifecycle policy is auditable.
+- Every route is authenticated, rejects unsupported methods with `Allow`, returns
+  consistent `BAD_REQUEST`, `VALIDATION_ERROR`, `NOT_FOUND`, or
+  `INVALID_TRANSITION` errors, and sanitizes unexpected failures as
+  `INTERNAL_ERROR` without exposing persistence details.
 
 #### Work
 

@@ -68,6 +68,7 @@ describe("strategy definition v1", () => {
     assert.equal(created.ok, true);
     assert.equal(repository.strategies.length, 1);
     if (!created.ok) return;
+    assert.equal((await create.execute({ userId: "user", name: "Valid", definition: example })).ok, false);
     const add = new AddStrategyVersionUseCase(repository);
     assert.equal((await add.execute("other-user", created.strategy.id, { ...example, name: "foreign" })).ok, false);
     assert.equal((await add.execute("user", created.strategy.id, { ...example, entry: { indicator: "RSI", period: 14, operator: "NOPE", value: 20 } })).ok, false);

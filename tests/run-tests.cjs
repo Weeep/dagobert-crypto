@@ -25,4 +25,5 @@ require('./infrastructure/binance-rest-market-data-source.test.ts');
 require('./infrastructure/kv-export-audit.test.ts');
 require('./infrastructure/redis-database-tooling.test.ts');
 require('./api/read-api.test.ts');
+require('./api/strategy-api.test.ts');
 require('./infrastructure/http-read-repositories.test.ts');
