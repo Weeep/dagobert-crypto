@@ -1,10 +1,10 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
-import type { Strategy, StrategyRepository, StrategyVersion } from "@/src/modules/strategy";
+import type { Strategy, StrategyDefinitionV1, StrategyRepository, StrategyVersion } from "@/src/modules/strategy";
 
 type StrategyWithVersions = Prisma.StrategyGetPayload<{ include: { versions: true } }>;
 const mapVersion = (row: StrategyWithVersions["versions"][number]): StrategyVersion => ({
   id: row.id, strategyId: row.strategyId, version: row.version, schemaVersion: row.schemaVersion,
-  definition: row.definition, createdAt: row.createdAt,
+  definition: row.definition as unknown as StrategyDefinitionV1, createdAt: row.createdAt,
 });
 const mapStrategy = (row: StrategyWithVersions): Strategy => ({
   id: row.id, userId: row.userId, name: row.name, description: row.description,

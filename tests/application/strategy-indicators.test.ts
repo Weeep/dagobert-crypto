@@ -58,6 +58,7 @@ describe("candle facts", () => {
     assert.equal(classifyCandleDirection({ open: "100", close: "100.0" }), "DOJI");
     assert.equal(calculateCandleBodyChangePct({ open: "100", close: "99" }), 1);
     assert.throws(() => calculateCandleBodyChangePct({ open: "0", close: "0" }), /greater than zero/);
+    assert.throws(() => calculateCandleBodyChangePct({ open: "-100", close: "-99" }), /greater than zero/);
   });
 
   test("matches only the requested trailing consecutive sequence", () => {

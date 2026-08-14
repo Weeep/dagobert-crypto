@@ -18,7 +18,7 @@ as the implementation.
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
-| Phase 3: strategy engine | In progress | Steps 0-1 are complete: the indicator contract is fixed and shared pure RSI, EMA, and candle-fact calculations are implemented. |
+| Phase 3: strategy engine | In progress | Steps 0-2 are complete: indicator contracts and calculations plus the versioned strategy AST, JSON Schema, and activation validation are implemented. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
@@ -586,11 +586,11 @@ idempotent persistence boundary.
 
 - [x] Step 0: indicator warm-up, edge-case, candle-body, and decision-priority contracts fixed.
 - [x] Step 1: shared pure RSI, EMA, candle direction, body-change, and consecutive-sequence calculations implemented.
-- [ ] Step 2: versioned strategy JSON Schema and runtime validation.
+- [x] Step 2: versioned strategy TypeScript AST, JSON Schema, and runtime activation validation.
 - [ ] Step 3: nested condition-tree evaluation and explainable results.
 - [ ] Step 4: deterministic strategy engine and look-ahead protection.
 - [ ] Step 5: closed-candle application service and decision persistence.
-- [ ] Step 6: immutable strategy-version lifecycle and activation validation.
+- [ ] Step 6: strategy-version lifecycle APIs, ownership, and concurrency-safe version numbering.
 - [ ] Step 7: strategy API.
 - [ ] Step 8: form/rule-builder GUI.
 - [ ] Step 9: golden acceptance suite and Phase 3 gate.
@@ -618,6 +618,43 @@ idempotent persistence boundary.
 - Exit conditions are evaluated before entry conditions. If both match the same
   candle, exit has priority and the single decision is `SELL`; the same candle
   cannot both close and open a position.
+
+#### Position-aware decision contract for Steps 3-5
+
+- Step 3 evaluates the declarative entry and exit condition trees independently
+  and returns their matches, observed values, and reasons. This condition
+  evaluator has no position, repository, database, or exchange dependency.
+- Step 4 receives an immutable evaluation context containing at least
+  `hasOpenPositions` and `openPositionCount`. It combines that context with the
+  condition results to produce one `BUY`, `SELL`, or `HOLD`; the strategy engine
+  never queries position state itself.
+- With open positions, a matching exit produces `SELL` even when entry also
+  matches. Without an open position, an exit match is recorded with
+  `EXIT_MATCHED_NO_OPEN_POSITION` but is not executable; entry is then evaluated
+  and produces `BUY` when it matches, otherwise the result is `HOLD`.
+- Open positions do not by themselves prevent another `BUY`, because a bot may
+  hold multiple independent lots. Risk and budget validation decides whether
+  the resulting buy intent can actually reserve another position amount.
+- Step 5 loads the current position state, constructs the immutable evaluation
+  context, calls the pure engine, and persists the context, condition results,
+  final decision, values, and reasons. Phase 4 first integrates and verifies this
+  contract against a changing virtual portfolio and complete position lifecycle.
+
+#### Step 2 strategy definition v1 contract
+
+- `StrategyDefinitionV1` is the TypeScript AST and the matching Draft 2020-12
+  JSON Schema is the external format contract. Both require `schemaVersion`,
+  `name`, `entry`, and `exit` and reject unknown properties.
+- Conditions are recursive non-empty `all`/`any` groups, RSI comparisons,
+  absolute EMA-distance comparisons, or candle-sequence rules. RSI supports
+  `LT`, `LTE`, `GT`, and `GTE`; `EMA_DISTANCE` supports only `ABS_LTE`.
+- Periods and sequence counts are positive safe integers; thresholds are finite
+  non-negative numbers and RSI thresholds cannot exceed 100. Runtime validation
+  additionally limits a definition to 100 condition nodes and 10 levels of
+  nesting.
+- Strategy creation, new-version creation, and bot start all validate the schema
+  version and complete definition. Unknown versions, fields, indicators, and
+  unsupported indicator/operator combinations cannot be saved or activated.
 
 #### Work
 

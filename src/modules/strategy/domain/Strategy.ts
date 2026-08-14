@@ -1,9 +1,11 @@
+import type { StrategyDefinitionV1 } from "./StrategyDefinition";
+
 export type StrategyVersion = {
   id: string;
   strategyId: string;
   version: number;
   schemaVersion: number;
-  definition: unknown;
+  definition: StrategyDefinitionV1;
   createdAt: Date;
 };
 

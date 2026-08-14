@@ -14,7 +14,7 @@ export function classifyCandleDirection(candle: CandlePrice): CandleDirection {
 /** Returns the absolute candle-body change as a percentage of its open price. */
 export function calculateCandleBodyChangePct(candle: CandlePrice): number {
   const open = new Big(candle.open);
-  if (open.eq(0)) throw new RangeError("candle open must be greater than zero");
+  if (open.lte(0)) throw new RangeError("candle open must be greater than zero");
   return Number(new Big(candle.close).minus(open).abs().div(open).times(100));
 }
 
