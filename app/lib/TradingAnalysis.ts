@@ -1,5 +1,6 @@
 import Big from "big.js";
 import { CandleChartResult } from "binance-api-node";
+import { calculateEma, calculateRsi } from "@/src/modules/strategy/domain/TechnicalIndicators";
 
 export interface DCandle extends CandleChartResult {
   rsi6: number | null;
@@ -36,12 +37,13 @@ export class TradingAnalysis {
 
   extend(): DCandle[] {
     for (let i = 0; i < this.candles.length; i++) {
-      //const currDcandle: DCandle = this.candles[i];
-      this.candles[i].rsi6 = this.getRsi(6, -i);
+      const offsetFromLatest = i - (this.candles.length - 1);
+      this.candles[i].rsi6 = this.getRsi(6, offsetFromLatest);
 
       const periods = [7, 25, 100];
       for (const period of periods) {
-        const ema = this.getEma(period, -i);
+        const emaValue = calculateEma(this.candles.slice(0, i + 1), period);
+        const ema = this.emaResult(emaValue, Number(this.candles[i].close));
         (this.candles[i] as any)[`ema${period}`] = ema.ema;
         (this.candles[i] as any)[`ema${period}Diff`] = ema.emaDiff;
         (this.candles[i] as any)[`ema${period}DiffPct`] = ema.emaDiffPct;
@@ -65,59 +67,8 @@ export class TradingAnalysis {
   }
 
   getRsi(period: number, index: number = 0): number | null {
-    if (index > 0) {
-      console.error("index must be 0 or negative integer");
-      return null;
-    }
-    if (this.candles.length < period + 1 + index) {
-      console.error(
-        `Not enough data to calculate RSI, required period: ${period}, index: ${index}, candles: ${this.candles.length}!`
-      );
-      return null;
-    }
-
-    let rsiCandles = [];
-    if (index === 0) {
-      rsiCandles = this.candles.slice(-period - 1);
-    } else {
-      rsiCandles = this.candles.slice(-period - 1 + index, index);
-    }
-
-    let gains: Big[] = [];
-    let losses: Big[] = [];
-
-    for (let i = 1; i < rsiCandles.length; i++) {
-      const diff = new Big(rsiCandles[i].close).minus(rsiCandles[i - 1].close);
-      gains.push(diff.gt(0) ? diff : new Big(0));
-      losses.push(diff.lt(0) ? diff.abs() : new Big(0));
-    }
-
-    // Compute initial SMA of gains and losses
-    let avgGain = gains
-      .slice(0, period)
-      .reduce((acc, val) => acc.plus(val), new Big(0))
-      .div(period);
-    let avgLoss = losses
-      .slice(0, period)
-      .reduce((acc, val) => acc.plus(val), new Big(0))
-      .div(period);
-
-    // Apply Wilder's smoothing method
-    for (let i = period; i < gains.length; i++) {
-      avgGain = avgGain
-        .times(period - 1)
-        .plus(gains[i])
-        .div(period);
-      avgLoss = avgLoss
-        .times(period - 1)
-        .plus(losses[i])
-        .div(period);
-    }
-
-    if (avgLoss.eq(0)) return 100; // Prevent division by zero
-
-    const rs = avgGain.div(avgLoss);
-    return Number(new Big(100).minus(new Big(100).div(rs.plus(1))));
+    const candles = this.candlesThroughOffset(index);
+    return candles ? calculateRsi(candles, period) : null;
   }
 
   getEma(
@@ -129,41 +80,26 @@ export class TradingAnalysis {
     emaDiff: number | null;
     emaDiffPct: number | null;
   } {
-    if (index > 0) {
-      console.error("index must be 0 or negative integer");
-      return { ema: null, emaDiff: null, emaDiffPct: null };
-    }
-    if (this.candles.length < period + 1 + index) {
-      console.error(
-        `Not enough data to calculate RSI, required period: ${period}, index: ${index}, candles: ${this.candles.length}!`
-      );
-      return { ema: null, emaDiff: null, emaDiffPct: null };
-    }
+    const candles = this.candlesThroughOffset(index);
+    if (!candles) return this.emaResult(null, this.currentPrice);
+    return this.emaResult(calculateEma(candles, period), this.currentPrice);
+  }
 
-    let emaCandles = this.candles;
-    if (index !== 0) {
-      emaCandles = this.candles.slice(index);
-    }
+  private candlesThroughOffset(index: number): DCandle[] | null {
+    if (!Number.isInteger(index) || index > 0) return null;
+    const end = index === 0 ? this.candles.length : this.candles.length + index;
+    return end > 0 ? this.candles.slice(0, end) : null;
+  }
 
-    if (emaCandles.length < period)
-      return { ema: null, emaDiff: null, emaDiffPct: null };
-
-    const k = new Big(2).div(new Big(period + 1));
-    let emaBig = new Big(this.candles[0].close);
-
-    for (let i = 1; i < emaCandles.length; i++) {
-      emaBig = new Big(this.candles[i].close)
-        .times(k)
-        .plus(emaBig.times(new Big(1).minus(k)));
-    }
-
-    const ema = Number(emaBig);
-    const emaDiff = Number(new Big(this.currentPrice).minus(ema));
-    const emaDiffPct = Number(
-      new Big(this.currentPrice).minus(ema).div(ema).times(100)
-    );
-
-    return { ema, emaDiff, emaDiffPct };
+  private emaResult(ema: number | null, referencePrice: number) {
+    if (ema === null) return { ema: null, emaDiff: null, emaDiffPct: null };
+    const emaBig = new Big(ema);
+    const difference = new Big(referencePrice).minus(emaBig);
+    return {
+      ema,
+      emaDiff: Number(difference),
+      emaDiffPct: emaBig.eq(0) ? null : Number(difference.div(emaBig).times(100)),
+    };
   }
 
   getMinMax(period: number): {
@@ -221,42 +157,8 @@ export class TradingAnalysis {
     );
   }
 
-  //// ---- NOT USED RSI CALCULATION
-
   calculateRsi(period: number): number | null {
-    const closes: number[] = this.candles.map((c) => Number(c.close));
-    const rsiValues = new Array(closes.length).fill(null);
-
-    for (let i = period; i < closes.length; i++) {
-      const slice: number[] = closes.slice(i - period, i + 1);
-      let gains = 0;
-      let losses = 0;
-
-      for (let j = 1; j < slice.length; j++) {
-        const diff = slice[j] - slice[j - 1];
-        if (diff > 0) {
-          gains += diff;
-        } else {
-          losses -= diff; // diff negatív, ezért kivonjuk
-        }
-      }
-
-      const avgGain = gains / period;
-      const avgLoss = losses / period;
-
-      let rsi;
-      if (avgLoss === 0) {
-        rsi = 100;
-      } else {
-        const rs = avgGain / avgLoss;
-        rsi = 100 - 100 / (1 + rs);
-      }
-
-      rsiValues[i] = rsi;
-    }
-
-    const s = this.SMA(rsiValues, 14);
-    return s[s.length - 1];
+    return calculateRsi(this.candles, period);
   }
 
   SMA(values: number[], length: number): (number | null)[] {

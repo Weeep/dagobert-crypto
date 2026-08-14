@@ -18,7 +18,7 @@ as the implementation.
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
-| Phase 3: strategy engine | Not started | Versioned JSON strategies produce reproducible decisions. |
+| Phase 3: strategy engine | In progress | Steps 0-1 are complete: the indicator contract is fixed and shared pure RSI, EMA, and candle-fact calculations are implemented. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
@@ -581,6 +581,43 @@ idempotent persistence boundary.
 - Restarting ingestion resumes from persisted state.
 
 ### Phase 3: indicator and strategy engine
+
+#### Implementation progress
+
+- [x] Step 0: indicator warm-up, edge-case, candle-body, and decision-priority contracts fixed.
+- [x] Step 1: shared pure RSI, EMA, candle direction, body-change, and consecutive-sequence calculations implemented.
+- [ ] Step 2: versioned strategy JSON Schema and runtime validation.
+- [ ] Step 3: nested condition-tree evaluation and explainable results.
+- [ ] Step 4: deterministic strategy engine and look-ahead protection.
+- [ ] Step 5: closed-candle application service and decision persistence.
+- [ ] Step 6: immutable strategy-version lifecycle and activation validation.
+- [ ] Step 7: strategy API.
+- [ ] Step 8: form/rule-builder GUI.
+- [ ] Step 9: golden acceptance suite and Phase 3 gate.
+
+#### Step 0 indicator and evaluation contract
+
+- RSI uses Wilder smoothing and defaults to period 14, while the strategy may
+  configure the period. Its first average gain and loss are the simple averages
+  of the first `period` close-to-close changes. Subsequent values use
+  `(previousAverage * (period - 1) + currentChange) / period`.
+- RSI requires `period + 1` closed candles and returns `null` during warm-up. If
+  both average gain and loss are zero RSI is 50; otherwise zero average loss
+  produces 100 and zero average gain produces 0.
+- EMA uses candle close, starts with the simple average of the first `period`
+  closed candles, and then uses `alpha = 2 / (period + 1)`. It requires `period`
+  closed candles and returns `null` during warm-up.
+- Indicators must reject an explicitly open candle rather than silently include
+  or skip it. Candle ingestion rejects an open price of zero before a candle can
+  reach the strategy engine.
+- Candle direction is `RED` when `close < open`, `GREEN` when `close > open`, and
+  `DOJI` when they are equal. Absolute body change percentage is
+  `abs(close - open) / open * 100`.
+- A missing indicator is never coerced to zero. Insufficient history makes its
+  condition false with reason code `INSUFFICIENT_HISTORY`.
+- Exit conditions are evaluated before entry conditions. If both match the same
+  candle, exit has priority and the single decision is `SELL`; the same candle
+  cannot both close and open a position.
 
 #### Work
 

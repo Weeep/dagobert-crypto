@@ -83,6 +83,16 @@ describe("closed candle persistence validation", () => {
     assert.equal(repository.calls.length, 0);
   });
 
+  test("rejects a zero open price before strategy calculations", async () => {
+    const repository = new RecordingCandleRepository();
+    const result = await new SaveCandlesUseCase(repository).execute([candle({
+      open: "0", low: "0",
+    })]);
+    assert.equal(result.ok, false);
+    assert.match(result.error, /open must be greater than zero/);
+    assert.equal(repository.calls.length, 0);
+  });
+
   test("rejects open candles, invalid interval timestamps, and detached checkpoints", async () => {
     const repository = new RecordingCandleRepository();
     const useCase = new SaveCandlesUseCase(repository);

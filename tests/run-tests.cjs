@@ -7,6 +7,7 @@ require('./application/pairs.test.ts');
 require('./application/transaction-groups.test.ts');
 require('./application/auth-login.test.ts');
 require('./application/trading-bots.test.ts');
+require('./application/strategy-indicators.test.ts');
 require('./application/market-data.test.ts');
 require('./application/backfill-candles.test.ts');
 require('./application/poll-closed-candles.test.ts');
