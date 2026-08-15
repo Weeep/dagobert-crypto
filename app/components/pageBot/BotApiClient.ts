@@ -24,6 +24,8 @@ export type BacktestView = {
   openPositions: BacktestOpenPosition[];
 };
 export type BotErrorDetails = { runId: string; message: string; occurredAt: string };
+export type BacktestProgress = { processedCandles: number; totalCandles: number; percent: number;
+  decisions: { HOLD: number; BUY: number; SELL: number } };
 
 type ApiError = { error?: { message?: string } };
 
@@ -73,9 +75,29 @@ export class BotApiClient {
       `/api/bots/${encodeURIComponent(botId)}/error`)).errorDetails;
   }
 
-  async runBacktest(botId: string, from: string, to: string): Promise<BacktestView> {
-    return (await this.request<{ backtest: BacktestView }>(`/api/bots/${encodeURIComponent(botId)}/backtests`, {
-      method: "POST", body: JSON.stringify({ from, to }),
-    })).backtest;
+  async runBacktest(botId: string, from: string, to: string,
+    onProgress?: (progress: BacktestProgress) => void): Promise<BacktestView> {
+    const response = await this.fetchImplementation.call(globalThis,
+      `/api/bots/${encodeURIComponent(botId)}/backtests?stream=1`, { method: "POST",
+        headers: { Accept: "application/x-ndjson", "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to }) });
+    if (!response.ok || !response.body) {
+      const body = await response.json().catch(() => ({})) as ApiError;
+      throw new Error(body.error?.message ?? `Backtest request failed (${response.status})`);
+    }
+    const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
+    while (true) {
+      const chunk = await reader.read(); buffer += decoder.decode(chunk.value, { stream: !chunk.done });
+      const lines = buffer.split("\n"); buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const event = JSON.parse(line) as { type: string; progress?: BacktestProgress; backtest?: BacktestView; message?: string };
+        if (event.type === "progress" && event.progress) onProgress?.(event.progress);
+        if (event.type === "complete" && event.backtest) return event.backtest;
+        if (event.type === "error") throw new Error(event.message ?? "Backtest execution failed");
+      }
+      if (chunk.done) break;
+    }
+    throw new Error("The backtest connection closed before a result was received. Please retry.");
   }
 }

@@ -26,6 +26,14 @@ export type HistoricalBacktestInput = {
   backtestFrom: Date;
   backtestTo: Date;
   execution: BacktestExecutionConfig;
+  onProgress?: (progress: HistoricalBacktestProgress) => void;
+};
+
+export type HistoricalBacktestProgress = {
+  processedCandles: number;
+  totalCandles: number;
+  percent: number;
+  decisions: { HOLD: number; BUY: number; SELL: number };
 };
 
 export type HistoricalBacktestDecision = {
@@ -130,6 +138,7 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
   const fills: BacktestFill[] = [];
   const events: HistoricalBacktestEvent[] = [];
   const snapshots: HistoricalBacktestSnapshot[] = [];
+  const actionCounts = { HOLD: 0, BUY: 0, SELL: 0 };
   const event = (eventType: HistoricalBacktestEvent["eventType"], candle: Candle, payload: unknown, occurredAt: Date) => {
     events.push({ sequenceNumber: ++sequenceNumber, eventType, candleId: candle.id,
       occurredAt: occurredAt.toISOString(), payload });
@@ -214,6 +223,9 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
     }
     const decision = { candleId: candle.id, evaluation, executionOutcome, executionReason };
     decisions.push(decision);
+    actionCounts[evaluation.action] += 1;
+    input.onProgress?.({ processedCandles: decisions.length, totalCandles: evaluationIndexes.length,
+      percent: Math.round((decisions.length / evaluationIndexes.length) * 100), decisions: { ...actionCounts } });
     event("DECISION_MADE", candle, decision, candle.closeTime);
     if (executionEvent) event(executionEvent.type, candle, executionEvent.payload, candle.closeTime);
     snapshots.push({ candleId: candle.id, capturedAt: candle.closeTime.toISOString(),

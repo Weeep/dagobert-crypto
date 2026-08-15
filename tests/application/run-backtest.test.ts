@@ -88,13 +88,16 @@ test("Bot API client submits the selected ISO range and returns the UI result", 
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   const fetcher = async (url: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(url), init });
-    return new Response(JSON.stringify({ backtest: { runId: "run", metrics: { tradeCount: 2 },
-      decisions: [], fills: [], events: [], positions: [], openPositions: [] } }),
+    return new Response(`${JSON.stringify({ type: "progress", progress: { processedCandles: 1, totalCandles: 2,
+      percent: 50, decisions: { HOLD: 1, BUY: 0, SELL: 0 } } })}\n${JSON.stringify({ type: "complete",
+      backtest: { runId: "run", metrics: { tradeCount: 2 }, decisions: [], fills: [], events: [], positions: [], openPositions: [] } })}\n`,
     { status: 200, headers: { "Content-Type": "application/json" } });
   };
-  const result = await new BotApiClient(fetcher as typeof fetch).runBacktest("bot/id", "from", "to");
+  const progress: number[] = [];
+  const result = await new BotApiClient(fetcher as typeof fetch).runBacktest("bot/id", "from", "to", (value) => progress.push(value.percent));
   assert.equal(result.runId, "run");
-  assert.equal(calls[0].url, "/api/bots/bot%2Fid/backtests");
+  assert.deepEqual(progress, [50]);
+  assert.equal(calls[0].url, "/api/bots/bot%2Fid/backtests?stream=1");
   assert.equal(calls[0].init?.method, "POST");
   assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { from: "from", to: "to" });
 });

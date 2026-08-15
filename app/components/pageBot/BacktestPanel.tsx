@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { BotDto } from "@/src/modules/bot/dto/BotDto";
-import { BotApiClient, type BacktestView } from "./BotApiClient";
+import { BotApiClient, type BacktestProgress, type BacktestView } from "./BotApiClient";
 import { conditionObservationSummaries } from "./backtestDecisionPresentation";
 
 type Props = { api: BotApiClient; bots: BotDto[] };
@@ -18,15 +18,17 @@ export function BacktestPanel({ api, bots }: Props) {
   const [result, setResult] = useState<BacktestView | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [progress, setProgress] = useState<BacktestProgress | null>(null);
 
   const run = async () => {
-    setBusy(true); setMessage(""); setResult(null);
+    setBusy(true); setMessage(""); setErrorMessage(""); setResult(null); setProgress(null);
     try {
       const completed = await api.runBacktest(botId,
-        new Date(`${from}T00:00:00.000Z`).toISOString(), new Date(`${to}T23:59:59.999Z`).toISOString());
+        new Date(`${from}T00:00:00.000Z`).toISOString(), new Date(`${to}T23:59:59.999Z`).toISOString(), setProgress);
       setResult(completed);
       setMessage(`Backtest completed · run ${completed.runId}`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Backtest failed"); }
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : "The backtest failed unexpectedly. Please retry."); }
     finally { setBusy(false); }
   };
 
@@ -47,6 +49,20 @@ export function BacktestPanel({ api, bots }: Props) {
         className="self-end rounded-xl bg-emerald-700 px-5 py-2.5 font-semibold hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40">
         {busy ? "Running backtest…" : "Run backtest"}</button>
     </div>
+    {busy && <div className="mt-5 rounded-xl border border-cyan-900 bg-slate-950 p-4" aria-live="polite">
+      <div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-semibold text-cyan-200">
+        {progress ? progress.percent === 100 ? "Saving results…" : "Evaluating candles…" : "Loading candle data…"}</span>
+        <span className="text-slate-300">{progress ? `${progress.processedCandles} / ${progress.totalCandles} candles · ${progress.percent}%` : "Preparing…"}</span></div>
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-emerald-500 transition-[width] duration-200"
+        style={{ width: `${progress?.percent ?? 0}%` }} /></div>
+      <div className="mt-3 flex flex-wrap gap-4 text-xs"><span className="text-slate-300">HOLD <b>{progress?.decisions.HOLD ?? 0}</b></span>
+        <span className="text-emerald-300">BUY <b>{progress?.decisions.BUY ?? 0}</b></span>
+        <span className="text-rose-300">SELL <b>{progress?.decisions.SELL ?? 0}</b></span></div>
+    </div>}
+    {errorMessage && <div role="alert" className="mt-4 rounded-xl border border-rose-700 bg-rose-950/50 p-4 text-sm text-rose-100">
+      <p className="font-semibold">The backtest could not be completed</p><p className="mt-1">{errorMessage}</p>
+      <p className="mt-2 text-xs text-rose-300">Check the selected range and market data, then retry. If the problem persists, open the bot&apos;s ERROR details and provide its run ID to support.</p>
+    </div>}
     {message && <div role="status" className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300">{message}</div>}
     {result && <BacktestResult result={result} />}
   </section>;
