@@ -21,7 +21,7 @@ const candle: Candle = { id: "candle", pairSymbol: "BTCUSDC", interval: "1h",
   open: "101", high: "102", low: "98", close: "99", volume: "1", quoteVolume: "100",
   trades: 1, isClosed: true, source: "TEST", receivedAt: new Date("2026-01-01T01:00:00Z") };
 const run: BotRun = { id: "run", botId: "bot", mode: "PAPER", status: "RUNNING",
-  configurationSnapshot: { pairSymbol: "BTCUSDC", timeframe: "1h", feeRate: "0.001" },
+  configurationSnapshot: { pairSymbol: "BTCUSDC", timeframe: "1h" },
   strategySnapshot: { schemaVersion: 1, definition }, backtestFrom: null, backtestTo: null,
   startedAt: new Date(), endedAt: null, errorMessage: null };
 
@@ -83,6 +83,8 @@ describe("closed-candle strategy evaluation application service", () => {
     assert.deepEqual((result.evaluation.decision.inputs as { strategySnapshot: unknown }).strategySnapshot,
       run.strategySnapshot);
     assert.ok((result.evaluation.indicatorSnapshot.values as { entry: unknown }).entry);
+    assert.equal(((result.evaluation.decision.output as { position: { exitFeeRate: string } })
+      .position.exitFeeRate), "0");
 
     const repeated = await useCase.execute("run", "candle");
     assert.equal(repeated.ok, true); assert.equal(repeated.reused, true);

@@ -9,7 +9,7 @@ import type {
   StrategyEvaluationRepository,
 } from "../domain/StrategyEvaluationRepository";
 
-type ConfigurationSnapshot = { pairSymbol: string; timeframe: string; feeRate: string };
+type ConfigurationSnapshot = { pairSymbol: string; timeframe: string; feeRate?: string };
 type StrategySnapshot = { schemaVersion: number; definition: unknown };
 
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -21,6 +21,12 @@ export function requiredCandles(condition: StrategyCondition): number {
   if ("candleSequence" in condition) return condition.candleSequence.count;
   if (condition.indicator === "POSITION_RETURN_PCT") return 1;
   return condition.indicator === "RSI" ? condition.period + 1 : condition.period;
+}
+
+function usesPositionReturn(condition: StrategyCondition): boolean {
+  if ("all" in condition) return condition.all.some(usesPositionReturn);
+  if ("any" in condition) return condition.any.some(usesPositionReturn);
+  return "indicator" in condition && condition.indicator === "POSITION_RETURN_PCT";
 }
 
 function jsonEvaluation(evaluation: StrategyEvaluation) {
@@ -51,13 +57,16 @@ export class EvaluateStrategyForClosedCandleUseCase {
       return { ok: false as const, error: "Bot run snapshots are invalid", evaluation: null, reused: false };
     const configuration = run.configurationSnapshot as unknown as ConfigurationSnapshot;
     const strategy = run.strategySnapshot as unknown as StrategySnapshot;
-    if (typeof configuration.pairSymbol !== "string" || !isMarketInterval(configuration.timeframe) ||
-        typeof configuration.feeRate !== "string" ||
-        candle.pairSymbol !== configuration.pairSymbol || candle.interval !== configuration.timeframe)
-      return { ok: false as const, error: "Candle does not match the bot run snapshot", evaluation: null, reused: false };
     const validated = validateStrategyDefinition(strategy.definition, strategy.schemaVersion);
     if (!validated.ok)
       return { ok: false as const, error: "Strategy run snapshot is invalid", evaluation: null, reused: false };
+    const exitFeeRate = typeof configuration.feeRate === "string" ? configuration.feeRate : "0";
+    if (typeof configuration.pairSymbol !== "string" || !isMarketInterval(configuration.timeframe) ||
+        candle.pairSymbol !== configuration.pairSymbol || candle.interval !== configuration.timeframe)
+      return { ok: false as const, error: "Candle does not match the bot run snapshot", evaluation: null, reused: false };
+    if (typeof configuration.feeRate !== "string" && usesPositionReturn(validated.definition.exit))
+      return { ok: false as const, error: "Bot run fee snapshot is required for position-return exits",
+        evaluation: null, reused: false };
 
     const lookback = Math.max(requiredCandles(validated.definition.entry), requiredCandles(validated.definition.exit));
     const history = await this.candles.findClosedHistoryEndingAt(
@@ -69,7 +78,7 @@ export class EvaluateStrategyForClosedCandleUseCase {
       engineResult = evaluateStrategy({
         definition: validated.definition, candles: history, evaluatedCandle: candle,
         position: { hasOpenPositions: positions.length > 0, openPositionCount: positions.length,
-          exitFeeRate: configuration.feeRate, positions },
+          exitFeeRate, positions },
       });
     } catch (error) {
       return { ok: false as const,
