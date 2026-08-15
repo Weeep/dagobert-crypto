@@ -11,7 +11,7 @@ import type { StrategyPositionLotContext } from "./StrategyEngine";
 
 export type ConditionObservedValues = Record<string, string | number | boolean | null | string[]>;
 export type ConditionEvaluation = {
-  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
+  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_CROSS_CONFIRMATION" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
   matched: boolean;
   reasonCode: string;
   explanation: string;
@@ -102,6 +102,31 @@ function evaluateNode(
         entryFees: entryFees.toString(), grossExitValue: grossExitValue.toString(),
         estimatedExitFee: estimatedExitFee.toString(), netExitProceeds: netExitProceeds.toString(),
         exitFeeRate: context.exitFeeRate }, children: [],
+    };
+  }
+
+  if ("indicator" in condition && condition.indicator === "EMA_CROSS_CONFIRMATION") {
+    const required = condition.period + condition.confirmationCandles;
+    if (context.candles.length < required)
+      return insufficient("EMA_CROSS_CONFIRMATION", required, context.candles.length);
+    const firstIndex = context.candles.length - condition.confirmationCandles - 1;
+    const selected = context.candles.slice(firstIndex);
+    const emas = selected.map((_, index) =>
+      calculateEma(context.candles.slice(0, firstIndex + index + 1), condition.period)!);
+    const closes = selected.map((candle) => new Big(candle.close));
+    const confirmedSides = closes.slice(1).map((close, index) => condition.direction === "ABOVE"
+      ? close.gt(emas[index + 1]) : close.lt(emas[index + 1]));
+    const previousOnOppositeSide = condition.direction === "ABOVE"
+      ? closes[0].lte(emas[0]) : closes[0].gte(emas[0]);
+    const matched = previousOnOppositeSide && confirmedSides.every(Boolean);
+    return {
+      type: "EMA_CROSS_CONFIRMATION", matched,
+      reasonCode: `EMA_CROSS_CONFIRMATION_${matched ? "MATCHED" : "NOT_MATCHED"}`,
+      explanation: `EMA(${condition.period}) ${condition.direction} crossing ${matched ? "was" : "was not"} confirmed by ${condition.confirmationCandles} candles`,
+      observedValues: { indicator: "EMA_CROSS_CONFIRMATION", period: condition.period,
+        direction: condition.direction, confirmationCandles: condition.confirmationCandles,
+        closes: closes.map(String), emas: emas.map(String), previousOnOppositeSide,
+        confirmedSides: confirmedSides.map(String) }, children: [],
     };
   }
 

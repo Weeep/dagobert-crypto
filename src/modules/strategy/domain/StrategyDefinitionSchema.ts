@@ -20,6 +20,7 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
     condition: { oneOf: [
       { $ref: "#/$defs/all" }, { $ref: "#/$defs/any" }, { $ref: "#/$defs/rsi" },
       { $ref: "#/$defs/emaDistance" }, { $ref: "#/$defs/candleSequence" },
+      { $ref: "#/$defs/emaCrossConfirmation" },
       { $ref: "#/$defs/positionReturnPct" },
     ] },
     all: { type: "object", additionalProperties: false, required: ["all"], properties: {
@@ -37,6 +38,11 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
       position: { enum: ["ABOVE", "BELOW"] },
       maximumDistancePct: { type: "number", minimum: 0, maximum: 100, multipleOf: 0.1 },
     } },
+    emaCrossConfirmation: { type: "object", additionalProperties: false,
+      required: ["indicator", "period", "direction", "confirmationCandles"], properties: {
+        indicator: { const: "EMA_CROSS_CONFIRMATION" }, period: { type: "integer", minimum: 1 },
+        direction: { enum: ["ABOVE", "BELOW"] }, confirmationCandles: { type: "integer", minimum: 1 },
+      } },
     positionReturnPct: { type: "object", additionalProperties: false,
       required: ["indicator", "operator", "value"], properties: {
         indicator: { const: "POSITION_RETURN_PCT" },

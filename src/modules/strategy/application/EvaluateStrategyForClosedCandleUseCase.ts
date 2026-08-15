@@ -20,6 +20,8 @@ export function requiredCandles(condition: StrategyCondition): number {
   if ("any" in condition) return Math.max(...condition.any.map(requiredCandles));
   if ("candleSequence" in condition) return condition.candleSequence.count;
   if (condition.indicator === "POSITION_RETURN_PCT") return 1;
+  if (condition.indicator === "EMA_CROSS_CONFIRMATION")
+    return condition.period + condition.confirmationCandles;
   return condition.indicator === "RSI" ? condition.period + 1 : condition.period;
 }
 

@@ -7,6 +7,7 @@ import { appendCondition, conditionKind, newCondition, removeCondition,
 const kinds: Array<{ value: ConditionKind; label: string }> = [
   { value: "ALL", label: "All conditions" }, { value: "ANY", label: "Any condition" },
   { value: "RSI", label: "RSI" }, { value: "EMA_DISTANCE", label: "EMA distance" },
+  { value: "EMA_CROSS_CONFIRMATION", label: "Confirmed EMA crossing" },
   { value: "CANDLE_SEQUENCE", label: "Candle sequence" },
   { value: "POSITION_RETURN_PCT", label: "Position net return %" },
 ];
@@ -47,7 +48,7 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
           onChange={onChange} removable={groupChildren.length > 1}
           positionConditionsAllowed={positionConditionsAllowed} />)}
         <div className="flex flex-wrap gap-2 pt-1">
-          {(["RSI", "EMA_DISTANCE", "CANDLE_SEQUENCE", "POSITION_RETURN_PCT", "ALL", "ANY"] as ConditionKind[])
+          {(["RSI", "EMA_DISTANCE", "EMA_CROSS_CONFIRMATION", "CANDLE_SEQUENCE", "POSITION_RETURN_PCT", "ALL", "ANY"] as ConditionKind[])
             .filter((childKind) => positionConditionsAllowed || childKind !== "POSITION_RETURN_PCT").map((childKind) =>
             <button type="button" key={childKind}
               className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:border-cyan-500 hover:text-cyan-200"
@@ -88,6 +89,19 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
           </div>
         </Field>
         <p className="text-xs text-slate-500 sm:col-span-3">The last closed candle must be strictly above or below the EMA. Leave the distance limit off to accept any distance.</p>
+      </div>}
+
+      {"indicator" in condition && condition.indicator === "EMA_CROSS_CONFIRMATION" && <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <Field label="EMA period"><input className={inputClass} type="number" min={1} step={1} value={condition.period}
+          onChange={(event) => replace({ ...condition, period: Number(event.target.value) })} /></Field>
+        <Field label="Crossing direction"><select className={inputClass} value={condition.direction}
+          onChange={(event) => replace({ ...condition, direction: event.target.value as typeof condition.direction })}>
+          <option value="ABOVE">Above EMA</option><option value="BELOW">Below EMA</option>
+        </select></Field>
+        <Field label="Confirmation candles"><input className={inputClass} type="number" min={1} step={1}
+          value={condition.confirmationCandles}
+          onChange={(event) => replace({ ...condition, confirmationCandles: Number(event.target.value) })} /></Field>
+        <p className="text-xs text-slate-500 sm:col-span-3">Matches once when the selected number of closes are strictly on the chosen side of their own EMA, immediately after a close on the opposite side.</p>
       </div>}
 
       {"indicator" in condition && condition.indicator === "POSITION_RETURN_PCT" &&

@@ -77,6 +77,31 @@ describe("pure condition-tree evaluator", () => {
       { candles: equal }).matched, false);
   });
 
+  test("confirms an EMA crossing against each candle's contemporaneous EMA only once", () => {
+    const condition = { indicator: "EMA_CROSS_CONFIRMATION" as const, period: 2,
+      direction: "ABOVE" as const, confirmationCandles: 3 };
+    const crossing = candles([10, 9, 12, 13, 14]);
+    const result = evaluateCondition(condition, { candles: crossing });
+    assert.equal(result.matched, true);
+    assert.deepEqual(result.observedValues.confirmedSides, ["true", "true", "true"]);
+    assert.equal(result.observedValues.previousOnOppositeSide, true);
+    assert.equal(evaluateCondition(condition, { candles: [...crossing, ...candles([15]).map((candle) => ({
+      ...candle, id: "candle-5", openTime: new Date(start + 5 * 3_600_000),
+      closeTime: new Date(start + 6 * 3_600_000 - 1), close: "15",
+    }))] }).matched, false);
+
+    const below = evaluateCondition({ ...condition, direction: "BELOW" },
+      { candles: candles([10, 11, 8, 7, 6]) });
+    assert.equal(below.matched, true);
+  });
+
+  test("reports the full EMA crossing warm-up requirement", () => {
+    const result = evaluateCondition({ indicator: "EMA_CROSS_CONFIRMATION", period: 100,
+      direction: "ABOVE", confirmationCandles: 3 }, { candles: candles([10, 11]) });
+    assert.equal(result.reasonCode, "INSUFFICIENT_HISTORY");
+    assert.equal(result.observedValues.requiredCandles, 103);
+  });
+
   test("rejects open candles even for candle-only conditions", () => {
     const history = candles([10]);
     assert.throws(() => evaluateCondition(

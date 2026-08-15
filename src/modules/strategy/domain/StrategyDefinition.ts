@@ -18,6 +18,12 @@ export type EmaDistanceCondition = {
   position: EmaPosition;
   maximumDistancePct?: number;
 };
+export type EmaCrossConfirmationCondition = {
+  indicator: "EMA_CROSS_CONFIRMATION";
+  period: number;
+  direction: EmaPosition;
+  confirmationCandles: number;
+};
 export type CandleSequenceCondition = {
   candleSequence: { count: number; direction: "RED" | "GREEN" | "DOJI"; minimumBodyChangePct: number };
 };
@@ -27,6 +33,7 @@ export type StrategyCondition =
   | RsiCondition
   | PositionReturnPctCondition
   | EmaDistanceCondition
+  | EmaCrossConfirmationCondition
   | CandleSequenceCondition;
 
 export type StrategyDefinitionV1 = {
@@ -117,6 +124,14 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
           issue(`${path}.position`, "VALUE", "position must be ABOVE or BELOW");
         if (candidate.maximumDistancePct !== undefined && !percentageWithAtMostOneDecimal(candidate.maximumDistancePct))
           issue(`${path}.maximumDistancePct`, "VALUE", "maximumDistancePct must be between 0 and 100 with at most one decimal place");
+      } else if (candidate.indicator === "EMA_CROSS_CONFIRMATION") {
+        if (!exactKeys(candidate, ["indicator", "period", "direction", "confirmationCandles"]))
+          issue(path, "PROPERTIES", "EMA_CROSS_CONFIRMATION condition contains unsupported properties");
+        if (!positiveInteger(candidate.period)) issue(`${path}.period`, "VALUE", "period must be a positive safe integer");
+        if (!["ABOVE", "BELOW"].includes(candidate.direction as string))
+          issue(`${path}.direction`, "VALUE", "direction must be ABOVE or BELOW");
+        if (!positiveInteger(candidate.confirmationCandles))
+          issue(`${path}.confirmationCandles`, "VALUE", "confirmationCandles must be a positive safe integer");
       } else if (candidate.indicator === "POSITION_RETURN_PCT") {
         if (!exactKeys(candidate, ["indicator", "operator", "value"]))
           issue(path, "PROPERTIES", "POSITION_RETURN_PCT condition contains unsupported properties");
