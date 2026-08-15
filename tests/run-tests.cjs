@@ -9,6 +9,7 @@ require('./application/auth-login.test.ts');
 require('./application/trading-bots.test.ts');
 require('./application/backtest-portfolio.test.ts');
 require('./application/historical-backtest-runner.test.ts');
+require('./application/backtest-persistence-plan.test.ts');
 require('./application/strategy-indicators.test.ts');
 require('./application/strategy-definition.test.ts');
 require('./application/strategy-engine.test.ts');

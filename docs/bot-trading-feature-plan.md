@@ -19,7 +19,7 @@ as the implementation.
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | Complete | Steps 0-5 and the external acceptance gate are complete; the Prisma suite and Binance/PostgreSQL smoke test verified idempotent closed-candle ingestion, gap handling, and restart safety. |
 | Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
-| Phase 4: backtesting | In progress | Steps 1-2 pure portfolio and deterministic historical runner are complete; persistence, metrics/API, and the golden gate remain. |
+| Phase 4: backtesting | In progress | Steps 1-3 portfolio, historical runner, and transactional replay persistence are complete; metrics/API and the golden gate remain. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
 | Phase 7: Spot test and live trading | Not started | Market orders can be tested and then placed on Binance Spot. |
@@ -791,7 +791,7 @@ idempotent persistence boundary.
 - [x] Step 0B: backtest execution, fill, exit, and end-of-range contracts fixed.
 - [x] Step 1: pure backtest wallet, fill, fee, slippage, position, and risk domain.
 - [x] Step 2: deterministic historical runner and production strategy integration.
-- [ ] Step 3: transactional persistence, idempotency, replay events, and portfolio snapshots.
+- [x] Step 3: transactional persistence, idempotency, replay events, and portfolio snapshots.
 - [ ] Step 4: performance metrics, buy-and-hold comparison, application service, and API.
 - [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.
 
@@ -860,6 +860,30 @@ idempotent persistence boundary.
 - An intent created by the final evaluated candle is recorded as
   `UNFILLED_AT_END_OF_RANGE`. A final BUY reservation is released from the result
   portfolio, and no synthetic candle, fill, position, or forced exit is created.
+
+#### Step 3 transactional persistence contract
+
+- A completed runner result is converted into positions, orders, fills,
+  append-only cash-ledger entries, strategy decisions, indicator snapshots,
+  replay events, and portfolio snapshots before persistence. Stable UUIDv5 keys
+  derived from the run and domain identities make every generated record and
+  order idempotency key reproducible.
+- Financial values are rounded once at the PostgreSQL `Decimal(38,18)` boundary.
+  Any sub-scale accumulation difference is represented by an explicit bounded
+  `CORRECTION` ledger entry; a difference larger than rounding can explain is a
+  reconciliation error and the result is rejected.
+- Persistence locks the backtest run row and writes the complete generated
+  record graph plus the `COMPLETED` run transition in one transaction. The bot
+  moves from `RUNNING` to `PAUSED` only with that successful commit. A foreign-key,
+  validation, or write failure leaves the run and every generated table unchanged.
+- Retrying or concurrently persisting an already completed run returns the first
+  committed result without inserting duplicate positions, orders, fills,
+  decisions, ledger entries, events, or snapshots. A running backtest containing
+  any non-allocation partial record set is rejected for explicit reconciliation
+  rather than overwritten or silently resumed.
+- Runner event sequence numbers and portfolio snapshot sequence numbers remain
+  monotonic and run-scoped. Decisions and indicator snapshots retain their
+  candle identities and complete explainable strategy output for later replay.
 
 #### Work
 
@@ -1086,3 +1110,4 @@ At the start of every bot-related task:
 | 2026-08-15 | Backtests do not force-close positions at the range end and report realized profit/loss, unrealized profit/loss, and total equity separately. |
 | 2026-08-15 | Phase 4 Step 1 uses a pure decimal portfolio domain with cash reservations, adverse side-specific fills, fee-inclusive entry caps, independent position lots, full-lot exits, and immutable mark-to-market transitions. |
 | 2026-08-15 | Phase 4 Step 2 runs the production strategy on closed-candle prefixes after applying only the preceding intent at the current open; pre-range candles are warm-up only and final intents never fill beyond the requested range. |
+| 2026-08-15 | Phase 4 Step 3 persists the complete backtest record graph under a run-row lock and one transaction with deterministic identities, bounded decimal-scale ledger correction, idempotent completion, and rollback on any partial failure. |
