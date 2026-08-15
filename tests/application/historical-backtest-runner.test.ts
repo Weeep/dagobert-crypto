@@ -150,4 +150,24 @@ describe("deterministic historical backtest runner", () => {
       decision.executionReason === "INSUFFICIENT_AVAILABLE_CASH"));
     assert.ok(result.events.some((event) => event.eventType === "ENTRY_REJECTED"));
   });
+
+  test("ON_FALSE_TO_TRUE opens only once during a continuous matching episode", () => {
+    const alwaysGreen = Array.from({ length: 7 }, (_, index) => candle(index, "100", "101"));
+    const result = runHistoricalBacktest({ definition: { ...sequenceStrategy,
+      entryPolicy: { trigger: "ON_FALSE_TO_TRUE" } }, candles: alwaysGreen,
+      backtestFrom: alwaysGreen[0].openTime, backtestTo: alwaysGreen.at(-1)!.openTime, execution });
+    assert.equal(result.portfolio.openPositions.length, 1);
+    assert.equal(result.fills.filter((fill) => fill.side === "BUY").length, 1);
+    assert.equal(result.decisions.filter((decision) => decision.executionOutcome === "ENTRY_SUPPRESSED").length, 6);
+    assert.ok(result.events.some((event) => event.eventType === "ENTRY_SUPPRESSED"));
+  });
+
+  test("EVERY_MATCHING_CANDLE honors cooldown after each filled entry", () => {
+    const alwaysGreen = Array.from({ length: 7 }, (_, index) => candle(index, "100", "101"));
+    const result = runHistoricalBacktest({ definition: { ...sequenceStrategy,
+      entryPolicy: { trigger: "EVERY_MATCHING_CANDLE", cooldownCandles: 2 } }, candles: alwaysGreen,
+      backtestFrom: alwaysGreen[0].openTime, backtestTo: alwaysGreen.at(-1)!.openTime, execution });
+    assert.equal(result.fills.filter((fill) => fill.side === "BUY").length, 2);
+    assert.ok(result.decisions.some((decision) => decision.executionReason === "ENTRY_COOLDOWN_ACTIVE"));
+  });
 });

@@ -3,6 +3,8 @@ export const MAX_STRATEGY_DEPTH = 10;
 export const MAX_STRATEGY_NODES = 100;
 
 export type ComparisonOperator = "LT" | "LTE" | "GT" | "GTE";
+export type EntryTrigger = "EVERY_MATCHING_CANDLE" | "ON_FALSE_TO_TRUE";
+export type EntryPolicy = { trigger: EntryTrigger; cooldownCandles?: number };
 export type RsiCondition = { indicator: "RSI"; period: number; operator: ComparisonOperator; value: number };
 export type EmaPosition = "ABOVE" | "BELOW";
 export type EmaDistanceCondition = {
@@ -26,6 +28,7 @@ export type StrategyDefinitionV1 = {
   name: string;
   entry: StrategyCondition;
   exit: StrategyCondition;
+  entryPolicy?: EntryPolicy;
 };
 
 export type StrategyValidationIssue = { path: string; code: string; message: string };
@@ -53,12 +56,26 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
     issue("$", "TYPE", "strategy definition must be an object");
     return { ok: false, definition: null, issues };
   }
-  if (!exactKeys(value, ["schemaVersion", "name", "entry", "exit"]))
-    issue("$", "PROPERTIES", "strategy definition must contain only schemaVersion, name, entry, and exit");
+  const definitionKeys = value.entryPolicy === undefined
+    ? ["schemaVersion", "name", "entry", "exit"] : ["schemaVersion", "name", "entry", "exit", "entryPolicy"];
+  if (!exactKeys(value, definitionKeys))
+    issue("$", "PROPERTIES", "strategy definition contains unsupported properties");
   if (value.schemaVersion !== STRATEGY_SCHEMA_VERSION)
     issue("$.schemaVersion", "UNSUPPORTED_SCHEMA_VERSION", "schemaVersion must be 1");
   if (typeof value.name !== "string" || value.name.trim().length === 0 || value.name.length > 120)
     issue("$.name", "VALUE", "name must be a non-empty string of at most 120 characters");
+  if (value.entryPolicy !== undefined) {
+    if (!object(value.entryPolicy)) issue("$.entryPolicy", "TYPE", "entryPolicy must be an object");
+    else {
+      const keys = value.entryPolicy.cooldownCandles === undefined ? ["trigger"] : ["trigger", "cooldownCandles"];
+      if (!exactKeys(value.entryPolicy, keys)) issue("$.entryPolicy", "PROPERTIES", "entryPolicy contains unsupported properties");
+      if (!["EVERY_MATCHING_CANDLE", "ON_FALSE_TO_TRUE"].includes(value.entryPolicy.trigger as string))
+        issue("$.entryPolicy.trigger", "VALUE", "entryPolicy trigger is unsupported");
+      if (value.entryPolicy.cooldownCandles !== undefined &&
+          (!Number.isSafeInteger(value.entryPolicy.cooldownCandles) || (value.entryPolicy.cooldownCandles as number) < 0))
+        issue("$.entryPolicy.cooldownCandles", "VALUE", "cooldownCandles must be a non-negative safe integer");
+    }
+  }
 
   let nodes = 0;
   const condition = (candidate: unknown, path: string, depth: number): void => {

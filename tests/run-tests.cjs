@@ -12,6 +12,7 @@ require('./application/historical-backtest-runner.test.ts');
 require('./application/backtest-persistence-plan.test.ts');
 require('./application/run-backtest.test.ts');
 require('./application/backtest-decision-presentation.test.ts');
+require('./application/entry-trigger-policy.test.ts');
 require('./application/strategy-indicators.test.ts');
 require('./application/strategy-definition.test.ts');
 require('./application/strategy-engine.test.ts');

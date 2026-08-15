@@ -11,6 +11,10 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
     name: { type: "string", minLength: 1, maxLength: 120 },
     entry: { $ref: "#/$defs/condition" },
     exit: { $ref: "#/$defs/condition" },
+    entryPolicy: { type: "object", additionalProperties: false, required: ["trigger"], properties: {
+      trigger: { enum: ["EVERY_MATCHING_CANDLE", "ON_FALSE_TO_TRUE"] },
+      cooldownCandles: { type: "integer", minimum: 0 },
+    } },
   },
   $defs: {
     condition: { oneOf: [

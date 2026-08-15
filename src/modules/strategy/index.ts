@@ -24,6 +24,8 @@ export type {
   ComparisonOperator,
   EmaDistanceCondition,
   EmaPosition,
+  EntryPolicy,
+  EntryTrigger,
   StrategyCondition,
   StrategyDefinitionV1,
   StrategyValidationIssue,

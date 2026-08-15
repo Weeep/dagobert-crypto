@@ -76,7 +76,8 @@ function BacktestResult({ result }: { result: BacktestView }) {
       {result.decisions.map((decision) => <div key={decision.candleId} className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-slate-400">{new Date(decision.evaluation.evaluatedCandleOpenTime).toLocaleString()}</span>
-          <span className={`font-bold ${decision.evaluation.action === "BUY" ? "text-emerald-400" : decision.evaluation.action === "SELL" ? "text-rose-400" : "text-slate-400"}`}>{decision.evaluation.action}</span>
+          <span className={`font-bold ${decision.executionOutcome === "ENTRY_SUPPRESSED" ? "text-amber-400" : decision.evaluation.action === "BUY" ? "text-emerald-400" : decision.evaluation.action === "SELL" ? "text-rose-400" : "text-slate-400"}`}>
+            {decision.executionOutcome === "ENTRY_SUPPRESSED" ? "BUY SUPPRESSED" : decision.evaluation.action}</span>
           <span className="text-slate-300">{decision.executionReason}</span>
         </div>
         <p className="mt-2 text-xs text-slate-500">{decision.evaluation.explanation}</p>

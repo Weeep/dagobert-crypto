@@ -19,7 +19,7 @@ as the implementation.
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | Complete | Steps 0-5 and the external acceptance gate are complete; the Prisma suite and Binance/PostgreSQL smoke test verified idempotent closed-candle ingestion, gap handling, and restart safety. |
 | Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
-| Phase 4: backtesting | In progress | Steps 1-4 execution, persistence, metrics/API, and the interactive results UI are complete; the golden gate remains. |
+| Phase 4: backtesting | In progress | Steps 1-4 and Step 4A entry trigger policy are complete; position-aware exits, additional conditions, and the golden gate remain. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
 | Phase 7: Spot test and live trading | Not started | Market orders can be tested and then placed on Binance Spot. |
@@ -793,6 +793,10 @@ idempotent persistence boundary.
 - [x] Step 2: deterministic historical runner and production strategy integration.
 - [x] Step 3: transactional persistence, idempotency, replay events, and portfolio snapshots.
 - [x] Step 4: performance metrics, buy-and-hold comparison, application service, API, and results GUI.
+- [x] Step 4A: configurable level/edge entry triggers and post-fill candle cooldown.
+- [ ] Step 4B: position-aware exit selection and selected-lot lifecycle.
+- [ ] Step 4C: fee-aware per-lot percentage-return exit condition.
+- [ ] Step 4D: confirmed EMA crossing condition.
 - [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.
 
 #### Step 0B execution and accounting contract
@@ -911,6 +915,29 @@ idempotent persistence boundary.
   timestamp, price, quantity and fee, plus the complete decision timeline,
   execution reason, entry/exit match state, and observed RSI, EMA, or candle
   sequence values and thresholds. Interactive chart replay remains Phase 6 scope.
+
+#### Step 4A entry trigger policy contract
+
+- A strategy may optionally define `entryPolicy.trigger` as
+  `EVERY_MATCHING_CANDLE` or `ON_FALSE_TO_TRUE` and a non-negative safe-integer
+  `cooldownCandles`. Definitions without `entryPolicy` retain the original
+  `EVERY_MATCHING_CANDLE` behavior with zero cooldown, preserving every existing
+  immutable strategy version and golden fixture.
+- `EVERY_MATCHING_CANDLE` allows each matching close to reserve a new lot when
+  risk and budget permit. `ON_FALSE_TO_TRUE` allows the first matching close,
+  suppresses further entries while the raw entry tree remains true, and rearms
+  only after at least one evaluated close where the entry tree is false.
+- Cooldown begins when a BUY is actually filled, not when a signal is merely
+  produced, reserved, rejected, or suppressed. With `cooldownCandles = N`, the
+  fill candle and the next `N - 1` close evaluations cannot reserve another BUY;
+  zero disables cooldown. Edge rearming and cooldown must both allow an entry.
+- Suppression never rewrites the explainable raw strategy evaluation. It records
+  `ENTRY_NOT_REARMED` or `ENTRY_COOLDOWN_ACTIVE` as the execution reason and an
+  `ENTRY_SUPPRESSED` replay event, without reserving funds or creating a fill.
+- The rule builder exposes both trigger modes and cooldown. New definitions
+  default to `ON_FALSE_TO_TRUE` with zero cooldown to avoid accidental repeated
+  entries, while loaded legacy definitions visibly retain their level-triggered
+  default until a new immutable version is saved.
 
 #### Work
 
@@ -1140,3 +1167,4 @@ At the start of every bot-related task:
 | 2026-08-15 | Phase 4 Step 3 persists the complete backtest record graph under a run-row lock and one transaction with deterministic identities, bounded decimal-scale ledger correction, idempotent completion, and rollback on any partial failure. |
 | 2026-08-15 | Phase 4 Step 4 exposes owned synchronous backtest execution through the API and Bot GUI with deterministic performance metrics, a fee/slippage-aware buy-and-hold benchmark, executed fill history, and decision reasons. |
 | 2026-08-15 | Backtest decision rows render the already persisted condition trees and observed indicator values, including RSI period, value, operator, and threshold, so HOLD and warm-up outcomes are diagnosable without reading raw JSON. |
+| 2026-08-15 | Entry execution supports backward-compatible `EVERY_MATCHING_CANDLE`, episode-based `ON_FALSE_TO_TRUE`, and an optional post-fill candle cooldown; new GUI definitions default to episode-based triggering. |

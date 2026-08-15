@@ -2,6 +2,7 @@ export * from "./domain/TradingBot";
 export * from "./domain/BacktestPortfolio";
 export * from "./domain/HistoricalBacktestRunner";
 export * from "./domain/BacktestMetrics";
+export * from "./domain/EntryTriggerPolicy";
 export type { BacktestRunPersistenceRepository, PersistBacktestRunResult } from "./domain/BacktestRunPersistenceRepository";
 export { buildBacktestPersistencePlan } from "./application/BacktestRunPersistencePlan";
 export { RunBacktestUseCase } from "./application/RunBacktestUseCase";

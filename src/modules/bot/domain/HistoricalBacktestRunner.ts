@@ -18,6 +18,7 @@ import {
   type BacktestPortfolio,
   type BacktestPortfolioSnapshot,
 } from "./BacktestPortfolio";
+import { applyEntryTriggerPolicy, type EntryTriggerState } from "./EntryTriggerPolicy";
 
 export type HistoricalBacktestInput = {
   definition: StrategyDefinitionV1;
@@ -30,7 +31,7 @@ export type HistoricalBacktestInput = {
 export type HistoricalBacktestDecision = {
   candleId: string;
   evaluation: StrategyEvaluation;
-  executionOutcome: "HOLD" | "ENTRY_RESERVED" | "ENTRY_REJECTED" | "EXIT_SCHEDULED";
+  executionOutcome: "HOLD" | "ENTRY_RESERVED" | "ENTRY_REJECTED" | "ENTRY_SUPPRESSED" | "EXIT_SCHEDULED";
   executionReason: string;
 };
 
@@ -40,6 +41,7 @@ export type HistoricalBacktestEvent = {
     | "DECISION_MADE"
     | "ENTRY_RESERVED"
     | "ENTRY_REJECTED"
+    | "ENTRY_SUPPRESSED"
     | "ENTRY_FILLED"
     | "EXIT_SCHEDULED"
     | "POSITIONS_CLOSED"
@@ -122,6 +124,7 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
   const lastEvaluationIndex = evaluationIndexes.at(-1)!.index;
   let portfolio = createBacktestPortfolio(input.execution);
   let pending: PendingExecution | null = null;
+  let entryTriggerState: EntryTriggerState = { previousEntryMatched: false, lastEntryFillIndex: null };
   let sequenceNumber = 0;
   const decisions: HistoricalBacktestDecision[] = [];
   const fills: BacktestFill[] = [];
@@ -144,6 +147,7 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
         filledAt: candle.openTime,
       });
       portfolio = result.portfolio;
+      entryTriggerState = { ...entryTriggerState, lastEntryFillIndex: index };
       fills.push(result.fill);
       event("ENTRY_FILLED", candle, { decisionCandleId: pending.decisionCandleId, fill: result.fill }, candle.openTime);
       pending = null;
@@ -170,7 +174,15 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
     let executionOutcome: HistoricalBacktestDecision["executionOutcome"] = "HOLD";
     let executionReason = evaluation.reasonCode;
     let executionEvent: { type: HistoricalBacktestEvent["eventType"]; payload: unknown } | null = null;
-    if (evaluation.action === "BUY") {
+    const entryTrigger = applyEntryTriggerPolicy(input.definition.entryPolicy, entryTriggerState,
+      evaluation.entry.matched, index);
+    entryTriggerState = entryTrigger.state;
+    if (evaluation.action === "BUY" && !entryTrigger.allowed) {
+      executionOutcome = "ENTRY_SUPPRESSED";
+      executionReason = entryTrigger.reason;
+      executionEvent = { type: "ENTRY_SUPPRESSED", payload: { reason: entryTrigger.reason,
+        policy: input.definition.entryPolicy ?? null } };
+    } else if (evaluation.action === "BUY") {
       const reservationId = `entry:${candle.id}`;
       const reserved = reserveBacktestEntry(portfolio, input.execution, reservationId);
       if (reserved.ok) {
