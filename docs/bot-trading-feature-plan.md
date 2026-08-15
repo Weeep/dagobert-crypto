@@ -19,7 +19,7 @@ as the implementation.
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | Complete | Steps 0-5 and the external acceptance gate are complete; the Prisma suite and Binance/PostgreSQL smoke test verified idempotent closed-candle ingestion, gap handling, and restart safety. |
 | Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
-| Phase 4: backtesting | In progress | Step 1 pure portfolio and execution domain is complete; the historical runner, persistence, metrics/API, and golden gate remain. |
+| Phase 4: backtesting | In progress | Steps 1-2 pure portfolio and deterministic historical runner are complete; persistence, metrics/API, and the golden gate remain. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
 | Phase 7: Spot test and live trading | Not started | Market orders can be tested and then placed on Binance Spot. |
@@ -790,7 +790,7 @@ idempotent persistence boundary.
 - [x] Step 0A: Phase 2 external acceptance gate completed.
 - [x] Step 0B: backtest execution, fill, exit, and end-of-range contracts fixed.
 - [x] Step 1: pure backtest wallet, fill, fee, slippage, position, and risk domain.
-- [ ] Step 2: deterministic historical runner and production strategy integration.
+- [x] Step 2: deterministic historical runner and production strategy integration.
 - [ ] Step 3: transactional persistence, idempotency, replay events, and portfolio snapshots.
 - [ ] Step 4: performance metrics, buy-and-hold comparison, application service, and API.
 - [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.
@@ -839,6 +839,27 @@ idempotent persistence boundary.
 - Mark-to-market snapshots report cash, reservations, available cash, invested
   cost, market value, realized and unrealized profit/loss, total equity, fees,
   and open-position count without changing or force-closing the portfolio.
+
+#### Step 2 historical runner contract
+
+- The pure runner accepts an immutable ordered closed-candle history, execution
+  range, validated strategy definition, and execution configuration. Candles
+  before the requested range are available only as indicator warm-up; they never
+  produce decisions, fills, events, or positions.
+- At each candle open the runner executes at most the intent created after the
+  preceding evaluated candle. At that candle close it evaluates the production
+  strategy against only the prefix ending at that exact candle and the portfolio
+  position count after the open fill, then reserves or schedules the next intent.
+- BUY decisions that cannot reserve the fee-inclusive position amount remain
+  auditable strategy decisions with `INSUFFICIENT_AVAILABLE_CASH`; they do not
+  create a position or pending fill. SELL decisions schedule all currently open
+  lots for separate full fills at the next evaluated candle open.
+- Stable candle-derived reservation and position identities, caller-supplied
+  candle timestamps, monotonically increasing in-memory events, and pure
+  portfolio transitions make identical inputs deeply reproducible.
+- An intent created by the final evaluated candle is recorded as
+  `UNFILLED_AT_END_OF_RANGE`. A final BUY reservation is released from the result
+  portfolio, and no synthetic candle, fill, position, or forced exit is created.
 
 #### Work
 
@@ -1064,3 +1085,4 @@ At the start of every bot-related task:
 | 2026-08-15 | Backtest entries cap total cash outflow, including buy fees, at `amountPerPosition`; one buy opens one independent lot and one sell signal closes every open lot in full through separate orders and fills. |
 | 2026-08-15 | Backtests do not force-close positions at the range end and report realized profit/loss, unrealized profit/loss, and total equity separately. |
 | 2026-08-15 | Phase 4 Step 1 uses a pure decimal portfolio domain with cash reservations, adverse side-specific fills, fee-inclusive entry caps, independent position lots, full-lot exits, and immutable mark-to-market transitions. |
+| 2026-08-15 | Phase 4 Step 2 runs the production strategy on closed-candle prefixes after applying only the preceding intent at the current open; pre-range candles are warm-up only and final intents never fill beyond the requested range. |
