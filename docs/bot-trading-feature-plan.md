@@ -17,7 +17,7 @@ as the implementation.
 | --- | --- | --- |
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
-| Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
+| Phase 2: market data | Complete | Steps 0-5 and the external acceptance gate are complete; the Prisma suite and Binance/PostgreSQL smoke test verified idempotent closed-candle ingestion, gap handling, and restart safety. |
 | Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
 | Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
@@ -547,14 +547,15 @@ operator guides for polling and historical backfill.
 **Exit:** all Phase 2 acceptance criteria pass and the poller can be stopped,
 restarted, and safely run twice for the same interval.
 
-**Implementation ready, external gate pending:** the single-maintainer scope now
-adds structured cursor lag, gap totals, clock drift, consecutive failures, and a
-simple health/reasons result; validates startup configuration; redacts Binance
-credentials; and documents startup, restart, gap repair, and cursor audits.
-Deterministic tests cover stale cursors, clock drift, gap reporting, credential
-redaction, restart overlap, gap repair, and open-candle exclusion. Keep Step 5
-and Phase 2 open until the Prisma suite and the small Binance/PostgreSQL smoke
-test are run in an environment with PostgreSQL and outbound Binance access.
+**Complete:** the single-maintainer scope adds structured cursor lag, gap totals,
+clock drift, consecutive failures, and a simple health/reasons result; validates
+startup configuration; redacts Binance credentials; and documents startup,
+restart, gap repair, and cursor audits. Deterministic tests cover stale cursors,
+clock drift, gap reporting, credential redaction, restart overlap, gap repair,
+and open-candle exclusion. The Prisma integration suite and a small
+Binance/PostgreSQL smoke test verified duplicate-free closed-candle persistence,
+gap detection and repair, restart-safe cursor continuation, open-candle
+exclusion, and safe repeated processing of the same interval.
 
 For the current single-user, single-maintainer hobby deployment, the structured
 one-shot result is the health check. Prometheus/OpenTelemetry, dashboards,
@@ -784,6 +785,40 @@ idempotent persistence boundary.
 
 ### Phase 4: backtesting
 
+#### Implementation progress
+
+- [x] Step 0A: Phase 2 external acceptance gate completed.
+- [x] Step 0B: backtest execution, fill, exit, and end-of-range contracts fixed.
+- [ ] Step 1: pure backtest wallet, fill, fee, slippage, position, and risk domain.
+- [ ] Step 2: deterministic historical runner and production strategy integration.
+- [ ] Step 3: transactional persistence, idempotency, replay events, and portfolio snapshots.
+- [ ] Step 4: performance metrics, buy-and-hold comparison, application service, and API.
+- [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.
+
+#### Step 0B execution and accounting contract
+
+- A decision for candle `t` is made only after that closed candle and cannot fill
+  using its close. An executable intent fills at candle `t+1` open; without a
+  next candle it remains unfilled and is recorded as `UNFILLED_AT_END_OF_RANGE`.
+- A simulated buy fills at `nextOpen * (1 + slippageRate)` and a simulated sell
+  fills at `nextOpen * (1 - slippageRate)`. Fees are calculated from the actual
+  fill notional after slippage. A slippage-adjusted simulated market fill need
+  not remain inside the source candle's high-low range.
+- `amountPerPosition` is the maximum total cash outflow for an entry, including
+  its buy fee. Quantity is derived so the fill notional plus fee cannot exceed
+  that amount or the available bot cash. All financial arithmetic uses decimal
+  values rather than binary floating point.
+- Each buy opens one independent position lot. One executable sell decision
+  closes every open lot in full at the same execution time, using a separate
+  order and fill per lot so fees, profit/loss, and holding time remain auditable.
+- Open positions are not force-closed at the end of the requested range. Results
+  report realized profit/loss, open-position unrealized profit/loss, and total
+  equity separately. A future force-close option must be an explicit immutable
+  run setting and produce its own auditable events.
+- Backtest, paper, test, and live modes must share position, ledger, risk, and
+  execution lifecycle logic; only the execution adapter and its fill policy may
+  differ by mode.
+
 #### Work
 
 - Implement a historical runner using the production strategy and risk logic.
@@ -961,8 +996,6 @@ These items do not block Phase 1 but must be resolved before the noted phase:
 | Decision | Required by |
 | --- | --- |
 | Exact initial timeframe allow-list (`15m`, `1h`, `4h`, `1d`) | Resolved in the shared Step 0 contract; enforce in bot and market-data inputs |
-| Whether an exit signal closes all open positions in one aggregate order or separate orders | Phase 4 |
-| Backtest market-fill timing and slippage formula | Phase 4 |
 | Paper fill price and latency model | Phase 5 |
 | Required paper-trading soak duration | Phase 7 |
 | Binance test environment/API choice for Spot test | Phase 7 |
@@ -1005,3 +1038,7 @@ At the start of every bot-related task:
 | 2026-08-11 | Phase 2 Step 5 uses structured one-shot outcomes as the initial single-maintainer health check; dedicated metrics backends, dashboards, alerts, HTTP probes, and persistent metric history are deferred until the project has multiple maintainers/users or unattended availability requirements. |
 | 2026-08-14 | The v1 EMA rule requires a strict `ABOVE` or `BELOW` close position; equality matches neither. Its optional `maximumDistancePct` is expressed as a percentage from 0 to 100 with at most one decimal place. |
 | 2026-08-14 | Phase 3 is complete after its golden gate verified independently calculated RSI/EMA prefix series, deterministic position-aware decisions, schema rejection, and look-ahead protection against immutable fixtures. |
+| 2026-08-15 | Phase 2 is complete after the Prisma integration suite and Binance/PostgreSQL smoke test verified duplicate-free closed-candle ingestion, gap repair, restart-safe continuation, and safe repeated interval processing. |
+| 2026-08-15 | Backtest decisions made after candle `t` fill at candle `t+1` open; buy/sell slippage worsens the fill in its respective direction, fees use actual fill notional, and an intent without a next candle remains unfilled. |
+| 2026-08-15 | Backtest entries cap total cash outflow, including buy fees, at `amountPerPosition`; one buy opens one independent lot and one sell signal closes every open lot in full through separate orders and fills. |
+| 2026-08-15 | Backtests do not force-close positions at the range end and report realized profit/loss, unrealized profit/loss, and total equity separately. |
