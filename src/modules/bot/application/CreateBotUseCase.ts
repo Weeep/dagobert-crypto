@@ -74,6 +74,7 @@ export class CreateBotUseCase {
       timeframe: input.timeframe as TradingBot["timeframe"], mode: input.mode ?? "BACKTEST",
       status: "DRAFT", strategyVersionId: input.strategyVersionId,
       feeRate: new Big(feeRate).toString(), slippageRate: new Big(slippageRate).toString(),
+      archivedAt: null,
       createdAt: now, updatedAt: now,
     };
     await this.repository.save(bot);

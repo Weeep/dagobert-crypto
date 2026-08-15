@@ -11,6 +11,7 @@ import type { PairDto } from "@/src/modules/pair/dto/PairDto";
 import { BotApiClient } from "./BotApiClient";
 import { BotCreator } from "./BotCreator";
 import { BacktestPanel } from "./BacktestPanel";
+import { BotList } from "./BotList";
 
 const api = new StrategyApiClient();
 const botApi = new BotApiClient();
@@ -86,6 +87,9 @@ export default function PageBot() {
   };
 
   return <div className="mx-auto max-w-7xl text-slate-100">
+    <BotList api={botApi} bots={bots} pairs={pairs} strategies={strategies} loading={botDependenciesLoading}
+      onChanged={(bot) => setBots((current) => current.map((item) => item.id === bot.id ? bot : item))}
+      onDeleted={(id) => setBots((current) => current.filter((bot) => bot.id !== id))} />
     <BotCreator api={botApi} bots={bots} pairs={pairs} strategies={strategies} loading={botDependenciesLoading}
       onCreated={(bot) => setBots((current) => [bot, ...current])} />
     <BacktestPanel api={botApi} bots={bots} />

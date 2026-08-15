@@ -37,7 +37,7 @@ export class BotApiClient {
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
       },
     });
-    const body = await response.json() as T & ApiError;
+    const body = (response.status === 204 ? {} : await response.json()) as T & ApiError;
     if (!response.ok) throw new Error(body.error?.message ?? `Bot API request failed (${response.status})`);
     return body;
   }
@@ -55,6 +55,16 @@ export class BotApiClient {
       method: "POST",
       body: JSON.stringify({ ...input, mode: "BACKTEST" }),
     })).bot;
+  }
+
+  async update(botId: string, input: Partial<CreateBotRequest> & { archived?: boolean }): Promise<BotDto> {
+    return (await this.request<{ bot: BotDto }>(`/api/bots/${encodeURIComponent(botId)}`, {
+      method: "PATCH", body: JSON.stringify(input),
+    })).bot;
+  }
+
+  async delete(botId: string): Promise<void> {
+    await this.request(`/api/bots/${encodeURIComponent(botId)}`, { method: "DELETE" });
   }
 
   async runBacktest(botId: string, from: string, to: string): Promise<BacktestView> {

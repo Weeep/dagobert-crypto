@@ -4,7 +4,7 @@ import type { BotRepository } from "../domain/BotRepository";
 
 export type UpdateBotInput = Partial<{ name: string; pairSymbol: string; assignedBudget: string;
   amountPerPosition: string; timeframe: string; mode: BotMode; strategyVersionId: string;
-  feeRate: string; slippageRate: string }>;
+  feeRate: string; slippageRate: string; archived: boolean }>;
 
 export class UpdateBotUseCase {
   constructor(
@@ -16,7 +16,9 @@ export class UpdateBotUseCase {
     const bot = await this.bots.findById(id);
     if (!bot || bot.userId !== userId) return { ok: false as const, error: "Bot not found", bot: null };
     if (bot.status === "RUNNING") return { ok: false as const, error: "Running bot cannot be edited", bot: null };
-    const next = { ...bot, ...input, name: input.name?.trim() ?? bot.name,
+    const { archived, ...editable } = input;
+    const next = { ...bot, ...editable, archivedAt: archived === undefined ? bot.archivedAt : archived ? new Date() : null,
+      name: input.name?.trim() ?? bot.name,
       pairSymbol: input.pairSymbol?.trim().toUpperCase() ?? bot.pairSymbol, updatedAt: new Date() };
     if (!next.name || !/^[A-Z0-9]+USDC$/.test(next.pairSymbol)) return { ok: false as const, error: "Invalid name or USDC pair", bot: null };
     if (this.pairExists && !await this.pairExists(next.pairSymbol)) return { ok: false as const, error: "Trading pair not found", bot: null };

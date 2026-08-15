@@ -168,12 +168,14 @@ model Bot {
   strategyVersion   StrategyVersion @relation(fields: [strategyVersionId], references: [id], onDelete: Restrict)
   feeRate           Decimal         @default(0) @map("fee_rate") @db.Decimal(20, 12)
   slippageRate      Decimal         @default(0) @map("slippage_rate") @db.Decimal(20, 12)
+  archivedAt        DateTime?       @map("archived_at") @db.Timestamptz(3)
   runs              BotRun[]
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@unique([userId, name])
   @@index([status, mode])
+  @@index([userId, archivedAt])
   @@index([pairSymbol, timeframe])
   @@map("bots")
 }

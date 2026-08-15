@@ -55,6 +55,7 @@ class Bots implements BotRepository {
   findById(id: string) { return Promise.resolve(this.values.find((item) => item.id === id) ?? null); }
   findByUserIdAndName(userId: string, name: string) { return Promise.resolve(this.values.find((item) => item.userId === userId && item.name === name) ?? null); }
   async save(bot: TradingBot) { this.values = [...this.values.filter((item) => item.id !== bot.id), bot]; }
+  async delete(id: string) { this.values = this.values.filter((item) => item.id !== id); }
 }
 class Strategies implements StrategyRepository {
   values: Strategy[] = [];

@@ -1,8 +1,9 @@
 import type { BotRun, TradingBot } from "../domain/TradingBot";
 
-export type BotDto = Omit<TradingBot, "createdAt" | "updatedAt"> & {
+export type BotDto = Omit<TradingBot, "createdAt" | "updatedAt" | "archivedAt"> & {
   createdAt: string;
   updatedAt: string;
+  archivedAt: string | null;
 };
 
 export type BotRunDto = Omit<BotRun, "startedAt" | "endedAt" | "backtestFrom" | "backtestTo"> & {
@@ -13,7 +14,8 @@ export type BotRunDto = Omit<BotRun, "startedAt" | "endedAt" | "backtestFrom" | 
 };
 
 export function toBotDto(bot: TradingBot): BotDto {
-  return { ...bot, createdAt: bot.createdAt.toISOString(), updatedAt: bot.updatedAt.toISOString() };
+  return { ...bot, createdAt: bot.createdAt.toISOString(), updatedAt: bot.updatedAt.toISOString(),
+    archivedAt: bot.archivedAt?.toISOString() ?? null };
 }
 
 export function toBotRunDto(run: BotRun): BotRunDto {

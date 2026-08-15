@@ -1,4 +1,4 @@
-import { CreateBotUseCase, GetBotUseCase, ListBotsUseCase, RunBacktestUseCase,
+import { CreateBotUseCase, DeleteBotUseCase, GetBotUseCase, ListBotsUseCase, RunBacktestUseCase,
   SetBotStatusUseCase, StartBotUseCase, UpdateBotUseCase } from "@/src/modules/bot";
 import type { BotRepository, BotRunRepository } from "@/src/modules/bot";
 import type { BacktestRunPersistenceRepository, BotLifecycleRepository } from "@/src/modules/bot";
@@ -37,6 +37,7 @@ export function createTradingBotUseCases(repositories: TradingBotRepositories) {
       return (await repositories.strategyRepository.findById(version.strategyId))?.userId ?? null;
     }, async (symbol) => Boolean(await repositories.pairRepository.findBySymbol(symbol))),
     listBots: new ListBotsUseCase(repositories.botRepository),
+    deleteBot: new DeleteBotUseCase(repositories.botRepository),
     startBot,
     runBacktest: new RunBacktestUseCase(repositories.botRepository, repositories.strategyRepository,
       repositories.candleRepository, startBot, repositories.backtestRunPersistenceRepository),

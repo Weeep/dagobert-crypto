@@ -39,6 +39,7 @@ export type TradingBot = {
   strategyVersionId: string;
   feeRate: string;
   slippageRate: string;
+  archivedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

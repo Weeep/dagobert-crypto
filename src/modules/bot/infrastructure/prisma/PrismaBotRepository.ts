@@ -9,14 +9,15 @@ function mapBot(row: BotRow): TradingBot {
     assignedBudget: row.assignedBudget.toString(), amountPerPosition: row.amountPerPosition.toString(),
     timeframe: row.timeframe as TradingBot["timeframe"], mode: row.mode, status: row.status,
     strategyVersionId: row.strategyVersionId, feeRate: row.feeRate.toString(),
-    slippageRate: row.slippageRate.toString(), createdAt: row.createdAt, updatedAt: row.updatedAt,
+    slippageRate: row.slippageRate.toString(), archivedAt: row.archivedAt,
+    createdAt: row.createdAt, updatedAt: row.updatedAt,
   };
 }
 
 export class PrismaBotRepository implements BotRepository {
   constructor(private readonly prisma: PrismaClient) {}
   async findAllByUserId(userId: string) {
-    return (await this.prisma.bot.findMany({ where: { userId } })).map(mapBot);
+    return (await this.prisma.bot.findMany({ where: { userId }, orderBy: { createdAt: "desc" } })).map(mapBot);
   }
   async findById(id: string) {
     const row = await this.prisma.bot.findUnique({ where: { id } });
@@ -32,8 +33,10 @@ export class PrismaBotRepository implements BotRepository {
       assignedBudget: bot.assignedBudget, amountPerPosition: bot.amountPerPosition,
       timeframe: bot.timeframe, mode: bot.mode, status: bot.status,
       strategyVersionId: bot.strategyVersionId, feeRate: bot.feeRate,
-      slippageRate: bot.slippageRate, createdAt: bot.createdAt, updatedAt: bot.updatedAt,
+      slippageRate: bot.slippageRate, archivedAt: bot.archivedAt ?? null,
+      createdAt: bot.createdAt, updatedAt: bot.updatedAt,
     };
     await this.prisma.bot.upsert({ where: { id: bot.id }, create: { id: bot.id, ...data }, update: data });
   }
+  async delete(id: string) { await this.prisma.bot.delete({ where: { id } }); }
 }

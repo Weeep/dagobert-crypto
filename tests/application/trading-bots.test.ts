@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { describe } from "node:test";
-import { CreateBotUseCase, GetBotUseCase, ListBotsUseCase, SetBotStatusUseCase, StartBotUseCase, UpdateBotUseCase, type BotRepository, type BotRun, type BotRunRepository, type TradingBot } from "@/src/modules/bot";
+import { CreateBotUseCase, DeleteBotUseCase, GetBotUseCase, ListBotsUseCase, SetBotStatusUseCase, StartBotUseCase, UpdateBotUseCase, type BotRepository, type BotRun, type BotRunRepository, type TradingBot } from "@/src/modules/bot";
 import { CreateStrategyUseCase, type Strategy, type StrategyRepository, type StrategyVersion } from "@/src/modules/strategy";
 
 const validDefinition = (name = "RSI") => ({
@@ -18,6 +18,7 @@ class MemoryBotRepository implements BotRepository {
     return this.bots.find((bot) => bot.userId === userId && bot.name === name) ?? null;
   }
   async save(bot: TradingBot) { this.bots = [...this.bots.filter((item) => item.id !== bot.id), bot]; }
+  async delete(id: string) { this.bots = this.bots.filter((item) => item.id !== id); }
 }
 class MemoryRunRepository implements BotRunRepository {
   runs: BotRun[] = [];
@@ -192,5 +193,19 @@ describe("trading bot application", () => {
     assert.equal((await lifecycle.execute("bot", "STOPPED")).ok, true);
     assert.equal((await lifecycle.execute("bot", "STOPPED")).ok, true);
     assert.equal((await bots.findById("bot"))?.status, "STOPPED");
+  });
+
+  test("archives editable bots and permanently deletes only owned, non-running bots", async () => {
+    const bots = new MemoryBotRepository();
+    const created = await new CreateBotUseCase(bots).execute({ userId: "owner", name: "Retirable", pairSymbol: "BTCUSDC",
+      assignedBudget: "20", amountPerPosition: "10", timeframe: "1h", strategyVersionId: "v1" });
+    assert.equal(created.ok, true); if (!created.ok) return;
+    const archived = await new UpdateBotUseCase(bots, async () => "owner").execute("owner", created.bot.id, { archived: true });
+    assert.equal(archived.ok, true); if (!archived.ok) return;
+    assert.ok(archived.bot.archivedAt instanceof Date);
+    const deletion = new DeleteBotUseCase(bots);
+    assert.equal((await deletion.execute("intruder", created.bot.id)).ok, false);
+    assert.equal((await deletion.execute("owner", created.bot.id)).ok, true);
+    assert.equal(await bots.findById(created.bot.id), null);
   });
 });
