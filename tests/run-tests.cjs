@@ -7,6 +7,7 @@ require('./application/pairs.test.ts');
 require('./application/transaction-groups.test.ts');
 require('./application/auth-login.test.ts');
 require('./application/trading-bots.test.ts');
+require('./application/backtest-portfolio.test.ts');
 require('./application/strategy-indicators.test.ts');
 require('./application/strategy-definition.test.ts');
 require('./application/strategy-engine.test.ts');

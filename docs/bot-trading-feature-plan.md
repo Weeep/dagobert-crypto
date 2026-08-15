@@ -19,7 +19,7 @@ as the implementation.
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | Complete | Steps 0-5 and the external acceptance gate are complete; the Prisma suite and Binance/PostgreSQL smoke test verified idempotent closed-candle ingestion, gap handling, and restart safety. |
 | Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
-| Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
+| Phase 4: backtesting | In progress | Step 1 pure portfolio and execution domain is complete; the historical runner, persistence, metrics/API, and golden gate remain. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
 | Phase 7: Spot test and live trading | Not started | Market orders can be tested and then placed on Binance Spot. |
@@ -369,7 +369,7 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 - Add domain entities, repository contracts, Prisma adapters, DTOs, and use
   cases following the repository's feature-first module structure.
 - Add bot create, update, list, detail, start, pause, and stop APIs.
-- Validate `*USDC`, positive budgets, position amount plus fees, timeframe,
+- Validate `*USDC`, positive budgets, the fee-inclusive position cash cap, timeframe,
   strategy version, and mode transitions.
 - Add transactional bot-budget and owner-wallet reservation/release operations.
 
@@ -789,7 +789,7 @@ idempotent persistence boundary.
 
 - [x] Step 0A: Phase 2 external acceptance gate completed.
 - [x] Step 0B: backtest execution, fill, exit, and end-of-range contracts fixed.
-- [ ] Step 1: pure backtest wallet, fill, fee, slippage, position, and risk domain.
+- [x] Step 1: pure backtest wallet, fill, fee, slippage, position, and risk domain.
 - [ ] Step 2: deterministic historical runner and production strategy integration.
 - [ ] Step 3: transactional persistence, idempotency, replay events, and portfolio snapshots.
 - [ ] Step 4: performance metrics, buy-and-hold comparison, application service, and API.
@@ -818,6 +818,27 @@ idempotent persistence boundary.
 - Backtest, paper, test, and live modes must share position, ledger, risk, and
   execution lifecycle logic; only the execution adapter and its fill policy may
   differ by mode.
+
+#### Step 1 backtest portfolio contract
+
+- The pure portfolio domain has no repository, database, clock, strategy, or
+  exchange dependency. Callers supply stable reservation and position identities,
+  fill timestamps, the next candle open, and the immutable execution configuration.
+- Entry reservations immediately reduce available cash and reject duplicate
+  identities or insufficient funds. Filling consumes exactly one reservation;
+  releasing it restores availability without changing cash or the ledger-ready
+  fill result.
+- Entry quantity is derived from the configured maximum total cash outflow after
+  accounting for the buy fee. Buy and sell fills apply adverse side-specific
+  slippage, calculate fees from actual fill notional, and return explicit cash
+  changes for later transactional ledger persistence.
+- Every buy creates an independent immutable lot. A sell closes all currently
+  open lots in full, produces one fill and realized profit/loss per lot, and
+  retains closed lots for audit while keeping total fees and aggregate realized
+  profit/loss consistent.
+- Mark-to-market snapshots report cash, reservations, available cash, invested
+  cost, market value, realized and unrealized profit/loss, total equity, fees,
+  and open-position count without changing or force-closing the portfolio.
 
 #### Work
 
@@ -1042,3 +1063,4 @@ At the start of every bot-related task:
 | 2026-08-15 | Backtest decisions made after candle `t` fill at candle `t+1` open; buy/sell slippage worsens the fill in its respective direction, fees use actual fill notional, and an intent without a next candle remains unfilled. |
 | 2026-08-15 | Backtest entries cap total cash outflow, including buy fees, at `amountPerPosition`; one buy opens one independent lot and one sell signal closes every open lot in full through separate orders and fills. |
 | 2026-08-15 | Backtests do not force-close positions at the range end and report realized profit/loss, unrealized profit/loss, and total equity separately. |
+| 2026-08-15 | Phase 4 Step 1 uses a pure decimal portfolio domain with cash reservations, adverse side-specific fills, fee-inclusive entry caps, independent position lots, full-lot exits, and immutable mark-to-market transitions. |

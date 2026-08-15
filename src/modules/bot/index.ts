@@ -1,4 +1,5 @@
 export * from "./domain/TradingBot";
+export * from "./domain/BacktestPortfolio";
 export type { BotRepository } from "./domain/BotRepository";
 export type { BotRunRepository } from "./domain/BotRunRepository";
 export type { BotTradingRecordRepository } from "./domain/BotTradingRecordRepository";
