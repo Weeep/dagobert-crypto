@@ -15,7 +15,7 @@ type StrategySnapshot = { schemaVersion: number; definition: unknown };
 const object = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-function requiredCandles(condition: StrategyCondition): number {
+export function requiredCandles(condition: StrategyCondition): number {
   if ("all" in condition) return Math.max(...condition.all.map(requiredCandles));
   if ("any" in condition) return Math.max(...condition.any.map(requiredCandles));
   if ("candleSequence" in condition) return condition.candleSequence.count;

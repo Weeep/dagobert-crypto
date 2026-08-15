@@ -19,7 +19,7 @@ as the implementation.
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | Complete | Steps 0-5 and the external acceptance gate are complete; the Prisma suite and Binance/PostgreSQL smoke test verified idempotent closed-candle ingestion, gap handling, and restart safety. |
 | Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
-| Phase 4: backtesting | In progress | Steps 1-3 portfolio, historical runner, and transactional replay persistence are complete; metrics/API and the golden gate remain. |
+| Phase 4: backtesting | In progress | Steps 1-4 execution, persistence, metrics/API, and the interactive results UI are complete; the golden gate remains. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
 | Phase 7: Spot test and live trading | Not started | Market orders can be tested and then placed on Binance Spot. |
@@ -792,7 +792,7 @@ idempotent persistence boundary.
 - [x] Step 1: pure backtest wallet, fill, fee, slippage, position, and risk domain.
 - [x] Step 2: deterministic historical runner and production strategy integration.
 - [x] Step 3: transactional persistence, idempotency, replay events, and portfolio snapshots.
-- [ ] Step 4: performance metrics, buy-and-hold comparison, application service, and API.
+- [x] Step 4: performance metrics, buy-and-hold comparison, application service, API, and results GUI.
 - [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.
 
 #### Step 0B execution and accounting contract
@@ -884,6 +884,32 @@ idempotent persistence boundary.
 - Runner event sequence numbers and portfolio snapshot sequence numbers remain
   monotonic and run-scoped. Decisions and indicator snapshots retain their
   candle identities and complete explainable strategy output for later replay.
+
+#### Step 4 metrics, application, API, and GUI contract
+
+- The authenticated backtest application service verifies bot ownership and
+  `BACKTEST` mode, validates the immutable strategy version and requested range,
+  loads closed candles plus the minimum pre-range indicator warm-up, rejects a
+  range gap, starts a snapshotted run, executes the pure runner, and persists the
+  complete result before returning success.
+- Summary calculation reports starting capital, ending cash and equity, net
+  profit, return, maximum equity-curve drawdown, closed-lot win rate and profit
+  factor, total fees, closed/open position counts, and average closed-lot holding
+  time. Runs without losses report an unbounded profit factor as `null`; runs
+  without closed trades report zero win rate and no average holding time.
+- The buy-and-hold comparison invests the same initial capital at the first
+  evaluated candle open using configured adverse buy slippage and buy fee, then
+  marks the acquired quantity at the final evaluated candle close without a
+  forced sale. Strategy-versus-benchmark is reported in percentage points.
+- `POST /api/bots/:id/backtests` accepts ISO `from` and `to` timestamps, applies
+  authentication and ownership at the application boundary, returns structured
+  validation/not-found/rejection errors, sanitizes unexpected failures, and
+  returns the completed metrics, fills, positions, decisions, events, and
+  snapshots required by the initial GUI.
+- The Bot page lets the user select a backtest bot and date range, displays a
+  running/completed state, then shows summary cards, every executed BUY/SELL with
+  timestamp, price, quantity and fee, plus the complete decision timeline and
+  execution reason. Interactive chart replay remains Phase 6 scope.
 
 #### Work
 
@@ -1111,3 +1137,4 @@ At the start of every bot-related task:
 | 2026-08-15 | Phase 4 Step 1 uses a pure decimal portfolio domain with cash reservations, adverse side-specific fills, fee-inclusive entry caps, independent position lots, full-lot exits, and immutable mark-to-market transitions. |
 | 2026-08-15 | Phase 4 Step 2 runs the production strategy on closed-candle prefixes after applying only the preceding intent at the current open; pre-range candles are warm-up only and final intents never fill beyond the requested range. |
 | 2026-08-15 | Phase 4 Step 3 persists the complete backtest record graph under a run-row lock and one transaction with deterministic identities, bounded decimal-scale ledger correction, idempotent completion, and rollback on any partial failure. |
+| 2026-08-15 | Phase 4 Step 4 exposes owned synchronous backtest execution through the API and Bot GUI with deterministic performance metrics, a fee/slippage-aware buy-and-hold benchmark, executed fill history, and decision reasons. |

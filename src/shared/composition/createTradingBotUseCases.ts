@@ -1,6 +1,7 @@
-import { CreateBotUseCase, GetBotUseCase, ListBotsUseCase, SetBotStatusUseCase, StartBotUseCase, UpdateBotUseCase } from "@/src/modules/bot";
+import { CreateBotUseCase, GetBotUseCase, ListBotsUseCase, RunBacktestUseCase,
+  SetBotStatusUseCase, StartBotUseCase, UpdateBotUseCase } from "@/src/modules/bot";
 import type { BotRepository, BotRunRepository } from "@/src/modules/bot";
-import type { BotLifecycleRepository } from "@/src/modules/bot";
+import type { BacktestRunPersistenceRepository, BotLifecycleRepository } from "@/src/modules/bot";
 import { ListCandlesUseCase, SaveCandlesUseCase } from "@/src/modules/market";
 import type { CandleRepository } from "@/src/modules/market";
 import { ActivateStrategyVersionUseCase, AddStrategyVersionUseCase, CreateStrategyUseCase,
@@ -17,9 +18,12 @@ export type TradingBotRepositories = {
   strategyEvaluationRepository: StrategyEvaluationRepository;
   botLifecycleRepository?: BotLifecycleRepository;
   pairRepository: PairRepository;
+  backtestRunPersistenceRepository: BacktestRunPersistenceRepository;
 };
 
 export function createTradingBotUseCases(repositories: TradingBotRepositories) {
+  const startBot = new StartBotUseCase(repositories.botRepository, repositories.botRunRepository,
+    repositories.strategyRepository, repositories.botLifecycleRepository);
   return {
     createBot: new CreateBotUseCase(repositories.botRepository, async (id) => {
       const version = await repositories.strategyRepository.findVersionById(id);
@@ -33,7 +37,9 @@ export function createTradingBotUseCases(repositories: TradingBotRepositories) {
       return (await repositories.strategyRepository.findById(version.strategyId))?.userId ?? null;
     }, async (symbol) => Boolean(await repositories.pairRepository.findBySymbol(symbol))),
     listBots: new ListBotsUseCase(repositories.botRepository),
-    startBot: new StartBotUseCase(repositories.botRepository, repositories.botRunRepository, repositories.strategyRepository, repositories.botLifecycleRepository),
+    startBot,
+    runBacktest: new RunBacktestUseCase(repositories.botRepository, repositories.strategyRepository,
+      repositories.candleRepository, startBot, repositories.backtestRunPersistenceRepository),
     setBotStatus: new SetBotStatusUseCase(repositories.botRepository, repositories.botLifecycleRepository),
     createStrategy: new CreateStrategyUseCase(repositories.strategyRepository),
     addStrategyVersion: new AddStrategyVersionUseCase(repositories.strategyRepository),

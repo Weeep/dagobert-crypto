@@ -54,4 +54,15 @@ export class PrismaBacktestRunPersistenceRepository implements BacktestRunPersis
       return { reused: false };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
   }
+
+  async markFailed(runId: string, message: string) {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM bot_runs WHERE id = ${runId}::uuid FOR UPDATE`;
+      const run = await tx.botRun.findUnique({ where: { id: runId } });
+      if (!run || run.status !== "RUNNING") return;
+      await tx.botRun.update({ where: { id: runId }, data: { status: "ERROR", endedAt: new Date(),
+        errorMessage: message.slice(0, 500) } });
+      await tx.bot.updateMany({ where: { id: run.botId, status: "RUNNING" }, data: { status: "ERROR" } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+  }
 }

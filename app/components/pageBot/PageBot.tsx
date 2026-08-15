@@ -10,6 +10,7 @@ import type { BotDto } from "@/src/modules/bot/dto/BotDto";
 import type { PairDto } from "@/src/modules/pair/dto/PairDto";
 import { BotApiClient } from "./BotApiClient";
 import { BotCreator } from "./BotCreator";
+import { BacktestPanel } from "./BacktestPanel";
 
 const api = new StrategyApiClient();
 const botApi = new BotApiClient();
@@ -86,6 +87,7 @@ export default function PageBot() {
   return <div className="mx-auto max-w-7xl text-slate-100">
     <BotCreator api={botApi} bots={bots} pairs={pairs} strategies={strategies} loading={botDependenciesLoading}
       onCreated={(bot) => setBots((current) => [bot, ...current])} />
+    <BacktestPanel api={botApi} bots={bots} />
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400">Trading bot</p>
         <h2 className="mt-1 text-3xl font-bold">Strategy rule builder</h2>

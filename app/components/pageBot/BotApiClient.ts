@@ -1,5 +1,7 @@
 import type { BotDto } from "@/src/modules/bot/dto/BotDto";
 import type { PairDto } from "@/src/modules/pair/dto/PairDto";
+import type { BacktestFill, BacktestMetrics, BacktestClosedPosition, BacktestOpenPosition,
+  HistoricalBacktestDecision, HistoricalBacktestEvent } from "@/src/modules/bot";
 
 export type CreateBotRequest = {
   name: string;
@@ -10,6 +12,16 @@ export type CreateBotRequest = {
   strategyVersionId: string;
   feeRate: string;
   slippageRate: string;
+};
+
+export type BacktestView = {
+  runId: string;
+  metrics: BacktestMetrics;
+  decisions: HistoricalBacktestDecision[];
+  fills: BacktestFill[];
+  events: HistoricalBacktestEvent[];
+  positions: BacktestClosedPosition[];
+  openPositions: BacktestOpenPosition[];
 };
 
 type ApiError = { error?: { message?: string } };
@@ -43,5 +55,11 @@ export class BotApiClient {
       method: "POST",
       body: JSON.stringify({ ...input, mode: "BACKTEST" }),
     })).bot;
+  }
+
+  async runBacktest(botId: string, from: string, to: string): Promise<BacktestView> {
+    return (await this.request<{ backtest: BacktestView }>(`/api/bots/${encodeURIComponent(botId)}/backtests`, {
+      method: "POST", body: JSON.stringify({ from, to }),
+    })).backtest;
   }
 }
