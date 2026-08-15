@@ -9,7 +9,10 @@ export class PrismaBotLifecycleRepository implements BotLifecycleRepository {
   constructor(private readonly prisma: PrismaClient) {}
   async start(bot: TradingBot, run: BotRun): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
-      const changed = await tx.bot.updateMany({ where: { id: bot.id, status: { in: ["DRAFT", "PAUSED"] } }, data: { status: "RUNNING" } });
+      const changed = await tx.bot.updateMany({
+        where: { id: bot.id, archivedAt: null, status: { in: ["DRAFT", "PAUSED"] } },
+        data: { status: "RUNNING" },
+      });
       if (changed.count !== 1) return false;
       await tx.botRun.create({ data: { id: run.id, botId: run.botId, mode: run.mode, status: run.status,
         configurationSnapshot: run.configurationSnapshot as Prisma.InputJsonValue, strategySnapshot: run.strategySnapshot as Prisma.InputJsonValue,

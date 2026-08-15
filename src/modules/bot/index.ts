@@ -16,6 +16,7 @@ export * from "./application/CreateBotUseCase";
 export * from "./application/GetBotUseCase";
 export * from "./application/UpdateBotUseCase";
 export * from "./application/DeleteBotUseCase";
+export * from "./application/GetBotErrorUseCase";
 export { ListBotsUseCase } from "./application/ListBotsUseCase";
 export { StartBotUseCase } from "./application/StartBotUseCase";
 export { SetBotStatusUseCase } from "./application/SetBotStatusUseCase";

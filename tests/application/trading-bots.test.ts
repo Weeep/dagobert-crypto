@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { describe } from "node:test";
-import { CreateBotUseCase, DeleteBotUseCase, GetBotUseCase, ListBotsUseCase, SetBotStatusUseCase, StartBotUseCase, UpdateBotUseCase, type BotRepository, type BotRun, type BotRunRepository, type TradingBot } from "@/src/modules/bot";
+import { CreateBotUseCase, DeleteBotUseCase, GetBotErrorUseCase, GetBotUseCase, ListBotsUseCase, SetBotStatusUseCase, StartBotUseCase, UpdateBotUseCase, type BotRepository, type BotRun, type BotRunRepository, type TradingBot } from "@/src/modules/bot";
 import { CreateStrategyUseCase, type Strategy, type StrategyRepository, type StrategyVersion } from "@/src/modules/strategy";
 
 const validDefinition = (name = "RSI") => ({
@@ -18,7 +18,9 @@ class MemoryBotRepository implements BotRepository {
     return this.bots.find((bot) => bot.userId === userId && bot.name === name) ?? null;
   }
   async save(bot: TradingBot) { this.bots = [...this.bots.filter((item) => item.id !== bot.id), bot]; }
-  async delete(id: string) { this.bots = this.bots.filter((item) => item.id !== id); }
+  async deleteIfNotRunning(id: string, userId: string) { const before = this.bots.length;
+    this.bots = this.bots.filter((item) => item.id !== id || item.userId !== userId || item.status === "RUNNING");
+    return this.bots.length < before; }
 }
 class MemoryRunRepository implements BotRunRepository {
   runs: BotRun[] = [];
@@ -205,7 +207,28 @@ describe("trading bot application", () => {
     assert.ok(archived.bot.archivedAt instanceof Date);
     const deletion = new DeleteBotUseCase(bots);
     assert.equal((await deletion.execute("intruder", created.bot.id)).ok, false);
+    bots.bots[0] = { ...bots.bots[0], status: "RUNNING" };
+    assert.equal((await deletion.execute("owner", created.bot.id)).ok, false);
+    bots.bots[0] = { ...bots.bots[0], status: "DRAFT" };
     assert.equal((await deletion.execute("owner", created.bot.id)).ok, true);
     assert.equal(await bots.findById(created.bot.id), null);
+  });
+
+  test("does not start archived bots and exposes their latest persisted run error", async () => {
+    const strategies = new MemoryStrategyRepository();
+    const createdStrategy = await new CreateStrategyUseCase(strategies).execute({ userId: "owner", name: "Errors", definition: validDefinition() });
+    assert.equal(createdStrategy.ok, true); if (!createdStrategy.ok) return;
+    const bots = new MemoryBotRepository();
+    const created = await new CreateBotUseCase(bots).execute({ userId: "owner", name: "Archived", pairSymbol: "BTCUSDC",
+      assignedBudget: "20", amountPerPosition: "10", timeframe: "1h", strategyVersionId: createdStrategy.strategy.versions[0].id });
+    assert.equal(created.ok, true); if (!created.ok) return;
+    bots.bots[0] = { ...bots.bots[0], archivedAt: new Date() };
+    const runs = new MemoryRunRepository();
+    assert.equal((await new StartBotUseCase(bots, runs, strategies).execute(created.bot.id)).error, "Archived bot cannot be started");
+    runs.runs.push({ id: "failed-run", botId: created.bot.id, mode: "BACKTEST", status: "ERROR",
+      configurationSnapshot: {}, strategySnapshot: {}, backtestFrom: null, backtestTo: null,
+      startedAt: new Date("2026-01-01T00:00:00Z"), endedAt: new Date("2026-01-01T01:00:00Z"), errorMessage: "Missing candles" });
+    const details = await new GetBotErrorUseCase(bots, runs).execute("owner", created.bot.id);
+    assert.equal(details.found, true); assert.equal(details.error?.message, "Missing candles");
   });
 });

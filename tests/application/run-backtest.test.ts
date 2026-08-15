@@ -30,7 +30,7 @@ class Bots implements BotRepository {
   value = bot;
   async findAllByUserId() { return [this.value]; } async findById(id: string) { return id === bot.id ? this.value : null; }
   async findByUserIdAndName() { return null; } async save(value: TradingBot) { this.value = value; }
-  async delete() {}
+  async deleteIfNotRunning() { return true; }
 }
 class Runs implements BotRunRepository {
   values: BotRun[] = [];

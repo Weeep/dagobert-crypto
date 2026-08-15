@@ -11,7 +11,7 @@ const number = (value: string) => Number(value).toLocaleString(undefined, { maxi
 const signed = (value: string) => `${Number(value) >= 0 ? "+" : ""}${number(value)}`;
 
 export function BacktestPanel({ api, bots }: Props) {
-  const backtestBots = useMemo(() => bots.filter((bot) => bot.mode === "BACKTEST"), [bots]);
+  const backtestBots = useMemo(() => bots.filter((bot) => bot.mode === "BACKTEST" && !bot.archivedAt), [bots]);
   const [botId, setBotId] = useState("");
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);

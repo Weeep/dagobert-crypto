@@ -16,6 +16,7 @@ export class StartBotUseCase {
   async execute(botId: string, range?: { from: Date; to: Date }) {
     const bot = await this.bots.findById(botId);
     if (!bot) return { ok: false as const, error: "Bot not found", run: null };
+    if (bot.archivedAt) return { ok: false as const, error: "Archived bot cannot be started", run: null };
     if (bot.status === "RUNNING") {
       const activeRun = (await this.runs.findAllByBotId(bot.id)).find((candidate) => candidate.status === "RUNNING");
       return activeRun

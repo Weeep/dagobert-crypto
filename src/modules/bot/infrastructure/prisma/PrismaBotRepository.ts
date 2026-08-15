@@ -38,5 +38,8 @@ export class PrismaBotRepository implements BotRepository {
     };
     await this.prisma.bot.upsert({ where: { id: bot.id }, create: { id: bot.id, ...data }, update: data });
   }
-  async delete(id: string) { await this.prisma.bot.delete({ where: { id } }); }
+  async deleteIfNotRunning(id: string, userId: string) {
+    const result = await this.prisma.bot.deleteMany({ where: { id, userId, status: { not: "RUNNING" } } });
+    return result.count === 1;
+  }
 }

@@ -3,7 +3,7 @@ import type { BotDto } from "@/src/modules/bot";
 import type { PairDto } from "@/src/modules/pair/dto/PairDto";
 import type { StrategyDto } from "@/src/modules/strategy/dto/StrategyDto";
 import { MARKET_INTERVALS } from "@/src/shared/domain/MarketInterval";
-import { BotApiClient, type CreateBotRequest } from "./BotApiClient";
+import { BotApiClient, type BotErrorDetails, type CreateBotRequest } from "./BotApiClient";
 
 type Props = { api: BotApiClient; bots: BotDto[]; pairs: PairDto[]; strategies: StrategyDto[];
   loading: boolean; onChanged: (bot: BotDto) => void; onDeleted: (id: string) => void };
@@ -14,6 +14,7 @@ export function BotList({ api, bots, pairs, strategies, loading, onChanged, onDe
   const [showArchived, setShowArchived] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<{ botId: string; details: BotErrorDetails | null } | null>(null);
   const versions = useMemo(() => strategies.flatMap((strategy) => strategy.versions.map((version) =>
     ({ id: version.id, label: `${strategy.name} · v${version.version}` }))), [strategies]);
   const strategyName = (id: string) => versions.find((version) => version.id === id)?.label ?? "Unknown strategy";
@@ -30,6 +31,9 @@ export function BotList({ api, bots, pairs, strategies, loading, onChanged, onDe
     setBusy(true); setMessage(""); try { await api.delete(bot.id); onDeleted(bot.id); }
     catch (error) { setMessage(error instanceof Error ? error.message : "Could not delete bot"); } finally { setBusy(false); } };
   const field = (key: keyof CreateBotRequest, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const showError = async (botId: string) => { if (errorDetails?.botId === botId) { setErrorDetails(null); return; }
+    setBusy(true); setMessage(""); try { setErrorDetails({ botId, details: await api.errorDetails(botId) }); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Could not load error details"); } finally { setBusy(false); } };
 
   return <section className="mb-8 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 p-5">
@@ -45,10 +49,12 @@ export function BotList({ api, bots, pairs, strategies, loading, onChanged, onDe
           <td className="p-3"><select className={inputClass} value={form.strategyVersionId} onChange={(e) => field("strategyVersionId", e.target.value)}>{versions.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}</select></td>
           <td className="p-3"><input className={inputClass} value={form.assignedBudget} onChange={(e) => field("assignedBudget", e.target.value)} /></td>
           <td className="px-4 py-3">{bot.mode} / {bot.status}</td><td className="p-3 whitespace-nowrap"><button disabled={busy} onClick={() => void save(bot.id)} className="text-cyan-300">Save</button> <button onClick={() => setEditing(null)} className="ml-3">Cancel</button></td></>
-        : <><td className="px-4 py-4 font-semibold">{bot.name}{bot.archivedAt && <span className="ml-2 text-xs">Archived</span>}</td><td className="px-4 py-4">{bot.pairSymbol}</td><td className="px-4 py-4">{bot.timeframe}</td><td className="px-4 py-4">{strategyName(bot.strategyVersionId)}</td><td className="px-4 py-4">{bot.assignedBudget} USDC</td><td className="px-4 py-4"><span className="rounded-full bg-slate-800 px-2 py-1 text-xs">{bot.mode} · {bot.status}</span></td>
+        : <><td className="px-4 py-4 font-semibold">{bot.name}{bot.archivedAt && <span className="ml-2 text-xs">Archived</span>}</td><td className="px-4 py-4">{bot.pairSymbol}</td><td className="px-4 py-4">{bot.timeframe}</td><td className="px-4 py-4">{strategyName(bot.strategyVersionId)}</td><td className="px-4 py-4">{bot.assignedBudget} USDC</td><td className="px-4 py-4"><button type="button" disabled={busy || bot.status !== "ERROR"} onClick={() => void showError(bot.id)} className={`rounded-full bg-slate-800 px-2 py-1 text-xs ${bot.status === "ERROR" ? "cursor-pointer text-rose-300 hover:bg-rose-950" : "cursor-default"}`}>{bot.mode} · {bot.status}</button></td>
           <td className="px-4 py-4 whitespace-nowrap"><button aria-label={`Edit ${bot.name}`} title="Edit" disabled={busy || !!bot.archivedAt} onClick={() => beginEdit(bot)} className="text-lg disabled:opacity-30">✎</button><button disabled={busy} onClick={() => void archive(bot)} className="ml-3 text-xs text-amber-300">{bot.archivedAt ? "Restore" : "Archive"}</button><button disabled={busy} onClick={() => void remove(bot)} className="ml-3 text-xs text-rose-400">Delete</button></td></>}</tr>)}
         {!loading && visible.length === 0 && <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">No bots to display.</td></tr>}</tbody>
-    </table></div>{message && <p role="status" className="border-t border-slate-700 p-3 text-sm text-rose-300">{message}</p>}
+    </table></div>{errorDetails && <div className="border-t border-rose-900 bg-rose-950/30 p-4 text-sm text-rose-100">
+      {errorDetails.details ? <><p className="font-semibold">Latest execution error</p><p className="mt-1">{errorDetails.details.message}</p><p className="mt-2 text-xs text-rose-300">{new Date(errorDetails.details.occurredAt).toLocaleString()} · run {errorDetails.details.runId}</p></>
+        : <p>No detailed error was recorded for this bot.</p>}</div>}{message && <p role="status" className="border-t border-slate-700 p-3 text-sm text-rose-300">{message}</p>}
   </section>;
 }
 const inputClass = "w-full min-w-24 rounded-md border border-slate-600 bg-slate-950 px-2 py-2 text-slate-100";

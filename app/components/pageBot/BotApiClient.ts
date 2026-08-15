@@ -23,6 +23,7 @@ export type BacktestView = {
   positions: BacktestClosedPosition[];
   openPositions: BacktestOpenPosition[];
 };
+export type BotErrorDetails = { runId: string; message: string; occurredAt: string };
 
 type ApiError = { error?: { message?: string } };
 
@@ -65,6 +66,11 @@ export class BotApiClient {
 
   async delete(botId: string): Promise<void> {
     await this.request(`/api/bots/${encodeURIComponent(botId)}`, { method: "DELETE" });
+  }
+
+  async errorDetails(botId: string): Promise<BotErrorDetails | null> {
+    return (await this.request<{ errorDetails: BotErrorDetails | null }>(
+      `/api/bots/${encodeURIComponent(botId)}/error`)).errorDetails;
   }
 
   async runBacktest(botId: string, from: string, to: string): Promise<BacktestView> {

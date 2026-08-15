@@ -5,5 +5,6 @@ export interface BotRepository {
   findById(id: string): Promise<TradingBot | null>;
   findByUserIdAndName(userId: string, name: string): Promise<TradingBot | null>;
   save(bot: TradingBot): Promise<void>;
-  delete(id: string): Promise<void>;
+  /** Atomically deletes only if the owned bot is still non-running. */
+  deleteIfNotRunning(id: string, userId: string): Promise<boolean>;
 }
