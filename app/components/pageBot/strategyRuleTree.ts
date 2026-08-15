@@ -1,6 +1,6 @@
 import type { StrategyCondition } from "@/src/modules/strategy/domain/StrategyDefinition";
 
-export type ConditionKind = "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "CANDLE_SEQUENCE";
+export type ConditionKind = "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
 
 export const conditionKind = (condition: StrategyCondition): ConditionKind => {
   if ("all" in condition) return "ALL";
@@ -15,6 +15,8 @@ export const newCondition = (kind: ConditionKind): StrategyCondition => {
   if (kind === "RSI") return { indicator: "RSI", period: 14, operator: "LT", value: 20 };
   if (kind === "EMA_DISTANCE")
     return { indicator: "EMA_DISTANCE", period: 100, position: "ABOVE", maximumDistancePct: 2 };
+  if (kind === "POSITION_RETURN_PCT")
+    return { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 };
   return { candleSequence: { count: 3, direction: "RED", minimumBodyChangePct: 1 } };
 };
 

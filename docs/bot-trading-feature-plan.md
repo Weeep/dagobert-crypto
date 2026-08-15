@@ -644,6 +644,13 @@ idempotent persistence boundary.
 - A scheduled sell snapshots `selectedPositionIds` at decision time. At the next
   candle open, `closeSelected` closes exactly those full lots and leaves every
   unselected lot open; it rejects duplicate, empty, or unknown selections.
+- `POSITION_RETURN_PCT` is an exit-only, per-lot condition. Its signed observed
+  value is `(estimated net exit proceeds - fee-inclusive entry outflow) /
+  fee-inclusive entry outflow * 100`, where estimated net exit proceeds uses the
+  latest closed-candle price minus the configured exit fee. Positive thresholds
+  represent profit and negative thresholds represent loss. An `any` group with
+  `GTE +2` and `LTE -4`, for example, implements a 2% take-profit or 4% stop-loss
+  independently for every open lot.
 - Step 5 loads the current position state, constructs the immutable evaluation
   context, calls the pure engine, and persists the context, condition results,
   final decision, values, and reasons. Phase 4 first integrates and verifies this
@@ -799,7 +806,7 @@ idempotent persistence boundary.
 - [x] Step 4: performance metrics, buy-and-hold comparison, application service, API, and results GUI.
 - [x] Step 4A: configurable level/edge entry triggers and post-fill candle cooldown.
 - [x] Step 4B: position-aware exit selection and selected-lot lifecycle.
-- [ ] Step 4C: fee-aware per-lot percentage-return exit condition.
+- [x] Step 4C: fee-aware per-lot percentage-return exit condition.
 - [ ] Step 4D: confirmed EMA crossing condition.
 - [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.
 

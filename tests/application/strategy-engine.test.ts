@@ -28,6 +28,7 @@ const sequenceDefinition = (entryDirection: "RED" | "GREEN" = "RED", exitDirecti
 const position = (count: number): StrategyPositionContext => ({
   hasOpenPositions: count > 0,
   openPositionCount: count,
+  exitFeeRate: "0.001",
   positions: Array.from({ length: count }, (_, index) => ({ id: `position-${index}`,
     entryPrice: "100", quantity: "1", entryCost: "100", entryFees: "0", openedAt: null })),
 });
@@ -86,6 +87,31 @@ describe("pure condition-tree evaluator", () => {
 });
 
 describe("strategy engine", () => {
+  test("selects lots independently with fee-aware take-profit or stop-loss return rules", () => {
+    const history = candles([100]);
+    const definition: StrategyDefinitionV1 = {
+      schemaVersion: 1, name: "Per-lot TP/SL",
+      entry: { all: [{ indicator: "RSI", period: 14, operator: "LT", value: 0 }] },
+      exit: { any: [
+        { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 },
+        { indicator: "POSITION_RETURN_PCT", operator: "LTE", value: -4 },
+      ] },
+    };
+    const result = evaluateStrategy({ definition, candles: history, evaluatedCandle: history[0],
+      position: { hasOpenPositions: true, openPositionCount: 3, exitFeeRate: "0.001", positions: [
+        { id: "winner", entryPrice: "90", quantity: "1", entryCost: "90", entryFees: "0.09", openedAt: null },
+        { id: "middle", entryPrice: "99", quantity: "1", entryCost: "99", entryFees: "0.099", openedAt: null },
+        { id: "loser", entryPrice: "110", quantity: "1", entryCost: "110", entryFees: "0.11", openedAt: null },
+      ] } });
+    assert.equal(result.action, "SELL");
+    assert.deepEqual(result.selectedPositionIds, ["winner", "loser"]);
+    assert.deepEqual(result.positionExits.map(({ evaluation }) => evaluation.matched), [true, false, true]);
+    const winnerTakeProfit = result.positionExits[0].evaluation.children[0];
+    assert.equal(winnerTakeProfit.type, "POSITION_RETURN_PCT");
+    assert.equal(winnerTakeProfit.observedValues.estimatedExitFee, "0.1");
+    assert.ok(Number(winnerTakeProfit.observedValues.observed) > 10);
+  });
+
   test("gives an actionable exit priority when entry and exit both match", () => {
     const history = candles([100, 99]);
     const result = evaluateStrategy({ definition: sequenceDefinition(), candles: history,
@@ -142,6 +168,6 @@ describe("strategy engine", () => {
     assert.throws(() => evaluateStrategy({ ...base, candles: [history[1], history[0]] }), /strictly ordered/);
     assert.throws(() => evaluateStrategy({ ...base, evaluatedCandle: { ...history[1], close: "97" } }), /final unique candle/);
     assert.throws(() => evaluateStrategy({ ...base,
-      position: { hasOpenPositions: true, openPositionCount: 0, positions: [] } }), /inconsistent/);
+      position: { hasOpenPositions: true, openPositionCount: 0, exitFeeRate: "0.001", positions: [] } }), /inconsistent/);
   });
 });

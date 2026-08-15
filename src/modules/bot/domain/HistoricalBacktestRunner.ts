@@ -171,6 +171,7 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
       evaluatedCandle: candle,
       position: { hasOpenPositions: portfolio.openPositions.length > 0,
         openPositionCount: portfolio.openPositions.length,
+        exitFeeRate: input.execution.feeRate,
         positions: portfolio.openPositions.map((position) => ({
           id: position.id, entryPrice: position.entryPrice, quantity: position.quantity,
           entryCost: position.entryNotional, entryFees: position.entryFee,

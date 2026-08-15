@@ -120,7 +120,7 @@ describe("Phase 3 golden acceptance fixture", () => {
       definition: strategy,
       candles: candles.slice(0, evaluatedIndex + 2),
       evaluatedCandle: candles[evaluatedIndex],
-      position: { hasOpenPositions: false, openPositionCount: 0, positions: [] },
+      position: { hasOpenPositions: false, openPositionCount: 0, exitFeeRate: "0.001", positions: [] },
     }), /future candle/);
   });
 

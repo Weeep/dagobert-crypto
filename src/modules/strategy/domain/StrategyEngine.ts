@@ -1,4 +1,5 @@
 import type { Candle } from "@/src/modules/market";
+import Big from "big.js";
 import { evaluateCondition, type ConditionEvaluation } from "./ConditionEvaluator";
 import { validateStrategyDefinition, type StrategyDefinitionV1 } from "./StrategyDefinition";
 
@@ -14,6 +15,7 @@ export type StrategyPositionLotContext = {
 export type StrategyPositionContext = {
   hasOpenPositions: boolean;
   openPositionCount: number;
+  exitFeeRate: string;
   positions: readonly StrategyPositionLotContext[];
 };
 export type StrategyEngineInput = {
@@ -49,6 +51,12 @@ function validateInput(input: StrategyEngineInput): void {
     throw new StrategyEngineInputError("position context is inconsistent");
   if (input.position.positions.length !== input.position.openPositionCount)
     throw new StrategyEngineInputError("position lot context is inconsistent");
+  try {
+    const exitFeeRate = new Big(input.position.exitFeeRate);
+    if (exitFeeRate.lt(0) || exitFeeRate.gte(1)) throw new Error();
+  } catch {
+    throw new StrategyEngineInputError("exitFeeRate must be a decimal in [0, 1)");
+  }
   const positionIds = new Set<string>();
   for (const position of input.position.positions) {
     if (!position.id || positionIds.has(position.id))
@@ -96,7 +104,9 @@ export function evaluateStrategy(input: StrategyEngineInput): StrategyEvaluation
   const exit = evaluateCondition(input.definition.exit, context);
   const positionExits = input.position.positions.map((position) => ({
     positionId: position.id,
-    evaluation: evaluateCondition(input.definition.exit, { ...context, position }),
+    evaluation: evaluateCondition(input.definition.exit, {
+      ...context, position, exitFeeRate: input.position.exitFeeRate,
+    }),
   }));
   const selectedPositionIds = positionExits
     .filter(({ evaluation }) => evaluation.matched)

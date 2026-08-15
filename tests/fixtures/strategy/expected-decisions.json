@@ -9,7 +9,8 @@
       "position": {
         "hasOpenPositions": false,
         "openPositionCount": 0,
-        "positions": []
+        "positions": [],
+        "exitFeeRate": "0.001"
       },
       "expected": {
         "action": "HOLD",
@@ -30,7 +31,8 @@
       "position": {
         "hasOpenPositions": false,
         "openPositionCount": 0,
-        "positions": []
+        "positions": [],
+        "exitFeeRate": "0.001"
       },
       "expected": {
         "action": "HOLD",
@@ -51,7 +53,8 @@
       "position": {
         "hasOpenPositions": false,
         "openPositionCount": 0,
-        "positions": []
+        "positions": [],
+        "exitFeeRate": "0.001"
       },
       "expected": {
         "action": "BUY",
@@ -70,7 +73,8 @@
       "position": {
         "hasOpenPositions": false,
         "openPositionCount": 0,
-        "positions": []
+        "positions": [],
+        "exitFeeRate": "0.001"
       },
       "expected": {
         "action": "BUY",
@@ -107,7 +111,8 @@
             "entryFees": "0",
             "openedAt": null
           }
-        ]
+        ],
+        "exitFeeRate": "0.001"
       },
       "expected": {
         "action": "SELL",
@@ -126,7 +131,8 @@
       "position": {
         "hasOpenPositions": false,
         "openPositionCount": 0,
-        "positions": []
+        "positions": [],
+        "exitFeeRate": "0.001"
       },
       "expected": {
         "action": "HOLD",
@@ -154,7 +160,8 @@
             "entryFees": "0",
             "openedAt": null
           }
-        ]
+        ],
+        "exitFeeRate": "0.001"
       },
       "expected": {
         "action": "SELL",

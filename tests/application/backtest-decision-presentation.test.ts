@@ -18,3 +18,16 @@ test("backtest decision presentation explains indicator warm-up", () => {
     explanation: "warm-up", observedValues: { requiredCandles: 15, availableCandles: 4, observed: null }, children: [] };
   assert.deepEqual(conditionObservationSummaries(evaluation), ["RSI: insufficient history (4/15 candles)"]);
 });
+
+test("backtest decision presentation explains fee-aware position return", () => {
+  const summaries = conditionObservationSummaries({
+    type: "POSITION_RETURN_PCT", matched: true, reasonCode: "POSITION_RETURN_PCT_MATCHED",
+    explanation: "matched", children: [], observedValues: {
+      positionId: "lot-1", observed: "2.15", operator: "GTE", expected: 2,
+      entryFees: "0.1", estimatedExitFee: "0.11",
+    },
+  });
+  assert.deepEqual(summaries, [
+    "Lot lot-1 net return: 2.15% · condition ≥ 2% · entry fees 0.1 · estimated exit fee 0.11 · matched",
+  ]);
+});

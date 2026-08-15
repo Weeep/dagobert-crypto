@@ -6,6 +6,11 @@ export type ComparisonOperator = "LT" | "LTE" | "GT" | "GTE";
 export type EntryTrigger = "EVERY_MATCHING_CANDLE" | "ON_FALSE_TO_TRUE";
 export type EntryPolicy = { trigger: EntryTrigger; cooldownCandles?: number };
 export type RsiCondition = { indicator: "RSI"; period: number; operator: ComparisonOperator; value: number };
+export type PositionReturnPctCondition = {
+  indicator: "POSITION_RETURN_PCT";
+  operator: ComparisonOperator;
+  value: number;
+};
 export type EmaPosition = "ABOVE" | "BELOW";
 export type EmaDistanceCondition = {
   indicator: "EMA_DISTANCE";
@@ -20,6 +25,7 @@ export type StrategyCondition =
   | { all: StrategyCondition[] }
   | { any: StrategyCondition[] }
   | RsiCondition
+  | PositionReturnPctCondition
   | EmaDistanceCondition
   | CandleSequenceCondition;
 
@@ -78,7 +84,7 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
   }
 
   let nodes = 0;
-  const condition = (candidate: unknown, path: string, depth: number): void => {
+  const condition = (candidate: unknown, path: string, depth: number, positionConditionsAllowed: boolean): void => {
     nodes += 1;
     if (nodes > MAX_STRATEGY_NODES) { issue(path, "MAX_NODES", `strategy cannot exceed ${MAX_STRATEGY_NODES} conditions`); return; }
     if (depth > MAX_STRATEGY_DEPTH) { issue(path, "MAX_DEPTH", `condition nesting cannot exceed ${MAX_STRATEGY_DEPTH}`); return; }
@@ -88,12 +94,12 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
       if (!exactKeys(candidate, [key])) issue(path, "PROPERTIES", `${key} condition cannot contain other properties`);
       const children = candidate[key];
       if (!Array.isArray(children) || children.length === 0) { issue(`${path}.${key}`, "VALUE", `${key} must be a non-empty array`); return; }
-      children.forEach((child, index) => condition(child, `${path}.${key}[${index}]`, depth + 1));
+      children.forEach((child, index) => condition(child, `${path}.${key}[${index}]`, depth + 1, positionConditionsAllowed));
       return;
     }
     if ("indicator" in candidate) {
-      if (!positiveInteger(candidate.period)) issue(`${path}.period`, "VALUE", "period must be a positive safe integer");
       if (candidate.indicator === "RSI") {
+        if (!positiveInteger(candidate.period)) issue(`${path}.period`, "VALUE", "period must be a positive safe integer");
         if (!exactKeys(candidate, ["indicator", "period", "operator", "value"]))
           issue(path, "PROPERTIES", "RSI condition contains unsupported properties");
         if (!nonNegativeNumber(candidate.value)) issue(`${path}.value`, "VALUE", "value must be a non-negative finite number");
@@ -102,6 +108,7 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
         if (!["LT", "LTE", "GT", "GTE"].includes(candidate.operator as string))
           issue(`${path}.operator`, "UNSUPPORTED_OPERATOR", "RSI supports LT, LTE, GT, and GTE");
       } else if (candidate.indicator === "EMA_DISTANCE") {
+        if (!positiveInteger(candidate.period)) issue(`${path}.period`, "VALUE", "period must be a positive safe integer");
         const emaKeys = candidate.maximumDistancePct === undefined
           ? ["indicator", "period", "position"] : ["indicator", "period", "position", "maximumDistancePct"];
         if (!exactKeys(candidate, emaKeys))
@@ -110,6 +117,15 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
           issue(`${path}.position`, "VALUE", "position must be ABOVE or BELOW");
         if (candidate.maximumDistancePct !== undefined && !percentageWithAtMostOneDecimal(candidate.maximumDistancePct))
           issue(`${path}.maximumDistancePct`, "VALUE", "maximumDistancePct must be between 0 and 100 with at most one decimal place");
+      } else if (candidate.indicator === "POSITION_RETURN_PCT") {
+        if (!exactKeys(candidate, ["indicator", "operator", "value"]))
+          issue(path, "PROPERTIES", "POSITION_RETURN_PCT condition contains unsupported properties");
+        if (!positionConditionsAllowed)
+          issue(path, "POSITION_CONTEXT", "POSITION_RETURN_PCT is supported only in exit conditions");
+        if (!["LT", "LTE", "GT", "GTE"].includes(candidate.operator as string))
+          issue(`${path}.operator`, "UNSUPPORTED_OPERATOR", "POSITION_RETURN_PCT supports LT, LTE, GT, and GTE");
+        if (typeof candidate.value !== "number" || !Number.isFinite(candidate.value))
+          issue(`${path}.value`, "VALUE", "POSITION_RETURN_PCT value must be a finite signed number");
       } else issue(`${path}.indicator`, "UNSUPPORTED_INDICATOR", "indicator is not supported");
       return;
     }
@@ -129,8 +145,8 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
     }
     issue(path, "CONDITION", "condition type is not supported");
   };
-  condition(value.entry, "$.entry", 1);
-  condition(value.exit, "$.exit", 1);
+  condition(value.entry, "$.entry", 1, false);
+  condition(value.exit, "$.exit", 1, true);
   return issues.length === 0
     ? { ok: true, definition: value as StrategyDefinitionV1, issues: [] }
     : { ok: false, definition: null, issues };

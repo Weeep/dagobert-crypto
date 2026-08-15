@@ -144,7 +144,7 @@ export default function PageBot() {
             onChange={(entry) => setDefinition((current) => ({ ...current, entry }))} /></div>
         <div><h3 className="mb-2 text-lg font-semibold text-rose-300">Exit conditions</h3>
           <StrategyRuleNode condition={definition.exit} root={definition.exit} path={[]} label="Exit root"
-            onChange={(exit) => setDefinition((current) => ({ ...current, exit }))} /></div>
+            onChange={(exit) => setDefinition((current) => ({ ...current, exit }))} positionConditionsAllowed /></div>
       </section>
 
       <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">

@@ -11,6 +11,10 @@ describe("strategy rule-builder tree operations", () => {
     assert.equal(conditionKind(newCondition("RSI")), "RSI");
     assert.equal(conditionKind(newCondition("EMA_DISTANCE")), "EMA_DISTANCE");
     assert.equal(conditionKind(newCondition("CANDLE_SEQUENCE")), "CANDLE_SEQUENCE");
+    assert.equal(conditionKind(newCondition("POSITION_RETURN_PCT")), "POSITION_RETURN_PCT");
+    assert.deepEqual(newCondition("POSITION_RETURN_PCT"), {
+      indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2,
+    });
     assert.deepEqual(newCondition("EMA_DISTANCE"), {
       indicator: "EMA_DISTANCE", period: 100, position: "ABOVE", maximumDistancePct: 2,
     });

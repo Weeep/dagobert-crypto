@@ -8,6 +8,7 @@ const kinds: Array<{ value: ConditionKind; label: string }> = [
   { value: "ALL", label: "All conditions" }, { value: "ANY", label: "Any condition" },
   { value: "RSI", label: "RSI" }, { value: "EMA_DISTANCE", label: "EMA distance" },
   { value: "CANDLE_SEQUENCE", label: "Candle sequence" },
+  { value: "POSITION_RETURN_PCT", label: "Position net return %" },
 ];
 const inputClass = "rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400";
 
@@ -18,9 +19,11 @@ type Props = {
   label: string;
   onChange: (value: StrategyCondition) => void;
   removable?: boolean;
+  positionConditionsAllowed?: boolean;
 };
 
-export function StrategyRuleNode({ condition, root, path, label, onChange, removable = false }: Props) {
+export function StrategyRuleNode({ condition, root, path, label, onChange, removable = false,
+  positionConditionsAllowed = false }: Props) {
   const kind = conditionKind(condition);
   const replace = (value: StrategyCondition) => onChange(replaceCondition(root, path, value));
   const groupChildren = "all" in condition ? condition.all : "any" in condition ? condition.any : null;
@@ -31,7 +34,8 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
         <span className="min-w-20 text-xs font-semibold uppercase tracking-widest text-cyan-300">{label}</span>
         <select aria-label={`${label} rule type`} className={inputClass} value={kind}
           onChange={(event) => replace(newCondition(event.target.value as ConditionKind))}>
-          {kinds.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          {kinds.filter((item) => positionConditionsAllowed || item.value !== "POSITION_RETURN_PCT")
+            .map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
         {removable && <button type="button" className="ml-auto rounded-lg border border-rose-700 px-3 py-2 text-xs text-rose-200 hover:bg-rose-950"
           onClick={() => onChange(removeCondition(root, path))}>Remove</button>}
@@ -40,9 +44,11 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
       {groupChildren && <div className="mt-4 space-y-3 border-l-2 border-cyan-800 pl-4">
         {groupChildren.map((child, index) => <StrategyRuleNode key={`${path.join("-")}-${index}`}
           condition={child} root={root} path={[...path, index]} label={`Rule ${index + 1}`}
-          onChange={onChange} removable={groupChildren.length > 1} />)}
+          onChange={onChange} removable={groupChildren.length > 1}
+          positionConditionsAllowed={positionConditionsAllowed} />)}
         <div className="flex flex-wrap gap-2 pt-1">
-          {(["RSI", "EMA_DISTANCE", "CANDLE_SEQUENCE", "ALL", "ANY"] as ConditionKind[]).map((childKind) =>
+          {(["RSI", "EMA_DISTANCE", "CANDLE_SEQUENCE", "POSITION_RETURN_PCT", "ALL", "ANY"] as ConditionKind[])
+            .filter((childKind) => positionConditionsAllowed || childKind !== "POSITION_RETURN_PCT").map((childKind) =>
             <button type="button" key={childKind}
               className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:border-cyan-500 hover:text-cyan-200"
               onClick={() => onChange(appendCondition(root, path, newCondition(childKind)))}>
@@ -83,6 +89,18 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
         </Field>
         <p className="text-xs text-slate-500 sm:col-span-3">The last closed candle must be strictly above or below the EMA. Leave the distance limit off to accept any distance.</p>
       </div>}
+
+      {"indicator" in condition && condition.indicator === "POSITION_RETURN_PCT" &&
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Field label="Operator"><select className={inputClass} value={condition.operator}
+            onChange={(event) => replace({ ...condition, operator: event.target.value as typeof condition.operator })}>
+            {(["LT", "LTE", "GT", "GTE"] as const).map((operator) => <option key={operator}>{operator}</option>)}
+          </select></Field>
+          <Field label="Signed net return %"><input className={inputClass} type="number" step="0.1"
+            value={condition.value}
+            onChange={(event) => replace({ ...condition, value: Number(event.target.value) })} /></Field>
+          <p className="text-xs text-slate-500 sm:col-span-2">Exit-only condition. Return includes entry fees and the estimated exit fee. Combine GTE take-profit and LTE stop-loss rules inside an Any group.</p>
+        </div>}
 
       {"candleSequence" in condition && <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <Field label="Candle count"><input className={inputClass} type="number" min={1} step={1} value={condition.candleSequence.count}

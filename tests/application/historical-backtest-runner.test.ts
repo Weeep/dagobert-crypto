@@ -100,6 +100,27 @@ describe("deterministic historical backtest runner", () => {
     assert.equal(result.fills.filter((fill) => fill.side === "SELL").length, 0);
   });
 
+  test("fee-aware stop-loss closes only the matching lot at the next open", () => {
+    const candles = [candle(0, "100", "101"), candle(1, "100", "101"),
+      candle(2, "120", "100"), candle(3, "90", "90")];
+    const strategy: StrategyDefinitionV1 = {
+      schemaVersion: 1, name: "Per-lot stop",
+      entry: { candleSequence: { count: 1, direction: "GREEN", minimumBodyChangePct: 0 } },
+      exit: { any: [
+        { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 },
+        { indicator: "POSITION_RETURN_PCT", operator: "LTE", value: -4 },
+      ] },
+    };
+    const result = runHistoricalBacktest({ definition: strategy, candles,
+      backtestFrom: candles[0].openTime, backtestTo: candles.at(-1)!.openTime, execution });
+    const exitDecision = result.decisions[2];
+    assert.deepEqual(exitDecision.evaluation.selectedPositionIds, ["position:candle-1"]);
+    assert.equal(exitDecision.executionOutcome, "EXIT_SCHEDULED");
+    assert.deepEqual(result.fills.filter((fill) => fill.side === "SELL").map((fill) => fill.positionId),
+      ["position:candle-1"]);
+    assert.deepEqual(result.portfolio.openPositions.map((position) => position.id), ["position:candle-0"]);
+  });
+
   test("uses only each historical prefix and is reproducible", () => {
     const original = run();
     const changedFuture = timeline.map((item, index) => index === 3
