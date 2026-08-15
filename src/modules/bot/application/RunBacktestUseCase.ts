@@ -59,18 +59,12 @@ export class RunBacktestUseCase {
       [decision.evaluation.action]: counts[decision.evaluation.action] + 1 }), { HOLD: 0, BUY: 0, SELL: 0 });
     const metrics = calculateBacktestMetrics(runner, evaluated, execution);
     const started = await this.start.execute(botId, range);
-    if (!started.ok) {
-      console.error("[backtest] run could not be started", { userId, botId, botStatus: bot.status,
-        botMode: bot.mode, reason: started.error });
-      return { ok: false as const, error: started.error, status: 409, result: null };
-    }
+    if (!started.ok) return { ok: false as const, error: started.error, status: 409, result: null };
     try { await this.persistence.persistCompleted(started.run.id, runner, (percent, currentOperation) =>
       onProgress?.({ phase: "SAVING", processedCandles: evaluated.length, totalCandles: evaluated.length,
         percent, currentOperation, decisions: decisionCounts })); }
     catch (error) {
-      console.error("[backtest] persistence failed", backtestErrorLog(error, { userId, botId, runId: started.run.id }));
-      await this.persistence.markFailed(started.run.id, backtestFailureMessage(error)).catch((markError) =>
-        console.error("[backtest] failed to record persistence error", backtestErrorLog(markError, { botId, runId: started.run.id })));
+      await this.persistence.markFailed(started.run.id, backtestFailureMessage(error)).catch(() => undefined);
       throw error;
     }
     return { ok: true as const, error: "", status: 200,
@@ -94,9 +88,4 @@ export function backtestFailureMessage(error: unknown) {
     "backtest run is not running", "backtest run already contains incomplete trading records",
     "backtest allocation does not match runner initial cash"].includes(error.message)) return error.message;
   return "The backtest was calculated, but its results could not be saved. Please retry or contact support with the run ID.";
-}
-
-export function backtestErrorLog(error: unknown, context: Record<string, string>) {
-  return { ...context, error: error instanceof Error ? { name: error.name, message: error.message,
-    stack: error.stack, ...(("code" in error) ? { code: String(error.code) } : {}) } : { value: String(error) } };
 }

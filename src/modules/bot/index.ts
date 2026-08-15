@@ -5,7 +5,7 @@ export * from "./domain/BacktestMetrics";
 export * from "./domain/EntryTriggerPolicy";
 export type { BacktestRunPersistenceRepository, PersistBacktestRunResult } from "./domain/BacktestRunPersistenceRepository";
 export { buildBacktestPersistencePlan } from "./application/BacktestRunPersistencePlan";
-export { RunBacktestUseCase, backtestErrorLog, backtestFailureMessage } from "./application/RunBacktestUseCase";
+export { RunBacktestUseCase, backtestFailureMessage } from "./application/RunBacktestUseCase";
 export type { BotRepository } from "./domain/BotRepository";
 export type { BotRunRepository } from "./domain/BotRunRepository";
 export type { BotTradingRecordRepository } from "./domain/BotTradingRecordRepository";
