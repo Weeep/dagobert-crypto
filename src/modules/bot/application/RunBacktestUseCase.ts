@@ -25,14 +25,27 @@ export class RunBacktestUseCase {
     const validated = validateStrategyDefinition(version.definition, version.schemaVersion);
     if (!validated.ok) return { ok: false as const, error: "Strategy version is invalid", status: 409, result: null };
     const lookback = Math.max(requiredCandles(validated.definition.entry), requiredCandles(validated.definition.exit));
-    const [rangeCandles, warmup] = await Promise.all([
-      this.candles.findRange(bot.pairSymbol, bot.timeframe, range.from, range.to),
-      this.candles.findClosedHistoryEndingAt(bot.pairSymbol, bot.timeframe, range.from, lookback),
-    ]);
+    const interval = MARKET_INTERVAL_MILLISECONDS[bot.timeframe];
+    const totalSlots = Math.floor((range.to.getTime() - range.from.getTime()) / interval) + 1;
+    const rangeCandles = [] as Awaited<ReturnType<CandleRepository["findRange"]>>;
+    const chunkSlots = 500;
+    onProgress?.({ phase: "LOADING", processedCandles: 0, totalCandles: totalSlots,
+      loadedCandles: 0, percent: 0, decisions: { HOLD: 0, BUY: 0, SELL: 0 } });
+    for (let offset = 0; offset < totalSlots; offset += chunkSlots) {
+      const endOffset = Math.min(offset + chunkSlots - 1, totalSlots - 1);
+      const chunk = await this.candles.findRange(bot.pairSymbol, bot.timeframe,
+        new Date(range.from.getTime() + offset * interval),
+        new Date(Math.min(range.to.getTime(), range.from.getTime() + endOffset * interval)));
+      rangeCandles.push(...chunk);
+      const processed = endOffset + 1;
+      onProgress?.({ phase: "LOADING", processedCandles: processed, totalCandles: totalSlots,
+        loadedCandles: rangeCandles.length, percent: Math.round((processed / totalSlots) * 100),
+        decisions: { HOLD: 0, BUY: 0, SELL: 0 } });
+    }
+    const warmup = await this.candles.findClosedHistoryEndingAt(bot.pairSymbol, bot.timeframe, range.from, lookback);
     if (rangeCandles.length === 0)
       return { ok: false as const, error: "No closed candles exist in the selected range", status: 422, result: null };
     const evaluated = rangeCandles.filter((candle) => candle.openTime >= range.from && candle.openTime <= range.to);
-    const interval = MARKET_INTERVAL_MILLISECONDS[bot.timeframe];
     if (evaluated.some((candle, index) => index > 0 &&
       candle.openTime.getTime() !== evaluated[index - 1].openTime.getTime() + interval))
       return { ok: false as const, error: "Selected candle range contains a gap", status: 422, result: null };
@@ -42,6 +55,9 @@ export class RunBacktestUseCase {
       feeRate: bot.feeRate, slippageRate: bot.slippageRate };
     const runner = runHistoricalBacktest({ definition: validated.definition, candles: history,
       backtestFrom: range.from, backtestTo: range.to, execution, onProgress });
+    onProgress?.({ phase: "SAVING", processedCandles: evaluated.length, totalCandles: evaluated.length,
+      percent: 100, decisions: runner.decisions.reduce((counts, decision) => ({ ...counts,
+        [decision.evaluation.action]: counts[decision.evaluation.action] + 1 }), { HOLD: 0, BUY: 0, SELL: 0 }) });
     const metrics = calculateBacktestMetrics(runner, evaluated, execution);
     const started = await this.start.execute(botId, range);
     if (!started.ok) return { ok: false as const, error: started.error, status: 409, result: null };

@@ -75,11 +75,14 @@ test("run backtest use case loads warm-up, starts, executes, persists, and retur
   const strategies = new Strategies(); const repository = new Candles();
   const useCase = new RunBacktestUseCase(bots, strategies, repository,
     new StartBotUseCase(bots, runs, strategies), persistence);
-  const response = await useCase.execute("owner", "bot", { from: candles[0].openTime, to: candles.at(-1)!.openTime });
+  const phases: string[] = [];
+  const response = await useCase.execute("owner", "bot", { from: candles[0].openTime, to: candles.at(-1)!.openTime },
+    (progress) => phases.push(progress.phase));
   assert.equal(response.ok, true); if (!response.ok) return;
   assert.equal(runs.values.length, 1); assert.equal(persistence.calls.length, 1);
   assert.equal(response.result.fills.length, 4); assert.equal(response.result.positions.length, 2);
   assert.equal(response.result.metrics.tradeCount, 2);
+  assert.equal(phases[0], "LOADING"); assert.ok(phases.includes("EVALUATING")); assert.equal(phases.at(-1), "SAVING");
   assert.equal((await useCase.execute("intruder", "bot", { from: candles[0].openTime,
     to: candles.at(-1)!.openTime })).status, 404);
 });
@@ -88,14 +91,16 @@ test("Bot API client submits the selected ISO range and returns the UI result", 
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   const fetcher = async (url: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(url), init });
-    return new Response(`${JSON.stringify({ type: "progress", progress: { processedCandles: 1, totalCandles: 2,
-      percent: 50, decisions: { HOLD: 1, BUY: 0, SELL: 0 } } })}\n${JSON.stringify({ type: "complete",
+    return new Response(`${JSON.stringify({ type: "progress", progress: { phase: "EVALUATING", processedCandles: 1, totalCandles: 2,
+      percent: 50, decisions: { HOLD: 1, BUY: 0, SELL: 0 } } })}\n${JSON.stringify({ type: "result-chunk", field: "decisions",
+      items: [{ candleId: "c-1" }] })}\n${JSON.stringify({ type: "complete",
       backtest: { runId: "run", metrics: { tradeCount: 2 }, decisions: [], fills: [], events: [], positions: [], openPositions: [] } })}\n`,
     { status: 200, headers: { "Content-Type": "application/json" } });
   };
   const progress: number[] = [];
   const result = await new BotApiClient(fetcher as typeof fetch).runBacktest("bot/id", "from", "to", (value) => progress.push(value.percent));
   assert.equal(result.runId, "run");
+  assert.equal(result.decisions.length, 1);
   assert.deepEqual(progress, [50]);
   assert.equal(calls[0].url, "/api/bots/bot%2Fid/backtests?stream=1");
   assert.equal(calls[0].init?.method, "POST");

@@ -24,7 +24,8 @@ export type BacktestView = {
   openPositions: BacktestOpenPosition[];
 };
 export type BotErrorDetails = { runId: string; message: string; occurredAt: string };
-export type BacktestProgress = { processedCandles: number; totalCandles: number; percent: number;
+export type BacktestProgress = { phase: "LOADING" | "EVALUATING" | "SAVING"; processedCandles: number;
+  totalCandles: number; loadedCandles?: number; percent: number;
   decisions: { HOLD: number; BUY: number; SELL: number } };
 
 type ApiError = { error?: { message?: string } };
@@ -86,14 +87,19 @@ export class BotApiClient {
       throw new Error(body.error?.message ?? `Backtest request failed (${response.status})`);
     }
     const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
+    const resultChunks: Pick<BacktestView, "decisions" | "fills" | "events" | "positions" | "openPositions"> =
+      { decisions: [], fills: [], events: [], positions: [], openPositions: [] };
     while (true) {
       const chunk = await reader.read(); buffer += decoder.decode(chunk.value, { stream: !chunk.done });
       const lines = buffer.split("\n"); buffer = lines.pop() ?? "";
       for (const line of lines) {
         if (!line.trim()) continue;
-        const event = JSON.parse(line) as { type: string; progress?: BacktestProgress; backtest?: BacktestView; message?: string };
+        const event = JSON.parse(line) as { type: string; progress?: BacktestProgress; backtest?: BacktestView;
+          field?: keyof typeof resultChunks; items?: unknown[]; message?: string };
         if (event.type === "progress" && event.progress) onProgress?.(event.progress);
-        if (event.type === "complete" && event.backtest) return event.backtest;
+        if (event.type === "result-chunk" && event.field && event.items)
+          (resultChunks[event.field] as unknown[]).push(...event.items);
+        if (event.type === "complete" && event.backtest) return { ...event.backtest, ...resultChunks };
         if (event.type === "error") throw new Error(event.message ?? "Backtest execution failed");
       }
       if (chunk.done) break;

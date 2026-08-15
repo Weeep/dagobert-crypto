@@ -4,6 +4,7 @@ import { tradingBotUseCases } from "@/src/shared/composition/serverUseCases";
 import { backtestFailureMessage, type HistoricalBacktestProgress } from "@/src/modules/bot";
 
 type Dependencies = Pick<typeof tradingBotUseCases, "runBacktest">;
+export const config = { api: { responseLimit: false } };
 
 export const createBacktestsHandler = (useCases: Dependencies = tradingBotUseCases,
   authenticate: typeof authenticatedUserId = authenticatedUserId) => async function handler(
@@ -27,8 +28,15 @@ export const createBacktestsHandler = (useCases: Dependencies = tradingBotUseCas
     const result = await useCases.runBacktest.execute(userId, String(req.query.id ?? ""), range,
       streaming ? (progress: HistoricalBacktestProgress) => send({ type: "progress", progress }) : undefined);
     if (streaming) {
-      send(result.ok ? { type: "complete", backtest: result.result }
-        : { type: "error", message: result.error }); return res.end();
+      if (!result.ok) send({ type: "error", message: result.error });
+      else {
+        const { decisions, fills, events, positions, openPositions, ...summary } = result.result;
+        for (const [field, items] of Object.entries({ decisions, fills, events, positions, openPositions }))
+          for (let offset = 0; offset < items.length; offset += 100)
+            send({ type: "result-chunk", field, items: items.slice(offset, offset + 100) });
+        send({ type: "complete", backtest: { ...summary, decisions: [], fills: [], events: [], positions: [], openPositions: [] } });
+      }
+      return res.end();
     }
     if (!result.ok) return res.status(result.status).json({ error: {
       code: result.status === 404 ? "NOT_FOUND" : result.status === 400 ? "BAD_REQUEST" : "BACKTEST_REJECTED",

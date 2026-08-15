@@ -30,8 +30,10 @@ export type HistoricalBacktestInput = {
 };
 
 export type HistoricalBacktestProgress = {
+  phase: "LOADING" | "EVALUATING" | "SAVING";
   processedCandles: number;
   totalCandles: number;
+  loadedCandles?: number;
   percent: number;
   decisions: { HOLD: number; BUY: number; SELL: number };
 };
@@ -224,7 +226,7 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
     const decision = { candleId: candle.id, evaluation, executionOutcome, executionReason };
     decisions.push(decision);
     actionCounts[evaluation.action] += 1;
-    input.onProgress?.({ processedCandles: decisions.length, totalCandles: evaluationIndexes.length,
+    input.onProgress?.({ phase: "EVALUATING", processedCandles: decisions.length, totalCandles: evaluationIndexes.length,
       percent: Math.round((decisions.length / evaluationIndexes.length) * 100), decisions: { ...actionCounts } });
     event("DECISION_MADE", candle, decision, candle.closeTime);
     if (executionEvent) event(executionEvent.type, candle, executionEvent.payload, candle.closeTime);

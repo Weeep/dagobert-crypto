@@ -51,8 +51,8 @@ export function BacktestPanel({ api, bots }: Props) {
     </div>
     {busy && <div className="mt-5 rounded-xl border border-cyan-900 bg-slate-950 p-4" aria-live="polite">
       <div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-semibold text-cyan-200">
-        {progress ? progress.percent === 100 ? "Saving results…" : "Evaluating candles…" : "Loading candle data…"}</span>
-        <span className="text-slate-300">{progress ? `${progress.processedCandles} / ${progress.totalCandles} candles · ${progress.percent}%` : "Preparing…"}</span></div>
+        {progress?.phase === "SAVING" ? "Saving results…" : progress?.phase === "EVALUATING" ? "Evaluating candles…" : "Loading candle data…"}</span>
+        <span className="text-slate-300">{progress ? `${progress.phase === "LOADING" ? progress.loadedCandles ?? 0 : progress.processedCandles} / ${progress.totalCandles} candles · ${progress.percent}%` : "Preparing…"}</span></div>
       <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-emerald-500 transition-[width] duration-200"
         style={{ width: `${progress?.percent ?? 0}%` }} /></div>
       <div className="mt-3 flex flex-wrap gap-4 text-xs"><span className="text-slate-300">HOLD <b>{progress?.decisions.HOLD ?? 0}</b></span>
