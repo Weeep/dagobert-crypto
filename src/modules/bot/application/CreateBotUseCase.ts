@@ -48,11 +48,11 @@ export class CreateBotUseCase {
     }
     const feeRate = input.feeRate ?? "0";
     const slippageRate = input.slippageRate ?? "0";
-    if (!this.isNonNegative(feeRate) || !this.isNonNegative(slippageRate)) {
-      return { ok: false, error: "Fee and slippage rates cannot be negative", bot: null };
+    if (!this.isNonNegative(feeRate) || !this.isNonNegative(slippageRate) || new Big(slippageRate).gte(1)) {
+      return { ok: false, error: "Fee rate cannot be negative and slippage rate must be between 0 and 1", bot: null };
     }
-    if (new Big(input.amountPerPosition).times(new Big(1).plus(feeRate)).gt(input.assignedBudget)) {
-      return { ok: false, error: "Position amount plus fees exceeds assigned budget", bot: null };
+    if (new Big(input.amountPerPosition).gt(input.assignedBudget)) {
+      return { ok: false, error: "Position amount exceeds assigned budget", bot: null };
     }
     if (this.strategyOwner) {
       if (await this.strategyOwner(input.strategyVersionId) !== input.userId) {

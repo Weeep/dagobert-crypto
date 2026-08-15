@@ -25,8 +25,10 @@ export class UpdateBotUseCase {
     if (!modes.includes(next.mode) || modes.indexOf(next.mode) > modes.indexOf(bot.mode) + 1 || modes.indexOf(next.mode) < modes.indexOf(bot.mode))
       return { ok: false as const, error: "Invalid mode transition", bot: null };
     try {
-      if (new Big(next.assignedBudget).lte(0) || new Big(next.amountPerPosition).lte(0) || new Big(next.feeRate).lt(0) || new Big(next.slippageRate).lt(0)) throw new Error();
-      if (new Big(next.amountPerPosition).times(new Big(1).plus(next.feeRate)).gt(next.assignedBudget)) return { ok: false as const, error: "Position amount plus fees exceeds assigned budget", bot: null };
+      if (new Big(next.assignedBudget).lte(0) || new Big(next.amountPerPosition).lte(0) ||
+          new Big(next.feeRate).lt(0) || new Big(next.slippageRate).lt(0) || new Big(next.slippageRate).gte(1)) throw new Error();
+      if (new Big(next.amountPerPosition).gt(next.assignedBudget))
+        return { ok: false as const, error: "Position amount exceeds assigned budget", bot: null };
     } catch { return { ok: false as const, error: "Invalid decimal configuration", bot: null }; }
     if (await this.strategyOwner(next.strategyVersionId) !== userId) return { ok: false as const, error: "Strategy version not found for owner", bot: null };
     const duplicate = await this.bots.findByUserIdAndName(userId, next.name);

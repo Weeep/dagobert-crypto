@@ -1,9 +1,23 @@
 import type { Candle } from "@/src/modules/market";
+import Big from "big.js";
 import { evaluateCondition, type ConditionEvaluation } from "./ConditionEvaluator";
 import { validateStrategyDefinition, type StrategyDefinitionV1 } from "./StrategyDefinition";
 
 export type StrategyAction = "BUY" | "SELL" | "HOLD";
-export type StrategyPositionContext = { hasOpenPositions: boolean; openPositionCount: number };
+export type StrategyPositionLotContext = {
+  id: string;
+  entryPrice: string;
+  quantity: string;
+  entryCost: string;
+  entryFees: string;
+  openedAt: string | null;
+};
+export type StrategyPositionContext = {
+  hasOpenPositions: boolean;
+  openPositionCount: number;
+  exitFeeRate: string;
+  positions: readonly StrategyPositionLotContext[];
+};
 export type StrategyEngineInput = {
   definition: StrategyDefinitionV1;
   candles: readonly Candle[];
@@ -18,6 +32,8 @@ export type StrategyEvaluation = {
   evaluatedCandleId: string;
   evaluatedCandleOpenTime: Date;
   position: StrategyPositionContext;
+  positionExits: { positionId: string; evaluation: ConditionEvaluation }[];
+  selectedPositionIds: string[];
   exit: ConditionEvaluation;
   entry: ConditionEvaluation;
 };
@@ -33,6 +49,20 @@ function validateInput(input: StrategyEngineInput): void {
     throw new StrategyEngineInputError("openPositionCount must be a non-negative safe integer");
   if (input.position.hasOpenPositions !== (input.position.openPositionCount > 0))
     throw new StrategyEngineInputError("position context is inconsistent");
+  if (input.position.positions.length !== input.position.openPositionCount)
+    throw new StrategyEngineInputError("position lot context is inconsistent");
+  try {
+    const exitFeeRate = new Big(input.position.exitFeeRate);
+    if (exitFeeRate.lt(0) || exitFeeRate.gte(1)) throw new Error();
+  } catch {
+    throw new StrategyEngineInputError("exitFeeRate must be a decimal in [0, 1)");
+  }
+  const positionIds = new Set<string>();
+  for (const position of input.position.positions) {
+    if (!position.id || positionIds.has(position.id))
+      throw new StrategyEngineInputError("position lot ids must be non-empty and unique");
+    positionIds.add(position.id);
+  }
   if (input.candles.length === 0) throw new StrategyEngineInputError("candle history is required");
   if (!input.evaluatedCandle.isClosed) throw new StrategyEngineInputError("evaluated candle must be closed");
   if (!Number.isFinite(input.evaluatedCandle.openTime.getTime()) || !Number.isFinite(input.evaluatedCandle.closeTime.getTime()))
@@ -72,13 +102,22 @@ export function evaluateStrategy(input: StrategyEngineInput): StrategyEvaluation
   validateInput(input);
   const context = { candles: input.candles };
   const exit = evaluateCondition(input.definition.exit, context);
+  const positionExits = input.position.positions.map((position) => ({
+    positionId: position.id,
+    evaluation: evaluateCondition(input.definition.exit, {
+      ...context, position, exitFeeRate: input.position.exitFeeRate,
+    }),
+  }));
+  const selectedPositionIds = positionExits
+    .filter(({ evaluation }) => evaluation.matched)
+    .map(({ positionId }) => positionId);
   const entry = evaluateCondition(input.definition.entry, context);
   const policyReasons: string[] = [];
 
   let action: StrategyAction;
   let reasonCode: string;
   let explanation: string;
-  if (exit.matched && input.position.hasOpenPositions) {
+  if (selectedPositionIds.length > 0) {
     action = "SELL"; reasonCode = "EXIT_MATCHED";
     explanation = "Exit matched and has priority while positions are open";
   } else {
@@ -102,6 +141,7 @@ export function evaluateStrategy(input: StrategyEngineInput): StrategyEvaluation
     action, reasonCode, explanation, policyReasons,
     evaluatedCandleId: input.evaluatedCandle.id,
     evaluatedCandleOpenTime: new Date(input.evaluatedCandle.openTime),
-    position: { ...input.position }, exit, entry,
+    position: { ...input.position, positions: input.position.positions.map((position) => ({ ...position })) },
+    positionExits, selectedPositionIds, exit, entry,
   };
 }

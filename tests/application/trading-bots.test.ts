@@ -105,16 +105,16 @@ describe("trading bot application", () => {
     assert.equal(runs.runs.length, 1);
   });
 
-  test("rejects a position whose amount and fee exceed the allocation", async () => {
+  test("treats position amount as the fee-inclusive cash cap", async () => {
     const useCase = new CreateBotUseCase(new MemoryBotRepository());
     const base = { userId: "user", name: "Fee bot", pairSymbol: "BTCUSDC", assignedBudget: "10",
       amountPerPosition: "10", timeframe: "1h", strategyVersionId: "strategy", feeRate: "0.001" };
-    const feeOverflow = await useCase.execute(base);
-    assert.equal(feeOverflow.ok, false);
-    assert.match(feeOverflow.error, /plus fees/);
+    assert.equal((await useCase.execute(base)).ok, true);
+    assert.equal((await useCase.execute({ ...base, name: "Overflow", amountPerPosition: "10.01" })).ok, false);
     assert.equal((await useCase.execute({ ...base, name: "Zero", assignedBudget: "0" })).ok, false);
     assert.equal((await useCase.execute({ ...base, name: "Negative", amountPerPosition: "-1" })).ok, false);
     assert.equal((await useCase.execute({ ...base, name: "Malformed", assignedBudget: "not-a-decimal" })).ok, false);
+    assert.equal((await useCase.execute({ ...base, name: "Slippage", slippageRate: "1" })).ok, false);
   });
 
   test("validates strategy ownership and sequential mode transitions on update", async () => {

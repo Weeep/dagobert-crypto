@@ -11,11 +11,16 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
     name: { type: "string", minLength: 1, maxLength: 120 },
     entry: { $ref: "#/$defs/condition" },
     exit: { $ref: "#/$defs/condition" },
+    entryPolicy: { type: "object", additionalProperties: false, required: ["trigger"], properties: {
+      trigger: { enum: ["EVERY_MATCHING_CANDLE", "ON_FALSE_TO_TRUE"] },
+      cooldownCandles: { type: "integer", minimum: 0 },
+    } },
   },
   $defs: {
     condition: { oneOf: [
       { $ref: "#/$defs/all" }, { $ref: "#/$defs/any" }, { $ref: "#/$defs/rsi" },
       { $ref: "#/$defs/emaDistance" }, { $ref: "#/$defs/candleSequence" },
+      { $ref: "#/$defs/positionReturnPct" },
     ] },
     all: { type: "object", additionalProperties: false, required: ["all"], properties: {
       all: { type: "array", minItems: 1, items: { $ref: "#/$defs/condition" } },
@@ -32,6 +37,12 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
       position: { enum: ["ABOVE", "BELOW"] },
       maximumDistancePct: { type: "number", minimum: 0, maximum: 100, multipleOf: 0.1 },
     } },
+    positionReturnPct: { type: "object", additionalProperties: false,
+      required: ["indicator", "operator", "value"], properties: {
+        indicator: { const: "POSITION_RETURN_PCT" },
+        operator: { enum: ["LT", "LTE", "GT", "GTE"] },
+        value: { type: "number" },
+      } },
     candleSequence: { type: "object", additionalProperties: false, required: ["candleSequence"], properties: {
       candleSequence: { type: "object", additionalProperties: false,
         required: ["count", "direction", "minimumBodyChangePct"], properties: {

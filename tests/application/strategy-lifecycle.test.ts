@@ -42,7 +42,10 @@ class History implements ClosedCandleHistoryRepository {
 class Evaluations implements StrategyEvaluationRepository {
   stored: PersistedStrategyEvaluation | null = null; activePositions = 0; saves = 0;
   findByRunAndCandle() { return Promise.resolve(this.stored); }
-  countActivePositions() { return Promise.resolve(this.activePositions); }
+  findActivePositions() { return Promise.resolve(Array.from({ length: this.activePositions }, (_, index) => ({
+    id: `position-${index}`, entryPrice: "100", quantity: "1", entryCost: "100",
+    entryFees: "0", openedAt: candle.openTime.toISOString(),
+  }))); }
   saveIfAbsent(value: PersistedStrategyEvaluation) { this.saves += 1; this.stored ??= value; return Promise.resolve(this.stored); }
 }
 
@@ -80,6 +83,8 @@ describe("closed-candle strategy evaluation application service", () => {
     assert.deepEqual((result.evaluation.decision.inputs as { strategySnapshot: unknown }).strategySnapshot,
       run.strategySnapshot);
     assert.ok((result.evaluation.indicatorSnapshot.values as { entry: unknown }).entry);
+    assert.equal(((result.evaluation.decision.output as { position: { exitFeeRate: string } })
+      .position.exitFeeRate), "0");
 
     const repeated = await useCase.execute("run", "candle");
     assert.equal(repeated.ok, true); assert.equal(repeated.reused, true);

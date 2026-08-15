@@ -17,9 +17,9 @@ as the implementation.
 | --- | --- | --- |
 | Phase 0: requirements | Complete | Initial product scope and constraints are agreed below. |
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
-| Phase 2: market data | In progress | Steps 0-4 are complete: cursor-backed persistence, the Binance REST adapter, historical backfill/gap repair, and resilient scheduled closed-candle polling are implemented; Step 5 operability and the Phase 2 acceptance gate remain. |
+| Phase 2: market data | Complete | Steps 0-5 and the external acceptance gate are complete; the Prisma suite and Binance/PostgreSQL smoke test verified idempotent closed-candle ingestion, gap handling, and restart safety. |
 | Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
-| Phase 4: backtesting | Not started | Strategies can be tested using historical candles. |
+| Phase 4: backtesting | In progress | Steps 1-4 and Step 4A entry trigger policy are complete; position-aware exits, additional conditions, and the golden gate remain. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
 | Phase 7: Spot test and live trading | Not started | Market orders can be tested and then placed on Binance Spot. |
@@ -369,7 +369,7 @@ cost, asset market value, realized profit, unrealized profit, and total equity.
 - Add domain entities, repository contracts, Prisma adapters, DTOs, and use
   cases following the repository's feature-first module structure.
 - Add bot create, update, list, detail, start, pause, and stop APIs.
-- Validate `*USDC`, positive budgets, position amount plus fees, timeframe,
+- Validate `*USDC`, positive budgets, the fee-inclusive position cash cap, timeframe,
   strategy version, and mode transitions.
 - Add transactional bot-budget and owner-wallet reservation/release operations.
 
@@ -547,14 +547,15 @@ operator guides for polling and historical backfill.
 **Exit:** all Phase 2 acceptance criteria pass and the poller can be stopped,
 restarted, and safely run twice for the same interval.
 
-**Implementation ready, external gate pending:** the single-maintainer scope now
-adds structured cursor lag, gap totals, clock drift, consecutive failures, and a
-simple health/reasons result; validates startup configuration; redacts Binance
-credentials; and documents startup, restart, gap repair, and cursor audits.
-Deterministic tests cover stale cursors, clock drift, gap reporting, credential
-redaction, restart overlap, gap repair, and open-candle exclusion. Keep Step 5
-and Phase 2 open until the Prisma suite and the small Binance/PostgreSQL smoke
-test are run in an environment with PostgreSQL and outbound Binance access.
+**Complete:** the single-maintainer scope adds structured cursor lag, gap totals,
+clock drift, consecutive failures, and a simple health/reasons result; validates
+startup configuration; redacts Binance credentials; and documents startup,
+restart, gap repair, and cursor audits. Deterministic tests cover stale cursors,
+clock drift, gap reporting, credential redaction, restart overlap, gap repair,
+and open-candle exclusion. The Prisma integration suite and a small
+Binance/PostgreSQL smoke test verified duplicate-free closed-candle persistence,
+gap detection and repair, restart-safe cursor continuation, open-candle
+exclusion, and safe repeated processing of the same interval.
 
 For the current single-user, single-maintainer hobby deployment, the structured
 one-shot result is the health check. Prometheus/OpenTelemetry, dashboards,
@@ -628,17 +629,28 @@ idempotent persistence boundary.
 - Step 3 evaluates the declarative entry and exit condition trees independently
   and returns their matches, observed values, and reasons. This condition
   evaluator has no position, repository, database, or exchange dependency.
-- Step 4 receives an immutable evaluation context containing at least
-  `hasOpenPositions` and `openPositionCount`. It combines that context with the
-  condition results to produce one `BUY`, `SELL`, or `HOLD`; the strategy engine
-  never queries position state itself.
-- With open positions, a matching exit produces `SELL` even when entry also
-  matches. Without an open position, an exit match is recorded with
+- Step 4 receives an immutable evaluation context containing the ordered open
+  lots (id, entry price/cost/fees, remaining quantity, and opening time) in
+  addition to `hasOpenPositions` and `openPositionCount`. The strategy engine
+  evaluates the exit tree once per lot and never queries position state itself.
+- With open positions, one or more matching lot exits produce `SELL` and the
+  decision records their stable ids in `selectedPositionIds`, even when entry
+  also matches. Without an open position, an exit match is recorded with
   `EXIT_MATCHED_NO_OPEN_POSITION` but is not executable; entry is then evaluated
   and produces `BUY` when it matches, otherwise the result is `HOLD`.
 - Open positions do not by themselves prevent another `BUY`, because a bot may
   hold multiple independent lots. Risk and budget validation decides whether
   the resulting buy intent can actually reserve another position amount.
+- A scheduled sell snapshots `selectedPositionIds` at decision time. At the next
+  candle open, `closeSelected` closes exactly those full lots and leaves every
+  unselected lot open; it rejects duplicate, empty, or unknown selections.
+- `POSITION_RETURN_PCT` is an exit-only, per-lot condition. Its signed observed
+  value is `(estimated net exit proceeds - fee-inclusive entry outflow) /
+  fee-inclusive entry outflow * 100`, where estimated net exit proceeds uses the
+  latest closed-candle price minus the configured exit fee. Positive thresholds
+  represent profit and negative thresholds represent loss. An `any` group with
+  `GTE +2` and `LTE -4`, for example, implements a 2% take-profit or 4% stop-loss
+  independently for every open lot.
 - Step 5 loads the current position state, constructs the immutable evaluation
   context, calls the pure engine, and persists the context, condition results,
   final decision, values, and reasons. Phase 4 first integrates and verifies this
@@ -783,6 +795,160 @@ idempotent persistence boundary.
 - The same candle history and run snapshot always produce the same decisions.
 
 ### Phase 4: backtesting
+
+#### Implementation progress
+
+- [x] Step 0A: Phase 2 external acceptance gate completed.
+- [x] Step 0B: backtest execution, fill, exit, and end-of-range contracts fixed.
+- [x] Step 1: pure backtest wallet, fill, fee, slippage, position, and risk domain.
+- [x] Step 2: deterministic historical runner and production strategy integration.
+- [x] Step 3: transactional persistence, idempotency, replay events, and portfolio snapshots.
+- [x] Step 4: performance metrics, buy-and-hold comparison, application service, API, and results GUI.
+- [x] Step 4A: configurable level/edge entry triggers and post-fill candle cooldown.
+- [x] Step 4B: position-aware exit selection and selected-lot lifecycle.
+- [x] Step 4C: fee-aware per-lot percentage-return exit condition.
+- [ ] Step 4D: confirmed EMA crossing condition.
+- [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.
+
+#### Step 0B execution and accounting contract
+
+- A decision for candle `t` is made only after that closed candle and cannot fill
+  using its close. An executable intent fills at candle `t+1` open; without a
+  next candle it remains unfilled and is recorded as `UNFILLED_AT_END_OF_RANGE`.
+- A simulated buy fills at `nextOpen * (1 + slippageRate)` and a simulated sell
+  fills at `nextOpen * (1 - slippageRate)`. Fees are calculated from the actual
+  fill notional after slippage. A slippage-adjusted simulated market fill need
+  not remain inside the source candle's high-low range.
+- `amountPerPosition` is the maximum total cash outflow for an entry, including
+  its buy fee. Quantity is derived so the fill notional plus fee cannot exceed
+  that amount or the available bot cash. All financial arithmetic uses decimal
+  values rather than binary floating point.
+- Each buy opens one independent position lot. One executable sell decision
+  closes every open lot in full at the same execution time, using a separate
+  order and fill per lot so fees, profit/loss, and holding time remain auditable.
+- Open positions are not force-closed at the end of the requested range. Results
+  report realized profit/loss, open-position unrealized profit/loss, and total
+  equity separately. A future force-close option must be an explicit immutable
+  run setting and produce its own auditable events.
+- Backtest, paper, test, and live modes must share position, ledger, risk, and
+  execution lifecycle logic; only the execution adapter and its fill policy may
+  differ by mode.
+
+#### Step 1 backtest portfolio contract
+
+- The pure portfolio domain has no repository, database, clock, strategy, or
+  exchange dependency. Callers supply stable reservation and position identities,
+  fill timestamps, the next candle open, and the immutable execution configuration.
+- Entry reservations immediately reduce available cash and reject duplicate
+  identities or insufficient funds. Filling consumes exactly one reservation;
+  releasing it restores availability without changing cash or the ledger-ready
+  fill result.
+- Entry quantity is derived from the configured maximum total cash outflow after
+  accounting for the buy fee. Buy and sell fills apply adverse side-specific
+  slippage, calculate fees from actual fill notional, and return explicit cash
+  changes for later transactional ledger persistence.
+- Every buy creates an independent immutable lot. A sell closes all currently
+  open lots in full, produces one fill and realized profit/loss per lot, and
+  retains closed lots for audit while keeping total fees and aggregate realized
+  profit/loss consistent.
+- Mark-to-market snapshots report cash, reservations, available cash, invested
+  cost, market value, realized and unrealized profit/loss, total equity, fees,
+  and open-position count without changing or force-closing the portfolio.
+
+#### Step 2 historical runner contract
+
+- The pure runner accepts an immutable ordered closed-candle history, execution
+  range, validated strategy definition, and execution configuration. Candles
+  before the requested range are available only as indicator warm-up; they never
+  produce decisions, fills, events, or positions.
+- At each candle open the runner executes at most the intent created after the
+  preceding evaluated candle. At that candle close it evaluates the production
+  strategy against only the prefix ending at that exact candle and the portfolio
+  position count after the open fill, then reserves or schedules the next intent.
+- BUY decisions that cannot reserve the fee-inclusive position amount remain
+  auditable strategy decisions with `INSUFFICIENT_AVAILABLE_CASH`; they do not
+  create a position or pending fill. SELL decisions schedule all currently open
+  lots for separate full fills at the next evaluated candle open.
+- Stable candle-derived reservation and position identities, caller-supplied
+  candle timestamps, monotonically increasing in-memory events, and pure
+  portfolio transitions make identical inputs deeply reproducible.
+- An intent created by the final evaluated candle is recorded as
+  `UNFILLED_AT_END_OF_RANGE`. A final BUY reservation is released from the result
+  portfolio, and no synthetic candle, fill, position, or forced exit is created.
+
+#### Step 3 transactional persistence contract
+
+- A completed runner result is converted into positions, orders, fills,
+  append-only cash-ledger entries, strategy decisions, indicator snapshots,
+  replay events, and portfolio snapshots before persistence. Stable UUIDv5 keys
+  derived from the run and domain identities make every generated record and
+  order idempotency key reproducible.
+- Financial values are rounded once at the PostgreSQL `Decimal(38,18)` boundary.
+  Any sub-scale accumulation difference is represented by an explicit bounded
+  `CORRECTION` ledger entry; a difference larger than rounding can explain is a
+  reconciliation error and the result is rejected.
+- Persistence locks the backtest run row and writes the complete generated
+  record graph plus the `COMPLETED` run transition in one transaction. The bot
+  moves from `RUNNING` to `PAUSED` only with that successful commit. A foreign-key,
+  validation, or write failure leaves the run and every generated table unchanged.
+- Retrying or concurrently persisting an already completed run returns the first
+  committed result without inserting duplicate positions, orders, fills,
+  decisions, ledger entries, events, or snapshots. A running backtest containing
+  any non-allocation partial record set is rejected for explicit reconciliation
+  rather than overwritten or silently resumed.
+- Runner event sequence numbers and portfolio snapshot sequence numbers remain
+  monotonic and run-scoped. Decisions and indicator snapshots retain their
+  candle identities and complete explainable strategy output for later replay.
+
+#### Step 4 metrics, application, API, and GUI contract
+
+- The authenticated backtest application service verifies bot ownership and
+  `BACKTEST` mode, validates the immutable strategy version and requested range,
+  loads closed candles plus the minimum pre-range indicator warm-up, rejects a
+  range gap, starts a snapshotted run, executes the pure runner, and persists the
+  complete result before returning success.
+- Summary calculation reports starting capital, ending cash and equity, net
+  profit, return, maximum equity-curve drawdown, closed-lot win rate and profit
+  factor, total fees, closed/open position counts, and average closed-lot holding
+  time. Runs without losses report an unbounded profit factor as `null`; runs
+  without closed trades report zero win rate and no average holding time.
+- The buy-and-hold comparison invests the same initial capital at the first
+  evaluated candle open using configured adverse buy slippage and buy fee, then
+  marks the acquired quantity at the final evaluated candle close without a
+  forced sale. Strategy-versus-benchmark is reported in percentage points.
+- `POST /api/bots/:id/backtests` accepts ISO `from` and `to` timestamps, applies
+  authentication and ownership at the application boundary, returns structured
+  validation/not-found/rejection errors, sanitizes unexpected failures, and
+  returns the completed metrics, fills, positions, decisions, events, and
+  snapshots required by the initial GUI.
+- The Bot page lets the user select a backtest bot and date range, displays a
+  running/completed state, then shows summary cards, every executed BUY/SELL with
+  timestamp, price, quantity and fee, plus the complete decision timeline,
+  execution reason, entry/exit match state, and observed RSI, EMA, or candle
+  sequence values and thresholds. Interactive chart replay remains Phase 6 scope.
+
+#### Step 4A entry trigger policy contract
+
+- A strategy may optionally define `entryPolicy.trigger` as
+  `EVERY_MATCHING_CANDLE` or `ON_FALSE_TO_TRUE` and a non-negative safe-integer
+  `cooldownCandles`. Definitions without `entryPolicy` retain the original
+  `EVERY_MATCHING_CANDLE` behavior with zero cooldown, preserving every existing
+  immutable strategy version and golden fixture.
+- `EVERY_MATCHING_CANDLE` allows each matching close to reserve a new lot when
+  risk and budget permit. `ON_FALSE_TO_TRUE` allows the first matching close,
+  suppresses further entries while the raw entry tree remains true, and rearms
+  only after at least one evaluated close where the entry tree is false.
+- Cooldown begins when a BUY is actually filled, not when a signal is merely
+  produced, reserved, rejected, or suppressed. With `cooldownCandles = N`, the
+  fill candle and the next `N - 1` close evaluations cannot reserve another BUY;
+  zero disables cooldown. Edge rearming and cooldown must both allow an entry.
+- Suppression never rewrites the explainable raw strategy evaluation. It records
+  `ENTRY_NOT_REARMED` or `ENTRY_COOLDOWN_ACTIVE` as the execution reason and an
+  `ENTRY_SUPPRESSED` replay event, without reserving funds or creating a fill.
+- The rule builder exposes both trigger modes and cooldown. New definitions
+  default to `ON_FALSE_TO_TRUE` with zero cooldown to avoid accidental repeated
+  entries, while loaded legacy definitions visibly retain their level-triggered
+  default until a new immutable version is saved.
 
 #### Work
 
@@ -961,8 +1127,6 @@ These items do not block Phase 1 but must be resolved before the noted phase:
 | Decision | Required by |
 | --- | --- |
 | Exact initial timeframe allow-list (`15m`, `1h`, `4h`, `1d`) | Resolved in the shared Step 0 contract; enforce in bot and market-data inputs |
-| Whether an exit signal closes all open positions in one aggregate order or separate orders | Phase 4 |
-| Backtest market-fill timing and slippage formula | Phase 4 |
 | Paper fill price and latency model | Phase 5 |
 | Required paper-trading soak duration | Phase 7 |
 | Binance test environment/API choice for Spot test | Phase 7 |
@@ -1005,3 +1169,13 @@ At the start of every bot-related task:
 | 2026-08-11 | Phase 2 Step 5 uses structured one-shot outcomes as the initial single-maintainer health check; dedicated metrics backends, dashboards, alerts, HTTP probes, and persistent metric history are deferred until the project has multiple maintainers/users or unattended availability requirements. |
 | 2026-08-14 | The v1 EMA rule requires a strict `ABOVE` or `BELOW` close position; equality matches neither. Its optional `maximumDistancePct` is expressed as a percentage from 0 to 100 with at most one decimal place. |
 | 2026-08-14 | Phase 3 is complete after its golden gate verified independently calculated RSI/EMA prefix series, deterministic position-aware decisions, schema rejection, and look-ahead protection against immutable fixtures. |
+| 2026-08-15 | Phase 2 is complete after the Prisma integration suite and Binance/PostgreSQL smoke test verified duplicate-free closed-candle ingestion, gap repair, restart-safe continuation, and safe repeated interval processing. |
+| 2026-08-15 | Backtest decisions made after candle `t` fill at candle `t+1` open; buy/sell slippage worsens the fill in its respective direction, fees use actual fill notional, and an intent without a next candle remains unfilled. |
+| 2026-08-15 | Backtest entries cap total cash outflow, including buy fees, at `amountPerPosition`; one buy opens one independent lot and one sell signal closes every open lot in full through separate orders and fills. |
+| 2026-08-15 | Backtests do not force-close positions at the range end and report realized profit/loss, unrealized profit/loss, and total equity separately. |
+| 2026-08-15 | Phase 4 Step 1 uses a pure decimal portfolio domain with cash reservations, adverse side-specific fills, fee-inclusive entry caps, independent position lots, full-lot exits, and immutable mark-to-market transitions. |
+| 2026-08-15 | Phase 4 Step 2 runs the production strategy on closed-candle prefixes after applying only the preceding intent at the current open; pre-range candles are warm-up only and final intents never fill beyond the requested range. |
+| 2026-08-15 | Phase 4 Step 3 persists the complete backtest record graph under a run-row lock and one transaction with deterministic identities, bounded decimal-scale ledger correction, idempotent completion, and rollback on any partial failure. |
+| 2026-08-15 | Phase 4 Step 4 exposes owned synchronous backtest execution through the API and Bot GUI with deterministic performance metrics, a fee/slippage-aware buy-and-hold benchmark, executed fill history, and decision reasons. |
+| 2026-08-15 | Backtest decision rows render the already persisted condition trees and observed indicator values, including RSI period, value, operator, and threshold, so HOLD and warm-up outcomes are diagnosable without reading raw JSON. |
+| 2026-08-15 | Entry execution supports backward-compatible `EVERY_MATCHING_CANDLE`, episode-based `ON_FALSE_TO_TRUE`, and an optional post-fill candle cooldown; new GUI definitions default to episode-based triggering. |

@@ -48,6 +48,10 @@ describe("strategy definition v1", () => {
     assert.deepEqual(emaSchema.properties.position.enum, ["ABOVE", "BELOW"]);
     assert.equal(emaSchema.properties.maximumDistancePct.maximum, 100);
     assert.equal(emaSchema.properties.maximumDistancePct.multipleOf, 0.1);
+    assert.deepEqual(STRATEGY_DEFINITION_V1_JSON_SCHEMA.properties.entryPolicy.properties.trigger.enum,
+      ["EVERY_MATCHING_CANDLE", "ON_FALSE_TO_TRUE"]);
+    assert.deepEqual(STRATEGY_DEFINITION_V1_JSON_SCHEMA.$defs.positionReturnPct.properties.operator.enum,
+      ["LT", "LTE", "GT", "GTE"]);
     if (result.ok) assert.deepEqual(result.definition, example);
   });
 
@@ -64,6 +68,12 @@ describe("strategy definition v1", () => {
       { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 100.1 } },
       { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 2.25 } },
       { ...example, entry: { candleSequence: { count: 3, direction: "BLUE", minimumBodyChangePct: 1 } } },
+      { ...example, entryPolicy: { trigger: "SOMETIMES" } },
+      { ...example, entryPolicy: { trigger: "ON_FALSE_TO_TRUE", cooldownCandles: -1 } },
+      { ...example, entryPolicy: { trigger: "EVERY_MATCHING_CANDLE", cooldownCandles: 1.5 } },
+      { ...example, entry: { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 } },
+      { ...example, exit: { indicator: "POSITION_RETURN_PCT", operator: "EQ", value: 2 } },
+      { ...example, exit: { indicator: "POSITION_RETURN_PCT", operator: "LTE", value: Number.NaN } },
     ];
     for (const candidate of cases) assert.equal(validateStrategyDefinition(candidate).ok, false);
     assert.equal(validateStrategyDefinition(example, 2).ok, false);
@@ -73,6 +83,12 @@ describe("strategy definition v1", () => {
       entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 0 } }).ok, true);
     assert.equal(validateStrategyDefinition({ ...example,
       entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 100 } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example,
+      entryPolicy: { trigger: "ON_FALSE_TO_TRUE", cooldownCandles: 12 } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example, exit: { any: [
+      { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 },
+      { indicator: "POSITION_RETURN_PCT", operator: "LTE", value: -4 },
+    ] } }).ok, true);
   });
 
   test("validates before creating immutable versions", async () => {

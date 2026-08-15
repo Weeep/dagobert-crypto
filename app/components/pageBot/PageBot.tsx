@@ -10,11 +10,13 @@ import type { BotDto } from "@/src/modules/bot/dto/BotDto";
 import type { PairDto } from "@/src/modules/pair/dto/PairDto";
 import { BotApiClient } from "./BotApiClient";
 import { BotCreator } from "./BotCreator";
+import { BacktestPanel } from "./BacktestPanel";
 
 const api = new StrategyApiClient();
 const botApi = new BotApiClient();
 const freshDefinition = (): StrategyDefinitionV1 => ({
   schemaVersion: 1, name: "New strategy",
+  entryPolicy: { trigger: "ON_FALSE_TO_TRUE", cooldownCandles: 0 },
   entry: { all: [newCondition("RSI")] },
   exit: { all: [{ indicator: "RSI", period: 14, operator: "GTE", value: 80 }] },
 });
@@ -86,6 +88,7 @@ export default function PageBot() {
   return <div className="mx-auto max-w-7xl text-slate-100">
     <BotCreator api={botApi} bots={bots} pairs={pairs} strategies={strategies} loading={botDependenciesLoading}
       onCreated={(bot) => setBots((current) => [bot, ...current])} />
+    <BacktestPanel api={botApi} bots={bots} />
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div><p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400">Trading bot</p>
         <h2 className="mt-1 text-3xl font-bold">Strategy rule builder</h2>
@@ -112,12 +115,36 @@ export default function PageBot() {
               onChange={(event) => setDescription(event.target.value)} /></label>
         </div>
 
+        <div className="rounded-2xl border border-emerald-900/70 bg-slate-900 p-5">
+          <h3 className="text-lg font-semibold text-emerald-300">Entry trigger policy</h3>
+          <p className="mt-1 text-xs text-slate-500">Choose whether a continuously matching entry may buy every candle or must become false before it can trigger again. Cooldown starts after a filled BUY.</p>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <label className="flex flex-col gap-2 text-sm text-slate-300">Trigger
+              <select className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2"
+                value={definition.entryPolicy?.trigger ?? "EVERY_MATCHING_CANDLE"}
+                onChange={(event) => setDefinition((current) => ({ ...current, entryPolicy: {
+                  trigger: event.target.value as "EVERY_MATCHING_CANDLE" | "ON_FALSE_TO_TRUE",
+                  cooldownCandles: current.entryPolicy?.cooldownCandles ?? 0,
+                } }))}>
+                <option value="ON_FALSE_TO_TRUE">Once per matching episode</option>
+                <option value="EVERY_MATCHING_CANDLE">Every matching candle</option>
+              </select></label>
+            <label className="flex flex-col gap-2 text-sm text-slate-300">Cooldown after filled BUY (candles)
+              <input type="number" min={0} step={1} className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-2"
+                value={definition.entryPolicy?.cooldownCandles ?? 0}
+                onChange={(event) => setDefinition((current) => ({ ...current, entryPolicy: {
+                  trigger: current.entryPolicy?.trigger ?? "EVERY_MATCHING_CANDLE",
+                  cooldownCandles: Math.max(0, Math.trunc(Number(event.target.value) || 0)),
+                } }))} /></label>
+          </div>
+        </div>
+
         <div><h3 className="mb-2 text-lg font-semibold text-emerald-300">Entry conditions</h3>
           <StrategyRuleNode condition={definition.entry} root={definition.entry} path={[]} label="Entry root"
             onChange={(entry) => setDefinition((current) => ({ ...current, entry }))} /></div>
         <div><h3 className="mb-2 text-lg font-semibold text-rose-300">Exit conditions</h3>
           <StrategyRuleNode condition={definition.exit} root={definition.exit} path={[]} label="Exit root"
-            onChange={(exit) => setDefinition((current) => ({ ...current, exit }))} /></div>
+            onChange={(exit) => setDefinition((current) => ({ ...current, exit }))} positionConditionsAllowed /></div>
       </section>
 
       <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">

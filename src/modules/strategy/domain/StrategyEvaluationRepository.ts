@@ -1,5 +1,6 @@
 import type { IndicatorSnapshot, StrategyDecision } from "@/src/modules/bot";
 import type { Candle } from "@/src/modules/market";
+import type { StrategyPositionLotContext } from "./StrategyEngine";
 
 export interface ClosedCandleHistoryRepository {
   findById(id: string): Promise<Candle | null>;
@@ -13,6 +14,6 @@ export type PersistedStrategyEvaluation = {
 
 export interface StrategyEvaluationRepository {
   findByRunAndCandle(botRunId: string, candleId: string): Promise<PersistedStrategyEvaluation | null>;
-  countActivePositions(botRunId: string): Promise<number>;
+  findActivePositions(botRunId: string): Promise<StrategyPositionLotContext[]>;
   saveIfAbsent(value: PersistedStrategyEvaluation): Promise<PersistedStrategyEvaluation>;
 }

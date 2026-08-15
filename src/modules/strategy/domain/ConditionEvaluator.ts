@@ -7,10 +7,11 @@ import {
   matchesCandleSequence,
 } from "./CandleFacts";
 import type { ComparisonOperator, StrategyCondition } from "./StrategyDefinition";
+import type { StrategyPositionLotContext } from "./StrategyEngine";
 
 export type ConditionObservedValues = Record<string, string | number | boolean | null | string[]>;
 export type ConditionEvaluation = {
-  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "CANDLE_SEQUENCE";
+  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
   matched: boolean;
   reasonCode: string;
   explanation: string;
@@ -18,9 +19,13 @@ export type ConditionEvaluation = {
   children: ConditionEvaluation[];
 };
 
-export type ConditionEvaluationContext = { candles: readonly Candle[] };
+export type ConditionEvaluationContext = {
+  candles: readonly Candle[];
+  position?: StrategyPositionLotContext;
+  exitFeeRate?: string;
+};
 
-function compare(observed: number, expected: number, operator: ComparisonOperator): boolean {
+function compare(observed: number | string, expected: number, operator: ComparisonOperator): boolean {
   const left = new Big(observed);
   const right = new Big(expected);
   if (operator === "LT") return left.lt(right);
@@ -67,6 +72,36 @@ function evaluateNode(
       explanation: `RSI(${condition.period}) ${observed} ${matched ? "matched" : "did not match"} ${condition.operator} ${condition.value}`,
       observedValues: { indicator: "RSI", period: condition.period, operator: condition.operator,
         expected: condition.value, observed }, children: [],
+    };
+  }
+
+  if ("indicator" in condition && condition.indicator === "POSITION_RETURN_PCT") {
+    if (!context.position || context.exitFeeRate === undefined) return {
+      type: "POSITION_RETURN_PCT", matched: false, reasonCode: "POSITION_CONTEXT_REQUIRED",
+      explanation: "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+      observedValues: { observed: null, operator: condition.operator, expected: condition.value }, children: [],
+    };
+    const close = new Big(context.candles.at(-1)!.close);
+    const quantity = new Big(context.position.quantity);
+    const entryCost = new Big(context.position.entryCost);
+    const entryFees = new Big(context.position.entryFees);
+    const entryOutflow = entryCost.plus(entryFees);
+    if (entryOutflow.lte(0)) throw new Error("POSITION_RETURN_PCT requires positive fee-inclusive entry cost");
+    const grossExitValue = quantity.times(close);
+    const estimatedExitFee = grossExitValue.times(context.exitFeeRate);
+    const netExitProceeds = grossExitValue.minus(estimatedExitFee);
+    const netReturnPct = netExitProceeds.minus(entryOutflow).div(entryOutflow).times(100);
+    const matched = compare(netReturnPct.toString(), condition.value, condition.operator);
+    return {
+      type: "POSITION_RETURN_PCT", matched,
+      reasonCode: `POSITION_RETURN_PCT_${matched ? "MATCHED" : "NOT_MATCHED"}`,
+      explanation: `Position ${context.position.id} net return ${netReturnPct.toString()}% ${matched ? "matched" : "did not match"} ${condition.operator} ${condition.value}%`,
+      observedValues: { indicator: "POSITION_RETURN_PCT", positionId: context.position.id,
+        operator: condition.operator, expected: condition.value, observed: netReturnPct.toString(),
+        close: close.toString(), quantity: quantity.toString(), entryCost: entryCost.toString(),
+        entryFees: entryFees.toString(), grossExitValue: grossExitValue.toString(),
+        estimatedExitFee: estimatedExitFee.toString(), netExitProceeds: netExitProceeds.toString(),
+        exitFeeRate: context.exitFeeRate }, children: [],
     };
   }
 

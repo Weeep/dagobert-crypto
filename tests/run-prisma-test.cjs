@@ -12,3 +12,4 @@ require("./integration/prisma-bot-budget-concurrency.test.ts");
 require("./integration/prisma-candle-ingestion.test.ts");
 require("./integration/prisma-market-data-polling.test.ts");
 require("./integration/prisma-strategy-evaluation.test.ts");
+require("./integration/prisma-backtest-persistence.test.ts");
