@@ -81,12 +81,20 @@ function BacktestResult({ result }: { result: BacktestView }) {
           <span className="text-slate-300">{decision.executionReason}</span>
         </div>
         <p className="mt-2 text-xs text-slate-500">{decision.evaluation.explanation}</p>
+        {decision.evaluation.selectedPositionIds.length > 0 &&
+          <p className="mt-2 text-xs text-rose-300">Selected lots: {decision.evaluation.selectedPositionIds.join(", ")}</p>}
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           <ConditionDetails label="Entry" matched={decision.evaluation.entry.matched}
             summaries={conditionObservationSummaries(decision.evaluation.entry)} />
           <ConditionDetails label="Exit" matched={decision.evaluation.exit.matched}
             summaries={conditionObservationSummaries(decision.evaluation.exit)} />
         </div>
+        {decision.evaluation.positionExits.length > 0 && <div className="mt-2 grid gap-2 md:grid-cols-2">
+          {decision.evaluation.positionExits.map((positionExit) =>
+            <ConditionDetails key={positionExit.positionId} label={`Exit · ${positionExit.positionId}`}
+              matched={positionExit.evaluation.matched}
+              summaries={conditionObservationSummaries(positionExit.evaluation)} />)}
+        </div>}
       </div>)}</div></div>
   </div>;
 }

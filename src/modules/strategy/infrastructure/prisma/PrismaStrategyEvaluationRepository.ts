@@ -26,8 +26,19 @@ export class PrismaStrategyEvaluationRepository implements StrategyEvaluationRep
     return { decision: decision(storedDecision), indicatorSnapshot: snapshot(storedSnapshot) };
   }
 
-  async countActivePositions(botRunId: string) {
-    return this.prisma.position.count({ where: { botRunId, status: { in: ["OPENING", "OPEN", "CLOSING"] } } });
+  async findActivePositions(botRunId: string) {
+    const positions = await this.prisma.position.findMany({
+      where: { botRunId, status: { in: ["OPENING", "OPEN", "CLOSING"] } },
+      orderBy: [{ openedAt: "asc" }, { id: "asc" }],
+    });
+    return positions.map((position) => ({
+      id: position.id,
+      entryPrice: position.averageEntryPrice.toString(),
+      quantity: position.remainingQuantity.toString(),
+      entryCost: position.entryCost.toString(),
+      entryFees: position.fees.toString(),
+      openedAt: position.openedAt?.toISOString() ?? null,
+    }));
   }
 
   async saveIfAbsent(value: PersistedStrategyEvaluation) {

@@ -25,7 +25,12 @@ const sequenceDefinition = (entryDirection: "RED" | "GREEN" = "RED", exitDirecti
   entry: { all: [{ candleSequence: { count: 1, direction: entryDirection, minimumBodyChangePct: 0 } }] },
   exit: { all: [{ candleSequence: { count: 1, direction: exitDirection, minimumBodyChangePct: 0 } }] },
 });
-const position = (count: number): StrategyPositionContext => ({ hasOpenPositions: count > 0, openPositionCount: count });
+const position = (count: number): StrategyPositionContext => ({
+  hasOpenPositions: count > 0,
+  openPositionCount: count,
+  positions: Array.from({ length: count }, (_, index) => ({ id: `position-${index}`,
+    entryPrice: "100", quantity: "1", entryCost: "100", entryFees: "0", openedAt: null })),
+});
 
 describe("pure condition-tree evaluator", () => {
   test("evaluates nested all/any groups and retains every explainable child result", () => {
@@ -89,6 +94,9 @@ describe("strategy engine", () => {
     assert.equal(result.entry.matched, true);
     assert.equal(result.action, "SELL");
     assert.equal(result.reasonCode, "EXIT_MATCHED");
+    assert.deepEqual(result.selectedPositionIds, ["position-0", "position-1"]);
+    assert.deepEqual(result.positionExits.map(({ positionId, evaluation }) =>
+      [positionId, evaluation.matched]), [["position-0", true], ["position-1", true]]);
   });
 
   test("records a non-actionable exit and allows entry when no position is open", () => {
@@ -133,6 +141,7 @@ describe("strategy engine", () => {
     assert.throws(() => evaluateStrategy({ ...base, candles: [history[0], { ...history[1], pairSymbol: "ETHUSDC" }] }), /symbol and interval/);
     assert.throws(() => evaluateStrategy({ ...base, candles: [history[1], history[0]] }), /strictly ordered/);
     assert.throws(() => evaluateStrategy({ ...base, evaluatedCandle: { ...history[1], close: "97" } }), /final unique candle/);
-    assert.throws(() => evaluateStrategy({ ...base, position: { hasOpenPositions: true, openPositionCount: 0 } }), /inconsistent/);
+    assert.throws(() => evaluateStrategy({ ...base,
+      position: { hasOpenPositions: true, openPositionCount: 0, positions: [] } }), /inconsistent/);
   });
 });

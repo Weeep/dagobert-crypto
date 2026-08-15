@@ -4,6 +4,7 @@ import {
   BacktestPortfolioInputError,
   calculateBacktestMarketPrice,
   closeAllBacktestPositions,
+  closeSelectedBacktestPositions,
   createBacktestPortfolio,
   fillBacktestEntry,
   releaseBacktestEntry,
@@ -122,6 +123,20 @@ describe("pure backtest portfolio", () => {
     assert.ok(Number(closed.positions[1].realizedPnl) > 0);
     assert.ok(Number(closed.portfolio.realizedPnl) > 0);
     assert.ok(Number(closed.portfolio.cash) > 55);
+  });
+
+  test("closes only selected lots and leaves the other lots open", () => {
+    let portfolio = reserveAndFill(createBacktestPortfolio(configuration), 1, "100").portfolio;
+    portfolio = reserveAndFill(portfolio, 2, "80").portfolio;
+    const closed = closeSelectedBacktestPositions(portfolio, configuration, {
+      positionIds: ["position-2"], nextOpen: "120", filledAt: hour(12),
+    });
+    assert.deepEqual(closed.positions.map((position) => position.id), ["position-2"]);
+    assert.deepEqual(closed.portfolio.openPositions.map((position) => position.id), ["position-1"]);
+    assert.deepEqual(closed.portfolio.closedPositions.map((position) => position.id), ["position-2"]);
+    assert.throws(() => closeSelectedBacktestPositions(portfolio, configuration, {
+      positionIds: ["missing"], nextOpen: "120", filledAt: hour(12),
+    }), /open position not found/);
   });
 
   test("keeps entry fees in losing-lot PnL and marks open positions without force closing", () => {

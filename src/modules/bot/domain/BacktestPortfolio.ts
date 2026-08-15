@@ -230,10 +230,32 @@ export function closeAllBacktestPositions(
   config: BacktestExecutionConfig,
   input: { nextOpen: string; filledAt: Date },
 ): { portfolio: BacktestPortfolio; positions: BacktestClosedPosition[]; fills: BacktestFill[] } {
+  if (portfolio.openPositions.length === 0)
+    return { portfolio: clone(portfolio), positions: [], fills: [] };
+  return closeSelectedBacktestPositions(portfolio, config, {
+    ...input,
+    positionIds: portfolio.openPositions.map((position) => position.id),
+  });
+}
+
+export function closeSelectedBacktestPositions(
+  portfolio: BacktestPortfolio,
+  config: BacktestExecutionConfig,
+  input: { positionIds: readonly string[]; nextOpen: string; filledAt: Date },
+): { portfolio: BacktestPortfolio; positions: BacktestClosedPosition[]; fills: BacktestFill[] } {
+  if (input.positionIds.length === 0)
+    throw new BacktestPortfolioInputError("positionIds must contain at least one position");
+  const selectedIds = new Set(input.positionIds);
+  if (selectedIds.size !== input.positionIds.length)
+    throw new BacktestPortfolioInputError("positionIds must be unique");
+  const openIds = new Set(portfolio.openPositions.map((position) => position.id));
+  for (const id of input.positionIds) {
+    if (!openIds.has(id)) throw new BacktestPortfolioInputError(`open position not found: ${id}`);
+  }
   const { feeRate, slippageRate } = validateBacktestExecutionConfig(config);
   const price = new Big(calculateBacktestMarketPrice("SELL", input.nextOpen, slippageRate.toString()));
   const filledAt = timestamp(input.filledAt, "filledAt");
-  const positions = portfolio.openPositions.map((open): BacktestClosedPosition => {
+  const positions = portfolio.openPositions.filter((open) => selectedIds.has(open.id)).map((open): BacktestClosedPosition => {
     const exitNotional = decimal(open.quantity, "position.quantity").times(price);
     const exitFee = exitNotional.times(feeRate);
     const entryOutflow = decimal(open.entryNotional, "position.entryNotional").plus(open.entryFee);
@@ -253,7 +275,7 @@ export function closeAllBacktestPositions(
     .plus(sum(positions.map((position) => position.realizedPnl))).toString();
   next.totalFees = decimal(next.totalFees, "portfolio.totalFees")
     .plus(sum(positions.map((position) => position.exitFee))).toString();
-  next.openPositions = [];
+  next.openPositions = next.openPositions.filter((position) => !selectedIds.has(position.id));
   next.closedPositions.push(...positions.map((position) => ({ ...position })));
   return { portfolio: next, positions: positions.map((position) => ({ ...position })), fills };
 }

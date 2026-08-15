@@ -42,7 +42,10 @@ class History implements ClosedCandleHistoryRepository {
 class Evaluations implements StrategyEvaluationRepository {
   stored: PersistedStrategyEvaluation | null = null; activePositions = 0; saves = 0;
   findByRunAndCandle() { return Promise.resolve(this.stored); }
-  countActivePositions() { return Promise.resolve(this.activePositions); }
+  findActivePositions() { return Promise.resolve(Array.from({ length: this.activePositions }, (_, index) => ({
+    id: `position-${index}`, entryPrice: "100", quantity: "1", entryCost: "100",
+    entryFees: "0", openedAt: candle.openTime.toISOString(),
+  }))); }
   saveIfAbsent(value: PersistedStrategyEvaluation) { this.saves += 1; this.stored ??= value; return Promise.resolve(this.stored); }
 }
 

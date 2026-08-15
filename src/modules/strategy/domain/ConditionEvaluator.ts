@@ -7,6 +7,7 @@ import {
   matchesCandleSequence,
 } from "./CandleFacts";
 import type { ComparisonOperator, StrategyCondition } from "./StrategyDefinition";
+import type { StrategyPositionLotContext } from "./StrategyEngine";
 
 export type ConditionObservedValues = Record<string, string | number | boolean | null | string[]>;
 export type ConditionEvaluation = {
@@ -18,7 +19,10 @@ export type ConditionEvaluation = {
   children: ConditionEvaluation[];
 };
 
-export type ConditionEvaluationContext = { candles: readonly Candle[] };
+export type ConditionEvaluationContext = {
+  candles: readonly Candle[];
+  position?: StrategyPositionLotContext;
+};
 
 function compare(observed: number, expected: number, operator: ComparisonOperator): boolean {
   const left = new Big(observed);

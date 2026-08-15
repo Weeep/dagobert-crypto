@@ -629,17 +629,21 @@ idempotent persistence boundary.
 - Step 3 evaluates the declarative entry and exit condition trees independently
   and returns their matches, observed values, and reasons. This condition
   evaluator has no position, repository, database, or exchange dependency.
-- Step 4 receives an immutable evaluation context containing at least
-  `hasOpenPositions` and `openPositionCount`. It combines that context with the
-  condition results to produce one `BUY`, `SELL`, or `HOLD`; the strategy engine
-  never queries position state itself.
-- With open positions, a matching exit produces `SELL` even when entry also
-  matches. Without an open position, an exit match is recorded with
+- Step 4 receives an immutable evaluation context containing the ordered open
+  lots (id, entry price/cost/fees, remaining quantity, and opening time) in
+  addition to `hasOpenPositions` and `openPositionCount`. The strategy engine
+  evaluates the exit tree once per lot and never queries position state itself.
+- With open positions, one or more matching lot exits produce `SELL` and the
+  decision records their stable ids in `selectedPositionIds`, even when entry
+  also matches. Without an open position, an exit match is recorded with
   `EXIT_MATCHED_NO_OPEN_POSITION` but is not executable; entry is then evaluated
   and produces `BUY` when it matches, otherwise the result is `HOLD`.
 - Open positions do not by themselves prevent another `BUY`, because a bot may
   hold multiple independent lots. Risk and budget validation decides whether
   the resulting buy intent can actually reserve another position amount.
+- A scheduled sell snapshots `selectedPositionIds` at decision time. At the next
+  candle open, `closeSelected` closes exactly those full lots and leaves every
+  unselected lot open; it rejects duplicate, empty, or unknown selections.
 - Step 5 loads the current position state, constructs the immutable evaluation
   context, calls the pure engine, and persists the context, condition results,
   final decision, values, and reasons. Phase 4 first integrates and verifies this
@@ -794,7 +798,7 @@ idempotent persistence boundary.
 - [x] Step 3: transactional persistence, idempotency, replay events, and portfolio snapshots.
 - [x] Step 4: performance metrics, buy-and-hold comparison, application service, API, and results GUI.
 - [x] Step 4A: configurable level/edge entry triggers and post-fill candle cooldown.
-- [ ] Step 4B: position-aware exit selection and selected-lot lifecycle.
+- [x] Step 4B: position-aware exit selection and selected-lot lifecycle.
 - [ ] Step 4C: fee-aware per-lot percentage-return exit condition.
 - [ ] Step 4D: confirmed EMA crossing condition.
 - [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.

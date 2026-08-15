@@ -61,12 +61,12 @@ export class EvaluateStrategyForClosedCandleUseCase {
     const history = await this.candles.findClosedHistoryEndingAt(
       candle.pairSymbol, candle.interval, candle.openTime, lookback,
     );
-    const openPositionCount = await this.evaluations.countActivePositions(botRunId);
+    const positions = await this.evaluations.findActivePositions(botRunId);
     let engineResult: StrategyEvaluation;
     try {
       engineResult = evaluateStrategy({
         definition: validated.definition, candles: history, evaluatedCandle: candle,
-        position: { hasOpenPositions: openPositionCount > 0, openPositionCount },
+        position: { hasOpenPositions: positions.length > 0, openPositionCount: positions.length, positions },
       });
     } catch (error) {
       return { ok: false as const,

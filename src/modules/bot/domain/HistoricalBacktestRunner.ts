@@ -6,7 +6,7 @@ import {
   type StrategyEvaluation,
 } from "@/src/modules/strategy";
 import {
-  closeAllBacktestPositions,
+  closeSelectedBacktestPositions,
   createBacktestPortfolio,
   fillBacktestEntry,
   releaseBacktestEntry,
@@ -68,7 +68,7 @@ export type HistoricalBacktestResult = {
 
 type PendingExecution =
   | { side: "BUY"; decisionCandleId: string; reservationId: string; positionId: string }
-  | { side: "SELL"; decisionCandleId: string };
+  | { side: "SELL"; decisionCandleId: string; positionIds: string[] };
 
 export class HistoricalBacktestInputError extends Error {
   constructor(message: string) {
@@ -152,7 +152,8 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
       event("ENTRY_FILLED", candle, { decisionCandleId: pending.decisionCandleId, fill: result.fill }, candle.openTime);
       pending = null;
     } else if (pending?.side === "SELL") {
-      const result = closeAllBacktestPositions(portfolio, input.execution, {
+      const result = closeSelectedBacktestPositions(portfolio, input.execution, {
+        positionIds: pending.positionIds,
         nextOpen: candle.open,
         filledAt: candle.openTime,
       });
@@ -169,7 +170,12 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
       candles: input.candles.slice(0, index + 1),
       evaluatedCandle: candle,
       position: { hasOpenPositions: portfolio.openPositions.length > 0,
-        openPositionCount: portfolio.openPositions.length },
+        openPositionCount: portfolio.openPositions.length,
+        positions: portfolio.openPositions.map((position) => ({
+          id: position.id, entryPrice: position.entryPrice, quantity: position.quantity,
+          entryCost: position.entryNotional, entryFees: position.entryFee,
+          openedAt: position.openedAt,
+        })) },
     });
     let executionOutcome: HistoricalBacktestDecision["executionOutcome"] = "HOLD";
     let executionReason = evaluation.reasonCode;
@@ -198,11 +204,12 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
         executionEvent = { type: "ENTRY_REJECTED", payload: { reason: reserved.reason } };
       }
     } else if (evaluation.action === "SELL") {
-      pending = { side: "SELL", decisionCandleId: candle.id };
+      pending = { side: "SELL", decisionCandleId: candle.id,
+        positionIds: [...evaluation.selectedPositionIds] };
       executionOutcome = "EXIT_SCHEDULED";
       executionReason = "EXIT_SCHEDULED_FOR_NEXT_OPEN";
       executionEvent = { type: "EXIT_SCHEDULED",
-        payload: { positionIds: portfolio.openPositions.map((position) => position.id) } };
+        payload: { positionIds: evaluation.selectedPositionIds } };
     }
     const decision = { candleId: candle.id, evaluation, executionOutcome, executionReason };
     decisions.push(decision);
