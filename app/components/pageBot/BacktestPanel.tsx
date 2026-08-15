@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { BotDto } from "@/src/modules/bot/dto/BotDto";
 import { BotApiClient, type BacktestView } from "./BotApiClient";
+import { conditionObservationSummaries } from "./backtestDecisionPresentation";
 
 type Props = { api: BotApiClient; bots: BotDto[] };
 const date = (value: Date) => value.toISOString().slice(0, 10);
@@ -69,11 +70,31 @@ function BacktestResult({ result }: { result: BacktestView }) {
           <td className={`px-4 py-3 font-bold ${fill.side === "BUY" ? "text-emerald-400" : "text-rose-400"}`}>{fill.side}</td>
           <td className="px-4 py-3">{number(fill.price)}</td><td className="px-4 py-3">{number(fill.quantity)}</td><td className="px-4 py-3">{number(fill.fee)}</td>
         </tr>)}</tbody></table>{result.fills.length === 0 && <p className="p-5 text-sm text-slate-500">No orders were filled in this range.</p>}</div></div>
-    <div><h3 className="mb-3 text-lg font-semibold">Decision timeline</h3><div className="max-h-80 space-y-2 overflow-auto pr-1">
-      {result.decisions.map((decision) => <div key={decision.candleId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm">
-        <span className="text-slate-400">{new Date(decision.evaluation.evaluatedCandleOpenTime).toLocaleString()}</span>
-        <span className={`font-bold ${decision.evaluation.action === "BUY" ? "text-emerald-400" : decision.evaluation.action === "SELL" ? "text-rose-400" : "text-slate-400"}`}>{decision.evaluation.action}</span>
-        <span className="text-slate-300">{decision.executionReason}</span></div>)}</div></div>
+    <div><div className="mb-3"><h3 className="text-lg font-semibold">Decision timeline</h3>
+      <p className="text-xs text-slate-500">Observed indicator values show exactly why each entry and exit condition matched or failed.</p></div>
+      <div className="max-h-[32rem] space-y-2 overflow-auto pr-1">
+      {result.decisions.map((decision) => <div key={decision.candleId} className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-slate-400">{new Date(decision.evaluation.evaluatedCandleOpenTime).toLocaleString()}</span>
+          <span className={`font-bold ${decision.evaluation.action === "BUY" ? "text-emerald-400" : decision.evaluation.action === "SELL" ? "text-rose-400" : "text-slate-400"}`}>{decision.evaluation.action}</span>
+          <span className="text-slate-300">{decision.executionReason}</span>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">{decision.evaluation.explanation}</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          <ConditionDetails label="Entry" matched={decision.evaluation.entry.matched}
+            summaries={conditionObservationSummaries(decision.evaluation.entry)} />
+          <ConditionDetails label="Exit" matched={decision.evaluation.exit.matched}
+            summaries={conditionObservationSummaries(decision.evaluation.exit)} />
+        </div>
+      </div>)}</div></div>
+  </div>;
+}
+
+function ConditionDetails({ label, matched, summaries }: { label: string; matched: boolean; summaries: string[] }) {
+  return <div className={`rounded-lg border p-3 ${matched ? "border-emerald-900 bg-emerald-950/30" : "border-slate-800 bg-slate-900"}`}>
+    <p className={`text-xs font-bold uppercase tracking-wider ${matched ? "text-emerald-400" : "text-slate-500"}`}>{label} · {matched ? "matched" : "not matched"}</p>
+    <ul className="mt-2 space-y-1 text-xs text-slate-300">{summaries.map((summary, index) =>
+      <li key={`${label}-${index}`}>{summary}</li>)}</ul>
   </div>;
 }
 

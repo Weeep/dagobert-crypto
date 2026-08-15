@@ -908,8 +908,9 @@ idempotent persistence boundary.
   snapshots required by the initial GUI.
 - The Bot page lets the user select a backtest bot and date range, displays a
   running/completed state, then shows summary cards, every executed BUY/SELL with
-  timestamp, price, quantity and fee, plus the complete decision timeline and
-  execution reason. Interactive chart replay remains Phase 6 scope.
+  timestamp, price, quantity and fee, plus the complete decision timeline,
+  execution reason, entry/exit match state, and observed RSI, EMA, or candle
+  sequence values and thresholds. Interactive chart replay remains Phase 6 scope.
 
 #### Work
 
@@ -1138,3 +1139,4 @@ At the start of every bot-related task:
 | 2026-08-15 | Phase 4 Step 2 runs the production strategy on closed-candle prefixes after applying only the preceding intent at the current open; pre-range candles are warm-up only and final intents never fill beyond the requested range. |
 | 2026-08-15 | Phase 4 Step 3 persists the complete backtest record graph under a run-row lock and one transaction with deterministic identities, bounded decimal-scale ledger correction, idempotent completion, and rollback on any partial failure. |
 | 2026-08-15 | Phase 4 Step 4 exposes owned synchronous backtest execution through the API and Bot GUI with deterministic performance metrics, a fee/slippage-aware buy-and-hold benchmark, executed fill history, and decision reasons. |
+| 2026-08-15 | Backtest decision rows render the already persisted condition trees and observed indicator values, including RSI period, value, operator, and threshold, so HOLD and warm-up outcomes are diagnosable without reading raw JSON. |
