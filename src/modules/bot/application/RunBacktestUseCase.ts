@@ -89,6 +89,7 @@ export function backtestFailureMessage(error: unknown) {
   if (code === "P2002") return "A backtest result already exists for one of the generated records. Retry the backtest.";
   if (code === "P2003") return "A related market-data record is missing. Check candle data and retry.";
   if (code === "P2024") return "The database was too busy to complete the backtest. Please retry shortly.";
+  if (code === "P2028") return "Saving the backtest exceeded the database transaction time limit. Retry the run; if it repeats, reduce the date range and contact support with the run ID.";
   if (error instanceof Error && ["backtest run was not found", "run is not a backtest",
     "backtest run is not running", "backtest run already contains incomplete trading records",
     "backtest allocation does not match runner initial cash"].includes(error.message)) return error.message;

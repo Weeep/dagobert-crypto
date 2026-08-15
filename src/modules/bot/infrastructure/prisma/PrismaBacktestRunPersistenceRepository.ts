@@ -3,6 +3,20 @@ import type { BacktestRunPersistenceRepository, HistoricalBacktestResult } from 
 import { buildBacktestPersistencePlan } from "../../application/BacktestRunPersistencePlan";
 
 const json = (value: unknown) => value as Prisma.InputJsonValue;
+const BACKTEST_TRANSACTION_TIMEOUT_MS = 120_000;
+
+async function persistStep(runId: string, step: string, records: number, operation: () => Promise<unknown>) {
+  const startedAt = Date.now();
+  console.info("[backtest-persistence] step started", { runId, step, records });
+  try {
+    await operation();
+    console.info("[backtest-persistence] step completed", { runId, step, records, elapsedMs: Date.now() - startedAt });
+  } catch (error) {
+    console.error("[backtest-persistence] step failed", { runId, step, records,
+      elapsedMs: Date.now() - startedAt, error });
+    throw error;
+  }
+}
 
 export class PrismaBacktestRunPersistenceRepository implements BacktestRunPersistenceRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -35,36 +49,45 @@ export class PrismaBacktestRunPersistenceRepository implements BacktestRunPersis
         throw new Error("backtest allocation does not match runner initial cash");
 
       onProgress?.(10, "Saving positions");
-      if (plan.positions.length) await tx.position.createMany({ data: plan.positions });
+      if (plan.positions.length) await persistStep(runId, "positions", plan.positions.length,
+        () => tx.position.createMany({ data: plan.positions }));
       onProgress?.(20, "Saving orders");
-      if (plan.orders.length) await tx.botOrder.createMany({ data: plan.orders.map((order) => ({
+      if (plan.orders.length) await persistStep(runId, "orders", plan.orders.length,
+        () => tx.botOrder.createMany({ data: plan.orders.map((order) => ({
         ...order, exchangeOrderId: null, status: "FILLED" as const,
-      })) });
+      })) }));
       onProgress?.(30, "Saving fills");
-      if (plan.fills.length) await tx.fill.createMany({ data: plan.fills });
+      if (plan.fills.length) await persistStep(runId, "fills", plan.fills.length,
+        () => tx.fill.createMany({ data: plan.fills }));
       onProgress?.(40, "Saving budget ledger");
-      if (plan.ledgerEntries.length) await tx.botLedgerEntry.createMany({ data: plan.ledgerEntries });
+      if (plan.ledgerEntries.length) await persistStep(runId, "ledger entries", plan.ledgerEntries.length,
+        () => tx.botLedgerEntry.createMany({ data: plan.ledgerEntries }));
       onProgress?.(50, "Saving strategy decisions");
-      if (plan.decisions.length) await tx.strategyDecision.createMany({ data: plan.decisions.map((decision) => ({
+      if (plan.decisions.length) await persistStep(runId, "strategy decisions", plan.decisions.length,
+        () => tx.strategyDecision.createMany({ data: plan.decisions.map((decision) => ({
         ...decision, inputs: json(decision.inputs), output: json(decision.output),
-      })) });
+      })) }));
       onProgress?.(65, "Saving indicator snapshots");
-      if (plan.indicatorSnapshots.length) await tx.indicatorSnapshot.createMany({
+      if (plan.indicatorSnapshots.length) await persistStep(runId, "indicator snapshots", plan.indicatorSnapshots.length,
+        () => tx.indicatorSnapshot.createMany({
         data: plan.indicatorSnapshots.map((snapshot) => ({ ...snapshot, values: json(snapshot.values) })),
-      });
+      }));
       onProgress?.(75, "Saving execution events");
-      if (plan.events.length) await tx.botEvent.createMany({
+      if (plan.events.length) await persistStep(runId, "execution events", plan.events.length,
+        () => tx.botEvent.createMany({
         data: plan.events.map((event) => ({ ...event, payload: json(event.payload) })),
-      });
+      }));
       onProgress?.(85, "Saving portfolio snapshots");
-      if (plan.portfolioSnapshots.length) await tx.portfolioSnapshot.createMany({ data: plan.portfolioSnapshots });
+      if (plan.portfolioSnapshots.length) await persistStep(runId, "portfolio snapshots", plan.portfolioSnapshots.length,
+        () => tx.portfolioSnapshot.createMany({ data: plan.portfolioSnapshots }));
       onProgress?.(95, "Finalizing backtest run");
       await tx.botRun.update({ where: { id: runId }, data: { status: "COMPLETED", endedAt: plan.endedAt,
         errorMessage: null } });
       await tx.bot.updateMany({ where: { id: run.botId, status: "RUNNING" }, data: { status: "PAUSED" } });
       onProgress?.(100, "Backtest saved");
       return { reused: false };
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10_000,
+      timeout: BACKTEST_TRANSACTION_TIMEOUT_MS });
   }
 
   async markFailed(runId: string, message: string) {
@@ -75,6 +98,6 @@ export class PrismaBacktestRunPersistenceRepository implements BacktestRunPersis
       await tx.botRun.update({ where: { id: runId }, data: { status: "ERROR", endedAt: new Date(),
         errorMessage: message.slice(0, 500) } });
       await tx.bot.updateMany({ where: { id: run.botId, status: "RUNNING" }, data: { status: "ERROR" } });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10_000, timeout: 30_000 });
   }
 }

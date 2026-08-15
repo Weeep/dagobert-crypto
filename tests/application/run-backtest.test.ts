@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Candle, CandleRepository } from "@/src/modules/market";
-import { RunBacktestUseCase, StartBotUseCase, calculateBacktestMetrics,
+import { RunBacktestUseCase, StartBotUseCase, backtestFailureMessage, calculateBacktestMetrics,
   runHistoricalBacktest, type BacktestRunPersistenceRepository, type BotRepository,
   type BotRun, type BotRunRepository, type HistoricalBacktestResult, type TradingBot } from "@/src/modules/bot";
 import type { ClosedCandleHistoryRepository, Strategy, StrategyRepository,
@@ -71,6 +71,10 @@ test("backtest metrics cover profit, drawdown, fees, holding time, and buy-and-h
   assert.ok(Number(metrics.maximumDrawdownPct) >= 0); assert.equal(metrics.openPositionCount, 0);
   assert.ok(metrics.averageHoldingTimeMs !== null && metrics.averageHoldingTimeMs > 0);
   assert.notEqual(metrics.buyAndHoldReturnPct, "0");
+});
+
+test("maps expired Prisma transactions to an actionable backtest error", () => {
+  assert.match(backtestFailureMessage({ code: "P2028" }), /transaction time limit/);
 });
 
 test("run backtest use case loads warm-up, starts, executes, persists, and returns UI data", async () => {
