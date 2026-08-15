@@ -23,7 +23,8 @@ export class StartBotUseCase {
         ? { ok: true as const, error: "", run: activeRun }
         : { ok: false as const, error: "Running bot has no active run", run: null };
     }
-    if (bot.status === "STOPPED" || bot.status === "ERROR") return { ok: false as const, error: `Cannot start ${bot.status} bot`, run: null };
+    if (bot.status === "STOPPED" || (bot.status === "ERROR" && bot.mode !== "BACKTEST"))
+      return { ok: false as const, error: `Cannot start ${bot.status} bot`, run: null };
     const version = await this.strategies.findVersionById(bot.strategyVersionId);
     if (!version) return { ok: false as const, error: "Strategy version not found", run: null };
     const validatedStrategy = validateStrategyDefinition(version.definition, version.schemaVersion);

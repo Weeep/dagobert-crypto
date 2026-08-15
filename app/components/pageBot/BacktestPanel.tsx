@@ -55,6 +55,8 @@ export function BacktestPanel({ api, bots }: Props) {
         <span className="text-slate-300">{progress ? `${progress.phase === "LOADING" ? progress.loadedCandles ?? 0 : progress.processedCandles} / ${progress.totalCandles} candles · ${progress.percent}%` : "Preparing…"}</span></div>
       <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-emerald-500 transition-[width] duration-200"
         style={{ width: `${progress?.percent ?? 0}%` }} /></div>
+      {(progress?.currentOperation || progress?.currentCandleOpenTime) && <p className="mt-2 text-xs text-cyan-300">
+        {progress.currentOperation ?? `Candle: ${new Date(progress.currentCandleOpenTime!).toLocaleString()}`}</p>}
       <div className="mt-3 flex flex-wrap gap-4 text-xs"><span className="text-slate-300">HOLD <b>{progress?.decisions.HOLD ?? 0}</b></span>
         <span className="text-emerald-300">BUY <b>{progress?.decisions.BUY ?? 0}</b></span>
         <span className="text-rose-300">SELL <b>{progress?.decisions.SELL ?? 0}</b></span></div>

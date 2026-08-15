@@ -26,6 +26,7 @@ export type BacktestView = {
 export type BotErrorDetails = { runId: string; message: string; occurredAt: string };
 export type BacktestProgress = { phase: "LOADING" | "EVALUATING" | "SAVING"; processedCandles: number;
   totalCandles: number; loadedCandles?: number; percent: number;
+  currentCandleOpenTime?: string; currentOperation?: string;
   decisions: { HOLD: number; BUY: number; SELL: number } };
 
 type ApiError = { error?: { message?: string } };

@@ -34,6 +34,8 @@ export type HistoricalBacktestProgress = {
   processedCandles: number;
   totalCandles: number;
   loadedCandles?: number;
+  currentCandleOpenTime?: string;
+  currentOperation?: string;
   percent: number;
   decisions: { HOLD: number; BUY: number; SELL: number };
 };
@@ -128,7 +130,7 @@ function validateHistoricalInput(input: HistoricalBacktestInput) {
  * Runs one deterministic in-memory timeline. Candle prefixes end at the candle
  * being evaluated; only a previously scheduled intent may use the next open.
  */
-export function runHistoricalBacktest(input: HistoricalBacktestInput): HistoricalBacktestResult {
+function* historicalBacktestSteps(input: HistoricalBacktestInput): Generator<HistoricalBacktestProgress, HistoricalBacktestResult> {
   const evaluationIndexes = validateHistoricalInput(input);
   const evaluationIndexSet = new Set(evaluationIndexes.map(({ index }) => index));
   const lastEvaluationIndex = evaluationIndexes.at(-1)!.index;
@@ -226,8 +228,11 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
     const decision = { candleId: candle.id, evaluation, executionOutcome, executionReason };
     decisions.push(decision);
     actionCounts[evaluation.action] += 1;
-    input.onProgress?.({ phase: "EVALUATING", processedCandles: decisions.length, totalCandles: evaluationIndexes.length,
-      percent: Math.round((decisions.length / evaluationIndexes.length) * 100), decisions: { ...actionCounts } });
+    const progress: HistoricalBacktestProgress = { phase: "EVALUATING", processedCandles: decisions.length,
+      totalCandles: evaluationIndexes.length, currentCandleOpenTime: candle.openTime.toISOString(),
+      percent: Math.round((decisions.length / evaluationIndexes.length) * 100), decisions: { ...actionCounts } };
+    input.onProgress?.(progress);
+    yield progress;
     event("DECISION_MADE", candle, decision, candle.closeTime);
     if (executionEvent) event(executionEvent.type, candle, executionEvent.payload, candle.closeTime);
     snapshots.push({ candleId: candle.id, capturedAt: candle.closeTime.toISOString(),
@@ -246,4 +251,19 @@ export function runHistoricalBacktest(input: HistoricalBacktestInput): Historica
   }
   return { portfolio, decisions, fills, events, snapshots,
     evaluatedCandleIds: evaluationIndexes.map(({ candle }) => candle.id) };
+}
+
+export function runHistoricalBacktest(input: HistoricalBacktestInput): HistoricalBacktestResult {
+  const steps = historicalBacktestSteps(input);
+  while (true) { const step = steps.next(); if (step.done) return step.value; }
+}
+
+/** Yields periodically so HTTP progress chunks and other event-loop work can be flushed. */
+export async function runHistoricalBacktestAsync(input: HistoricalBacktestInput): Promise<HistoricalBacktestResult> {
+  const steps = historicalBacktestSteps(input); let processed = 0;
+  while (true) {
+    const step = steps.next(); if (step.done) return step.value;
+    processed += 1;
+    if (processed % 25 === 0) await new Promise<void>((resolve) => setImmediate(resolve));
+  }
 }

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { authenticatedUserId, bodyRecord } from "@/src/modules/bot/infrastructure/http/botApiHelpers";
 import { tradingBotUseCases } from "@/src/shared/composition/serverUseCases";
-import { backtestFailureMessage, type HistoricalBacktestProgress } from "@/src/modules/bot";
+import { backtestErrorLog, backtestFailureMessage, type HistoricalBacktestProgress } from "@/src/modules/bot";
 
 type Dependencies = Pick<typeof tradingBotUseCases, "runBacktest">;
 export const config = { api: { responseLimit: false } };
@@ -44,6 +44,9 @@ export const createBacktestsHandler = (useCases: Dependencies = tradingBotUseCas
     } });
     return res.status(200).json({ backtest: result.result });
   } catch (error) {
+    console.error("[backtest-api] execution failed", backtestErrorLog(error, {
+      userId, botId: String(req.query.id ?? ""), from: body.from, to: body.to,
+    }));
     if (streaming) { send({ type: "error", message: backtestFailureMessage(error) }); return res.end(); }
     return res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Backtest execution failed" } });
   }

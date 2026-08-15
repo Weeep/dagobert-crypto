@@ -225,6 +225,10 @@ describe("trading bot application", () => {
     bots.bots[0] = { ...bots.bots[0], archivedAt: new Date() };
     const runs = new MemoryRunRepository();
     assert.equal((await new StartBotUseCase(bots, runs, strategies).execute(created.bot.id)).error, "Archived bot cannot be started");
+    bots.bots[0] = { ...bots.bots[0], archivedAt: null, status: "ERROR" };
+    const retried = await new StartBotUseCase(bots, runs, strategies).execute(created.bot.id,
+      { from: new Date("2026-01-01T00:00:00Z"), to: new Date("2026-01-02T00:00:00Z") });
+    assert.equal(retried.ok, true);
     runs.runs.push({ id: "failed-run", botId: created.bot.id, mode: "BACKTEST", status: "ERROR",
       configurationSnapshot: {}, strategySnapshot: {}, backtestFrom: null, backtestTo: null,
       startedAt: new Date("2026-01-01T00:00:00Z"), endedAt: new Date("2026-01-01T01:00:00Z"), errorMessage: "Missing candles" });

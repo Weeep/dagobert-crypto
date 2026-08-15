@@ -3,7 +3,7 @@ import test from "node:test";
 import type { Candle, CandleRepository } from "@/src/modules/market";
 import { RunBacktestUseCase, StartBotUseCase, calculateBacktestMetrics,
   runHistoricalBacktest, type BacktestRunPersistenceRepository, type BotRepository,
-  type BotRun, type BotRunRepository, type TradingBot } from "@/src/modules/bot";
+  type BotRun, type BotRunRepository, type HistoricalBacktestResult, type TradingBot } from "@/src/modules/bot";
 import type { ClosedCandleHistoryRepository, Strategy, StrategyRepository,
   StrategyVersion } from "@/src/modules/strategy";
 import { BotApiClient } from "@/app/components/pageBot/BotApiClient";
@@ -54,7 +54,10 @@ class Candles implements CandleRepository, ClosedCandleHistoryRepository {
 }
 class Persistence implements BacktestRunPersistenceRepository {
   calls: Array<{ runId: string }> = [];
-  async persistCompleted(runId: string) { this.calls.push({ runId }); return { reused: false }; }
+  async persistCompleted(runId: string, _result: HistoricalBacktestResult,
+    onProgress?: (percent: number, operation: string) => void) {
+    this.calls.push({ runId }); onProgress?.(100, "Backtest saved"); return { reused: false };
+  }
   async markFailed() {}
 }
 
