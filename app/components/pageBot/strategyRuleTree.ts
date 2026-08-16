@@ -1,6 +1,21 @@
 import type { StrategyCondition } from "@/src/modules/strategy/domain/StrategyDefinition";
 
-export type ConditionKind = "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
+export type ConditionKind = "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_CROSS_CONFIRMATION" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
+
+export const CONDITION_KIND_OPTIONS: ReadonlyArray<{ value: ConditionKind; label: string }> = [
+  { value: "ALL", label: "All conditions" },
+  { value: "ANY", label: "Any condition" },
+  { value: "RSI", label: "RSI" },
+  { value: "EMA_DISTANCE", label: "EMA distance" },
+  { value: "EMA_CROSS_CONFIRMATION", label: "EMA cross confirmation" },
+  { value: "CANDLE_SEQUENCE", label: "Candle sequence" },
+  { value: "POSITION_RETURN_PCT", label: "Position net return %" },
+];
+
+export const GROUP_CHILD_KINDS: readonly ConditionKind[] = [
+  "RSI", "EMA_DISTANCE", "EMA_CROSS_CONFIRMATION", "CANDLE_SEQUENCE",
+  "POSITION_RETURN_PCT", "ALL", "ANY",
+];
 
 export const conditionKind = (condition: StrategyCondition): ConditionKind => {
   if ("all" in condition) return "ALL";
@@ -15,6 +30,8 @@ export const newCondition = (kind: ConditionKind): StrategyCondition => {
   if (kind === "RSI") return { indicator: "RSI", period: 14, operator: "LT", value: 20 };
   if (kind === "EMA_DISTANCE")
     return { indicator: "EMA_DISTANCE", period: 100, position: "ABOVE", maximumDistancePct: 2 };
+  if (kind === "EMA_CROSS_CONFIRMATION")
+    return { indicator: "EMA_CROSS_CONFIRMATION", period: 100, direction: "ABOVE", confirmationCandles: 3 };
   if (kind === "POSITION_RETURN_PCT")
     return { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 };
   return { candleSequence: { count: 3, direction: "RED", minimumBodyChangePct: 1 } };
