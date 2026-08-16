@@ -36,6 +36,11 @@ function rsiValue(avgGain: Big, avgLoss: Big): number {
   return Number(new Big(100).minus(new Big(100).div(relativeStrength.plus(1))));
 }
 
+// Multiplication does not apply Big.DP. Bound every recursive EMA result so
+// its decimal representation cannot grow by alpha's scale on every candle.
+const nextEma = (close: Big, ema: Big, alpha: Big, inverseAlpha: Big) =>
+  close.times(alpha).plus(ema.times(inverseAlpha)).round(Big.DP, Big.RM as Big.RoundingMode);
+
 /**
  * Calculates the latest Wilder RSI value. The first averages are the SMA of the
  * first `period` changes; every later change uses Wilder smoothing. At least
@@ -76,7 +81,7 @@ export function calculateEma(prices: readonly IndicatorPrice[], period: number):
   const alpha = new Big(2).div(period + 1);
   const inverseAlpha = new Big(1).minus(alpha);
   for (let index = period; index < closes.length; index += 1) {
-    ema = closes[index].times(alpha).plus(ema.times(inverseAlpha));
+    ema = nextEma(closes[index], ema, alpha, inverseAlpha);
   }
   return Number(ema);
 }
@@ -107,7 +112,7 @@ export function createHistoricalIndicatorCache(
       const alpha = new Big(2).div(period + 1);
       const inverseAlpha = new Big(1).minus(alpha);
       for (let current = period; current < closes.length; current += 1) {
-        ema = closes[current].times(alpha).plus(ema.times(inverseAlpha));
+        ema = nextEma(closes[current], ema, alpha, inverseAlpha);
         values[current] = Number(ema);
       }
     }

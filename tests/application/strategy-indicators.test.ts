@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { performance } from "node:perf_hooks";
 import test, { describe } from "node:test";
 import {
   calculateCandleBodyChangePct,
@@ -53,6 +54,14 @@ describe("shared technical indicators", () => {
         assert.equal(cache.rsi(period, index), calculateRsi(prefix, period));
       });
     }
+  });
+
+  test("builds a long EMA cache without recursive decimal growth", () => {
+    const history = prices(Array.from({ length: 15_000 }, (_, index) => 100 + (index % 100) / 10));
+    const startedAt = performance.now();
+    const cache = createHistoricalIndicatorCache(history);
+    assert.ok(cache.ema(100, history.length - 1) !== null);
+    assert.ok(performance.now() - startedAt < 3_000, "15,000-candle EMA cache should build in under three seconds");
   });
 
   test("extends historical candles in chronological order without looking ahead", () => {
