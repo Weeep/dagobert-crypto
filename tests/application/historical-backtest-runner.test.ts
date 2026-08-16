@@ -191,4 +191,17 @@ describe("deterministic historical backtest runner", () => {
     assert.equal(result.fills.filter((fill) => fill.side === "BUY").length, 2);
     assert.ok(result.decisions.some((decision) => decision.executionReason === "ENTRY_COOLDOWN_ACTIVE"));
   });
+
+  test("minimal logging retains only fill decisions and the final portfolio snapshot", () => {
+    const result = runHistoricalBacktest({ definition: sequenceStrategy, candles: timeline,
+      backtestFrom: timeline[0].openTime, backtestTo: timeline.at(-1)!.openTime, execution,
+      includeFullTimeline: false });
+    assert.equal(result.snapshots.length, 1);
+    assert.equal(result.decisions.length, 3);
+    assert.equal(result.events.length, result.decisions.length);
+    assert.ok(result.events.every((event) => event.eventType === "DECISION_MADE"));
+    assert.ok(result.fills.every((fill) => fill.decisionCandleId &&
+      result.decisions.some((decision) => decision.candleId === fill.decisionCandleId)));
+    assert.deepEqual(result.actionCounts, { HOLD: 0, BUY: 3, SELL: 1 });
+  });
 });

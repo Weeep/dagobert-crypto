@@ -12,7 +12,7 @@ const response = () => { const state = { status: 200, body: undefined as unknown
 const authenticate = async () => "owner";
 
 test("backtest API validates input and returns completed UI payload", async () => {
-  const calls: unknown[] = [];
+  const calls: unknown[][] = [];
   const handler = createBacktestsHandler({ runBacktest: { execute: async (...args: unknown[]) => { calls.push(args);
     return { ok: true as const, error: "", status: 200, result: { runId: "run", metrics: {}, fills: [] } }; } } } as never,
   authenticate);
@@ -20,6 +20,14 @@ test("backtest API validates input and returns completed UI payload", async () =
   const completed = response(); await handler(request("POST", { from: "2026-01-01T00:00:00Z", to: "2026-02-01T00:00:00Z" }), completed.res);
   assert.equal(completed.state.status, 200); assert.equal(calls.length, 1);
   assert.equal((completed.state.body as { backtest: { runId: string } }).backtest.runId, "run");
+  assert.equal(calls[0]?.[4], false);
+
+  const detailed = response(); await handler(request("POST", { from: "2026-01-01T00:00:00Z",
+    to: "2026-02-01T00:00:00Z", includeFullTimeline: true }), detailed.res);
+  assert.equal(calls[1]?.[4], true);
+  const badToggle = response(); await handler(request("POST", { from: "2026-01-01T00:00:00Z",
+    to: "2026-02-01T00:00:00Z", includeFullTimeline: "yes" }), badToggle.res);
+  assert.equal(badToggle.state.status, 400);
 });
 
 test("backtest API enforces method, ownership boundary, and sanitized failures", async () => {

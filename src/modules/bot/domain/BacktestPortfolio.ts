@@ -48,6 +48,8 @@ export type BacktestFill = {
   fee: string;
   cashChange: string;
   filledAt: string;
+  /** Candle whose strategy decision scheduled this next-open fill. */
+  decisionCandleId?: string;
 };
 
 export type BacktestPortfolioSnapshot = {

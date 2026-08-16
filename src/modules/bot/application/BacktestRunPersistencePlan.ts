@@ -119,7 +119,10 @@ export function buildBacktestPersistencePlan(runId: string, result: HistoricalBa
     realizedPnl: money(snapshot.portfolio.realizedPnl), unrealizedPnl: money(snapshot.portfolio.unrealizedPnl),
     totalEquity: money(snapshot.portfolio.totalEquity), capturedAt: new Date(snapshot.capturedAt),
   }));
-  const endedAt = new Date(Math.max(...result.events.map((event) => new Date(event.occurredAt).getTime())));
+  const endedAt = new Date(Math.max(
+    ...result.events.map((event) => new Date(event.occurredAt).getTime()),
+    ...result.snapshots.map((snapshot) => new Date(snapshot.capturedAt).getTime()),
+  ));
   return { positions, orders, fills, ledgerEntries, decisions, indicatorSnapshots, events,
     portfolioSnapshots, endedAt };
 }

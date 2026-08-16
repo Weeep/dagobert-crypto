@@ -87,7 +87,11 @@ test("run backtest use case loads warm-up, starts, executes, persists, and retur
     (progress) => phases.push(progress.phase));
   assert.equal(response.ok, true); if (!response.ok) return;
   assert.equal(runs.values.length, 1); assert.equal(persistence.calls.length, 1);
-  assert.equal(response.result.fills.length, 4); assert.equal(response.result.positions.length, 2);
+  assert.equal(response.result.fills.length, 4);
+  assert.equal(response.result.includeFullTimeline, false);
+  assert.ok(response.result.decisions.length > 0 && response.result.decisions.length < candles.length);
+  assert.ok(response.result.fills.every((fill) => fill.decisionCandleId &&
+    response.result.decisions.some((decision) => decision.candleId === fill.decisionCandleId)));
   assert.equal(response.result.metrics.tradeCount, 2);
   assert.equal(phases[0], "LOADING"); assert.ok(phases.includes("EVALUATING")); assert.equal(phases.at(-1), "SAVING");
   assert.equal((await useCase.execute("intruder", "bot", { from: candles[0].openTime,
@@ -101,15 +105,16 @@ test("Bot API client submits the selected ISO range and returns the UI result", 
     return new Response(`${JSON.stringify({ type: "progress", progress: { phase: "EVALUATING", processedCandles: 1, totalCandles: 2,
       percent: 50, decisions: { HOLD: 1, BUY: 0, SELL: 0 } } })}\n${JSON.stringify({ type: "result-chunk", field: "decisions",
       items: [{ candleId: "c-1" }] })}\n${JSON.stringify({ type: "complete",
-      backtest: { runId: "run", metrics: { tradeCount: 2 }, decisions: [], fills: [], events: [], positions: [], openPositions: [] } })}\n`,
+      backtest: { runId: "run", includeFullTimeline: false, metrics: { tradeCount: 2 }, decisions: [], fills: [] } })}\n`,
     { status: 200, headers: { "Content-Type": "application/json" } });
   };
   const progress: number[] = [];
-  const result = await new BotApiClient(fetcher as typeof fetch).runBacktest("bot/id", "from", "to", (value) => progress.push(value.percent));
+  const result = await new BotApiClient(fetcher as typeof fetch).runBacktest("bot/id", "from", "to", false,
+    (value) => progress.push(value.percent));
   assert.equal(result.runId, "run");
   assert.equal(result.decisions.length, 1);
   assert.deepEqual(progress, [50]);
   assert.equal(calls[0].url, "/api/bots/bot%2Fid/backtests?stream=1");
   assert.equal(calls[0].init?.method, "POST");
-  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { from: "from", to: "to" });
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { from: "from", to: "to", includeFullTimeline: false });
 });

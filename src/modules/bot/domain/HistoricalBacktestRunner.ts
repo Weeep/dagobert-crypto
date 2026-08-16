@@ -1,4 +1,5 @@
 import type { Candle } from "@/src/modules/market";
+import Big from "big.js";
 import {
   createHistoricalIndicatorCache,
   evaluateValidatedHistoricalStrategy,
@@ -27,6 +28,8 @@ export type HistoricalBacktestInput = {
   backtestFrom: Date;
   backtestTo: Date;
   execution: BacktestExecutionConfig;
+  /** Retains every decision/event/snapshot. Defaults to true for direct domain callers. */
+  includeFullTimeline?: boolean;
   onProgress?: (progress: HistoricalBacktestProgress) => void;
 };
 
@@ -77,11 +80,14 @@ export type HistoricalBacktestResult = {
   events: HistoricalBacktestEvent[];
   snapshots: HistoricalBacktestSnapshot[];
   evaluatedCandleIds: string[];
+  actionCounts: { HOLD: number; BUY: number; SELL: number };
+  maximumDrawdownPct: string;
 };
 
+type PendingDecision = { decision?: HistoricalBacktestDecision; decisionCandle?: Candle };
 type PendingExecution =
-  | { side: "BUY"; decisionCandleId: string; reservationId: string; positionId: string }
-  | { side: "SELL"; decisionCandleId: string; positionIds: string[] };
+  | ({ side: "BUY"; decisionCandleId: string; reservationId: string; positionId: string } & PendingDecision)
+  | ({ side: "SELL"; decisionCandleId: string; positionIds: string[] } & PendingDecision);
 
 export class HistoricalBacktestInputError extends Error {
   constructor(message: string) {
@@ -133,6 +139,7 @@ function validateHistoricalInput(input: HistoricalBacktestInput) {
  */
 function* historicalBacktestSteps(input: HistoricalBacktestInput): Generator<HistoricalBacktestProgress, HistoricalBacktestResult> {
   const evaluationIndexes = validateHistoricalInput(input);
+  const includeFullTimeline = input.includeFullTimeline ?? true;
   const indicatorCache = createHistoricalIndicatorCache(input.candles);
   const evaluationIndexSet = new Set(evaluationIndexes.map(({ index }) => index));
   const lastEvaluationIndex = evaluationIndexes.at(-1)!.index;
@@ -145,9 +152,32 @@ function* historicalBacktestSteps(input: HistoricalBacktestInput): Generator<His
   const events: HistoricalBacktestEvent[] = [];
   const snapshots: HistoricalBacktestSnapshot[] = [];
   const actionCounts = { HOLD: 0, BUY: 0, SELL: 0 };
-  const event = (eventType: HistoricalBacktestEvent["eventType"], candle: Candle, payload: unknown, occurredAt: Date) => {
+  let peakEquity = new Big(portfolio.initialCash);
+  let maximumDrawdownPct = new Big(0);
+  let lastSnapshot: HistoricalBacktestSnapshot | null = null;
+  const event = (eventType: HistoricalBacktestEvent["eventType"], candle: Candle, payload: unknown,
+    occurredAt: Date, force = false) => {
+    if (!includeFullTimeline && !force) return;
     events.push({ sequenceNumber: ++sequenceNumber, eventType, candleId: candle.id,
       occurredAt: occurredAt.toISOString(), payload });
+  };
+  const snapshot = (candle: Candle) => {
+    const current: HistoricalBacktestSnapshot = { candleId: candle.id,
+      capturedAt: candle.closeTime.toISOString(), portfolio: snapshotBacktestPortfolio(portfolio, candle.close) };
+    const equity = new Big(current.portfolio.totalEquity);
+    if (equity.gt(peakEquity)) peakEquity = equity;
+    if (peakEquity.gt(0)) {
+      const drawdown = peakEquity.minus(equity).div(peakEquity).times(100);
+      if (drawdown.gt(maximumDrawdownPct)) maximumDrawdownPct = drawdown;
+    }
+    lastSnapshot = current;
+    if (includeFullTimeline) snapshots.push(current);
+  };
+  const retainPendingDecision = (execution: PendingExecution) => {
+    if (includeFullTimeline || !execution.decision || !execution.decisionCandle) return;
+    decisions.push(execution.decision);
+    event("DECISION_MADE", execution.decisionCandle, execution.decision,
+      execution.decisionCandle.closeTime, true);
   };
 
   for (let index = evaluationIndexes[0].index; index <= lastEvaluationIndex; index += 1) {
@@ -155,6 +185,7 @@ function* historicalBacktestSteps(input: HistoricalBacktestInput): Generator<His
     if (!evaluationIndexSet.has(index)) continue;
 
     if (pending?.side === "BUY") {
+      retainPendingDecision(pending);
       const result = fillBacktestEntry(portfolio, input.execution, {
         reservationId: pending.reservationId,
         positionId: pending.positionId,
@@ -163,17 +194,19 @@ function* historicalBacktestSteps(input: HistoricalBacktestInput): Generator<His
       });
       portfolio = result.portfolio;
       entryTriggerState = { ...entryTriggerState, lastEntryFillIndex: index };
-      fills.push(result.fill);
+      fills.push({ ...result.fill, decisionCandleId: pending.decisionCandleId });
       event("ENTRY_FILLED", candle, { decisionCandleId: pending.decisionCandleId, fill: result.fill }, candle.openTime);
       pending = null;
     } else if (pending?.side === "SELL") {
+      retainPendingDecision(pending);
       const result = closeSelectedBacktestPositions(portfolio, input.execution, {
         positionIds: pending.positionIds,
         nextOpen: candle.open,
         filledAt: candle.openTime,
       });
       portfolio = result.portfolio;
-      fills.push(...result.fills);
+      const decisionCandleId = pending.decisionCandleId;
+      fills.push(...result.fills.map((fill) => ({ ...fill, decisionCandleId })));
       event("POSITIONS_CLOSED", candle,
         { decisionCandleId: pending.decisionCandleId, fills: result.fills,
           positionIds: result.positions.map((position) => position.id) }, candle.openTime);
@@ -230,31 +263,34 @@ function* historicalBacktestSteps(input: HistoricalBacktestInput): Generator<His
         payload: { positionIds: evaluation.selectedPositionIds } };
     }
     const decision = { candleId: candle.id, evaluation, executionOutcome, executionReason };
-    decisions.push(decision);
+    if (includeFullTimeline) decisions.push(decision);
+    if (pending?.decisionCandleId === candle.id)
+      pending = { ...pending, decision, decisionCandle: candle } as PendingExecution;
     actionCounts[evaluation.action] += 1;
-    const progress: HistoricalBacktestProgress = { phase: "EVALUATING", processedCandles: decisions.length,
+    const processedCandles = index - evaluationIndexes[0].index + 1;
+    const progress: HistoricalBacktestProgress = { phase: "EVALUATING", processedCandles,
       totalCandles: evaluationIndexes.length, currentCandleOpenTime: candle.openTime.toISOString(),
-      percent: Math.round((decisions.length / evaluationIndexes.length) * 100), decisions: { ...actionCounts } };
+      percent: Math.round((processedCandles / evaluationIndexes.length) * 100), decisions: { ...actionCounts } };
     input.onProgress?.(progress);
     yield progress;
     event("DECISION_MADE", candle, decision, candle.closeTime);
     if (executionEvent) event(executionEvent.type, candle, executionEvent.payload, candle.closeTime);
-    snapshots.push({ candleId: candle.id, capturedAt: candle.closeTime.toISOString(),
-      portfolio: snapshotBacktestPortfolio(portfolio, candle.close) });
+    snapshot(candle);
   }
 
   if (pending) {
     const finalCandle = input.candles[lastEvaluationIndex];
     if (pending.side === "BUY") {
       portfolio = releaseBacktestEntry(portfolio, pending.reservationId);
-      snapshots.push({ candleId: finalCandle.id, capturedAt: finalCandle.closeTime.toISOString(),
-        portfolio: snapshotBacktestPortfolio(portfolio, finalCandle.close) });
+      snapshot(finalCandle);
     }
     event("UNFILLED_AT_END_OF_RANGE", finalCandle,
       { decisionCandleId: pending.decisionCandleId, side: pending.side }, finalCandle.closeTime);
   }
+  if (!includeFullTimeline && lastSnapshot) snapshots.push(lastSnapshot);
   return { portfolio, decisions, fills, events, snapshots,
-    evaluatedCandleIds: evaluationIndexes.map(({ candle }) => candle.id) };
+    evaluatedCandleIds: evaluationIndexes.map(({ candle }) => candle.id), actionCounts,
+    maximumDrawdownPct: maximumDrawdownPct.toString() };
 }
 
 export function runHistoricalBacktest(input: HistoricalBacktestInput): HistoricalBacktestResult {
