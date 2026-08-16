@@ -31,3 +31,11 @@ test("backtest decision presentation explains fee-aware position return", () => 
     "Lot lot-1 net return: 2.15% · condition ≥ 2% · entry fees 0.1 · estimated exit fee 0.11 · matched",
   ]);
 });
+
+test("backtest decision presentation explains signed EMA deviation", () => {
+  assert.deepEqual(conditionObservationSummaries({
+    type: "EMA_DEVIATION_PCT", matched: true, reasonCode: "EMA_DEVIATION_PCT_MATCHED",
+    explanation: "matched", children: [], observedValues: { close: "98", ema: 100, period: 100,
+      observed: "-2", operator: "LTE", expected: -2 },
+  }), ["Close 98 · EMA(100): 100 · signed deviation -2% · condition ≤ -2% · matched"]);
+});

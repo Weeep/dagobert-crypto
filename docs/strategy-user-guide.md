@@ -44,7 +44,7 @@ An `all` group matches only when every child matches. It must contain at least o
 {
   "all": [
     { "indicator": "RSI", "period": 14, "operator": "LT", "value": 25 },
-    { "indicator": "EMA_DISTANCE", "period": 100, "position": "ABOVE" }
+    { "indicator": "EMA_DEVIATION_PCT", "period": 100, "operator": "GT", "value": 0 }
   ]
 }
 ```
@@ -66,7 +66,7 @@ An `any` group matches when one or more children match. It must contain at least
 
 ## 3. Comparison operators
 
-RSI and position-return conditions support these operators:
+RSI, signed EMA-deviation, and position-return conditions support these operators:
 
 | Operator | Meaning |
 | --- | --- |
@@ -123,7 +123,28 @@ Equality does not match either side: `ABOVE` requires `close > EMA`, and `BELOW`
 
 This is a **level condition**: it can remain true on multiple consecutive candles while price stays on the selected side. Use `EMA_CROSS_CONFIRMATION` when you need a one-shot crossing signal.
 
-### 4.3. `EMA_CROSS_CONFIRMATION`
+### 4.3. `EMA_DEVIATION_PCT`
+
+Compares the latest close's signed percentage deviation from the EMA:
+
+```text
+(close - EMA(period)) / EMA(period) * 100
+```
+
+Negative values are below the EMA and positive values are above it. For example, this matches when the close is at least 2% below EMA100 (including exactly -2%):
+
+```json
+{
+  "indicator": "EMA_DEVIATION_PCT",
+  "period": 100,
+  "operator": "LTE",
+  "value": -2.0
+}
+```
+
+Use `LT -2` for strictly more than 2% below, `GTE 2` for at least 2% above, and `LT 0` for any close below the EMA. To express the legacy “below EMA but no farther than 2%” rule, combine `LT 0` and `GTE -2` inside an `ALL` group. Supported operators are `LT`, `LTE`, `GT`, and `GTE`; the signed threshold must be finite. This condition requires at least `period` candles.
+
+### 4.4. `EMA_CROSS_CONFIRMATION`
 
 Detects a confirmed EMA crossing. A configured number of consecutive closes must be strictly on the new side of the EMA, and the close immediately before that sequence must be on the opposite side or exactly equal to its EMA.
 
@@ -178,7 +199,7 @@ Every close is compared with the EMA value from **that same point in time**. The
 
 Required history is `period + confirmationCandles`. EMA100 with three confirmation candles therefore needs 103 closed candles. This condition is naturally one-shot: on the next candle, the candle immediately before the confirmation sequence is no longer on the opposite side, so the rule does not keep matching on every candle above or below the EMA.
 
-### 4.4. `candleSequence`
+### 4.5. `candleSequence`
 
 Checks the direction and minimum body change of the latest consecutive candles.
 
@@ -200,7 +221,7 @@ Checks the direction and minimum body change of the latest consecutive candles.
 
 A `RED` candle closes below its open, a `GREEN` candle closes above its open, and a `DOJI` closes at its open. This condition requires `count` closed candles.
 
-### 4.5. `POSITION_RETURN_PCT`
+### 4.6. `POSITION_RETURN_PCT`
 
 Compares the estimated net percentage return of an open position with a threshold. It is supported **only in the `exit` condition tree**.
 
@@ -353,10 +374,10 @@ This strategy buys when three consecutive candles have closed above EMA100 and t
     "all": [
       { "indicator": "RSI", "period": 14, "operator": "LT", "value": 25 },
       {
-        "indicator": "EMA_DISTANCE",
+        "indicator": "EMA_DEVIATION_PCT",
         "period": 100,
-        "position": "ABOVE",
-        "maximumDistancePct": 2.0
+        "operator": "GT",
+        "value": 0
       }
     ]
   },
@@ -380,6 +401,7 @@ The system loads enough history for the most demanding branch in the complete co
 | --- | --- |
 | `RSI` | `period + 1` |
 | `EMA_DISTANCE` | `period` |
+| `EMA_DEVIATION_PCT` | `period` |
 | `EMA_CROSS_CONFIRMATION` | `period + confirmationCandles` |
 | `candleSequence` | `count` |
 | `POSITION_RETURN_PCT` | 1, plus an open-position and fee context |

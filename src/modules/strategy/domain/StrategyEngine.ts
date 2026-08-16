@@ -1,6 +1,7 @@
 import type { Candle } from "@/src/modules/market";
 import Big from "big.js";
-import { evaluateCondition, type ConditionEvaluation } from "./ConditionEvaluator";
+import { evaluateCondition, evaluateValidatedCondition, type ConditionEvaluation } from "./ConditionEvaluator";
+import type { HistoricalIndicatorCache } from "./TechnicalIndicators";
 import { validateStrategyDefinition, type StrategyDefinitionV1 } from "./StrategyDefinition";
 
 export type StrategyAction = "BUY" | "SELL" | "HOLD";
@@ -23,6 +24,10 @@ export type StrategyEngineInput = {
   candles: readonly Candle[];
   evaluatedCandle: Candle;
   position: StrategyPositionContext;
+};
+export type ValidatedHistoricalStrategyEngineInput = StrategyEngineInput & {
+  candleIndex: number;
+  indicatorCache: HistoricalIndicatorCache;
 };
 export type StrategyEvaluation = {
   action: StrategyAction;
@@ -100,18 +105,25 @@ function validateInput(input: StrategyEngineInput): void {
 /** Produces a deterministic intent only; risk validation and execution remain downstream. */
 export function evaluateStrategy(input: StrategyEngineInput): StrategyEvaluation {
   validateInput(input);
-  const context = { candles: input.candles };
-  const exit = evaluateCondition(input.definition.exit, context);
+  return evaluateStrategyCore(input, { candles: input.candles }, evaluateCondition);
+}
+
+function evaluateStrategyCore(
+  input: StrategyEngineInput,
+  context: { candles: readonly Candle[]; endIndex?: number; indicatorCache?: HistoricalIndicatorCache },
+  evaluator: typeof evaluateCondition,
+): StrategyEvaluation {
+  const exit = evaluator(input.definition.exit, context);
   const positionExits = input.position.positions.map((position) => ({
     positionId: position.id,
-    evaluation: evaluateCondition(input.definition.exit, {
+    evaluation: evaluator(input.definition.exit, {
       ...context, position, exitFeeRate: input.position.exitFeeRate,
     }),
   }));
   const selectedPositionIds = positionExits
     .filter(({ evaluation }) => evaluation.matched)
     .map(({ positionId }) => positionId);
-  const entry = evaluateCondition(input.definition.entry, context);
+  const entry = evaluator(input.definition.entry, context);
   const policyReasons: string[] = [];
 
   let action: StrategyAction;
@@ -144,4 +156,13 @@ export function evaluateStrategy(input: StrategyEngineInput): StrategyEvaluation
     position: { ...input.position, positions: input.position.positions.map((position) => ({ ...position })) },
     positionExits, selectedPositionIds, exit, entry,
   };
+}
+
+/** Evaluates one candle after the runner has validated the immutable definition and history once. */
+export function evaluateValidatedHistoricalStrategy(input: ValidatedHistoricalStrategyEngineInput): StrategyEvaluation {
+  return evaluateStrategyCore(input, {
+    candles: input.candles,
+    endIndex: input.candleIndex,
+    indicatorCache: input.indicatorCache,
+  }, evaluateValidatedCondition);
 }

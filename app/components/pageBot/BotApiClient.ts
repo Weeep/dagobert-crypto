@@ -1,7 +1,6 @@
 import type { BotDto } from "@/src/modules/bot/dto/BotDto";
 import type { PairDto } from "@/src/modules/pair/dto/PairDto";
-import type { BacktestFill, BacktestMetrics, BacktestClosedPosition, BacktestOpenPosition,
-  HistoricalBacktestDecision, HistoricalBacktestEvent } from "@/src/modules/bot";
+import type { BacktestFill, BacktestMetrics, HistoricalBacktestDecision } from "@/src/modules/bot";
 
 export type CreateBotRequest = {
   name: string;
@@ -16,12 +15,10 @@ export type CreateBotRequest = {
 
 export type BacktestView = {
   runId: string;
+  includeFullTimeline: boolean;
   metrics: BacktestMetrics;
   decisions: HistoricalBacktestDecision[];
   fills: BacktestFill[];
-  events: HistoricalBacktestEvent[];
-  positions: BacktestClosedPosition[];
-  openPositions: BacktestOpenPosition[];
 };
 export type BotErrorDetails = { runId: string; message: string; occurredAt: string };
 export type BacktestProgress = { phase: "LOADING" | "EVALUATING" | "SAVING"; processedCandles: number;
@@ -77,19 +74,18 @@ export class BotApiClient {
       `/api/bots/${encodeURIComponent(botId)}/error`)).errorDetails;
   }
 
-  async runBacktest(botId: string, from: string, to: string,
+  async runBacktest(botId: string, from: string, to: string, includeFullTimeline = false,
     onProgress?: (progress: BacktestProgress) => void): Promise<BacktestView> {
     const response = await this.fetchImplementation.call(globalThis,
       `/api/bots/${encodeURIComponent(botId)}/backtests?stream=1`, { method: "POST",
         headers: { Accept: "application/x-ndjson", "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to }) });
+        body: JSON.stringify({ from, to, includeFullTimeline }) });
     if (!response.ok || !response.body) {
       const body = await response.json().catch(() => ({})) as ApiError;
       throw new Error(body.error?.message ?? `Backtest request failed (${response.status})`);
     }
     const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
-    const resultChunks: Pick<BacktestView, "decisions" | "fills" | "events" | "positions" | "openPositions"> =
-      { decisions: [], fills: [], events: [], positions: [], openPositions: [] };
+    const resultChunks: Pick<BacktestView, "decisions" | "fills"> = { decisions: [], fills: [] };
     while (true) {
       const chunk = await reader.read(); buffer += decoder.decode(chunk.value, { stream: !chunk.done });
       const lines = buffer.split("\n"); buffer = lines.pop() ?? "";

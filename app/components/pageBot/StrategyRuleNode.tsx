@@ -83,6 +83,21 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
         <p className="text-xs text-slate-500 sm:col-span-3">The last closed candle must be strictly above or below the EMA. Leave the distance limit off to accept any distance.</p>
       </div>}
 
+      {"indicator" in condition && condition.indicator === "EMA_DEVIATION_PCT" &&
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Field label="EMA period"><input className={inputClass} type="number" min={1} step={1}
+            value={condition.period}
+            onChange={(event) => replace({ ...condition, period: Number(event.target.value) })} /></Field>
+          <Field label="Operator"><select className={inputClass} value={condition.operator}
+            onChange={(event) => replace({ ...condition, operator: event.target.value as typeof condition.operator })}>
+            {(["LT", "LTE", "GT", "GTE"] as const).map((operator) => <option key={operator}>{operator}</option>)}
+          </select></Field>
+          <Field label="Signed deviation threshold %"><input className={inputClass} type="number" step="0.1"
+            value={condition.value}
+            onChange={(event) => replace({ ...condition, value: Number(event.target.value) })} /></Field>
+          <p className="text-xs text-slate-500 sm:col-span-3">Deviation is (close − EMA) / EMA × 100. Negative values are below EMA; positive values are above it. For example, LTE −2 matches at least 2% below EMA.</p>
+        </div>}
+
       {"indicator" in condition && condition.indicator === "EMA_CROSS_CONFIRMATION" && <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <Field label="EMA period"><input className={inputClass} type="number" min={1} step={1} value={condition.period}
           onChange={(event) => replace({ ...condition, period: Number(event.target.value) })} /></Field>

@@ -17,6 +17,9 @@ export const createBacktestsHandler = (useCases: Dependencies = tradingBotUseCas
   if (!body || typeof body.from !== "string" || typeof body.to !== "string")
     return res.status(400).json({ error: { code: "BAD_REQUEST", message: "from and to ISO timestamps are required" } });
   const range = { from: new Date(body.from), to: new Date(body.to) };
+  if (body.includeFullTimeline !== undefined && typeof body.includeFullTimeline !== "boolean")
+    return res.status(400).json({ error: { code: "BAD_REQUEST", message: "includeFullTimeline must be a boolean" } });
+  const includeFullTimeline = body.includeFullTimeline === true;
   const streaming = req.query.stream === "1";
   const send = (event: unknown) => res.write(`${JSON.stringify(event)}\n`);
   if (streaming) {
@@ -26,15 +29,16 @@ export const createBacktestsHandler = (useCases: Dependencies = tradingBotUseCas
   }
   try {
     const result = await useCases.runBacktest.execute(userId, String(req.query.id ?? ""), range,
-      streaming ? (progress: HistoricalBacktestProgress) => send({ type: "progress", progress }) : undefined);
+      streaming ? (progress: HistoricalBacktestProgress) => send({ type: "progress", progress }) : undefined,
+      includeFullTimeline);
     if (streaming) {
       if (!result.ok) send({ type: "error", message: result.error });
       else {
-        const { decisions, fills, events, positions, openPositions, ...summary } = result.result;
-        for (const [field, items] of Object.entries({ decisions, fills, events, positions, openPositions }))
+        const { decisions, fills, ...summary } = result.result;
+        for (const [field, items] of Object.entries({ decisions, fills }))
           for (let offset = 0; offset < items.length; offset += 100)
             send({ type: "result-chunk", field, items: items.slice(offset, offset + 100) });
-        send({ type: "complete", backtest: { ...summary, decisions: [], fills: [], events: [], positions: [], openPositions: [] } });
+        send({ type: "complete", backtest: { ...summary, decisions: [], fills: [] } });
       }
       return res.end();
     }

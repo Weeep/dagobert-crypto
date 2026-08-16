@@ -1,6 +1,6 @@
 import Big from "big.js";
 import type { Candle } from "@/src/modules/market";
-import { calculateEma, calculateRsi } from "./TechnicalIndicators";
+import { calculateEma, calculateRsi, type HistoricalIndicatorCache } from "./TechnicalIndicators";
 import {
   calculateCandleBodyChangePct,
   classifyCandleDirection,
@@ -11,7 +11,7 @@ import type { StrategyPositionLotContext } from "./StrategyEngine";
 
 export type ConditionObservedValues = Record<string, string | number | boolean | null | string[]>;
 export type ConditionEvaluation = {
-  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_CROSS_CONFIRMATION" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
+  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
   matched: boolean;
   reasonCode: string;
   explanation: string;
@@ -21,9 +21,22 @@ export type ConditionEvaluation = {
 
 export type ConditionEvaluationContext = {
   candles: readonly Candle[];
+  /** Inclusive candle index used by validated historical evaluation. */
+  endIndex?: number;
+  indicatorCache?: HistoricalIndicatorCache;
   position?: StrategyPositionLotContext;
   exitFeeRate?: string;
 };
+
+const endIndex = (context: ConditionEvaluationContext) => context.endIndex ?? context.candles.length - 1;
+const availableCandles = (context: ConditionEvaluationContext) => endIndex(context) + 1;
+const latestCandle = (context: ConditionEvaluationContext) => context.candles[endIndex(context)];
+const trailingCandles = (context: ConditionEvaluationContext, count: number) => {
+  const end = endIndex(context) + 1;
+  return context.candles.slice(Math.max(0, end - count), end);
+};
+const historicalCandles = (context: ConditionEvaluationContext) =>
+  context.endIndex === undefined ? context.candles : context.candles.slice(0, endIndex(context) + 1);
 
 function compare(observed: number | string, expected: number, operator: ComparisonOperator): boolean {
   const left = new Big(observed);
@@ -64,8 +77,10 @@ function evaluateNode(
 
   if ("indicator" in condition && condition.indicator === "RSI") {
     const required = condition.period + 1;
-    const observed = calculateRsi(context.candles, condition.period);
-    if (observed === null) return insufficient("RSI", required, context.candles.length);
+    const observed = context.indicatorCache
+      ? context.indicatorCache.rsi(condition.period, endIndex(context))
+      : calculateRsi(historicalCandles(context), condition.period);
+    if (observed === null) return insufficient("RSI", required, availableCandles(context));
     const matched = compare(observed, condition.value, condition.operator);
     return {
       type: "RSI", matched, reasonCode: `RSI_${matched ? "MATCHED" : "NOT_MATCHED"}`,
@@ -81,7 +96,7 @@ function evaluateNode(
       explanation: "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
       observedValues: { observed: null, operator: condition.operator, expected: condition.value }, children: [],
     };
-    const close = new Big(context.candles.at(-1)!.close);
+    const close = new Big(latestCandle(context).close);
     const quantity = new Big(context.position.quantity);
     const entryCost = new Big(context.position.entryCost);
     const entryFees = new Big(context.position.entryFees);
@@ -107,11 +122,11 @@ function evaluateNode(
 
   if ("indicator" in condition && condition.indicator === "EMA_CROSS_CONFIRMATION") {
     const required = condition.period + condition.confirmationCandles;
-    if (context.candles.length < required)
-      return insufficient("EMA_CROSS_CONFIRMATION", required, context.candles.length);
+    if (availableCandles(context) < required)
+      return insufficient("EMA_CROSS_CONFIRMATION", required, availableCandles(context));
     // Use the same bounded input in live evaluation and backtests. Live runs load
     // exactly `required` candles, while backtests pass the complete prefix.
-    const calculationCandles = context.candles.slice(-required);
+    const calculationCandles = trailingCandles(context, required);
     const firstIndex = calculationCandles.length - condition.confirmationCandles - 1;
     const selected = calculationCandles.slice(firstIndex);
     const emas = selected.map((_, index) =>
@@ -133,10 +148,32 @@ function evaluateNode(
     };
   }
 
+  if ("indicator" in condition && condition.indicator === "EMA_DEVIATION_PCT") {
+    const observedEma = context.indicatorCache
+      ? context.indicatorCache.ema(condition.period, endIndex(context))
+      : calculateEma(historicalCandles(context), condition.period);
+    if (observedEma === null) return insufficient("EMA_DEVIATION_PCT", condition.period, availableCandles(context));
+    const close = new Big(latestCandle(context).close);
+    const ema = new Big(observedEma);
+    const deviationPct = ema.eq(0) ? null : close.minus(ema).div(ema).times(100);
+    const matched = deviationPct !== null && compare(deviationPct.toString(), condition.value, condition.operator);
+    const observed = deviationPct?.toString() ?? null;
+    return {
+      type: "EMA_DEVIATION_PCT", matched,
+      reasonCode: `EMA_DEVIATION_PCT_${matched ? "MATCHED" : "NOT_MATCHED"}`,
+      explanation: `Close deviation from EMA(${condition.period}) was ${observed ?? "undefined"}% and ${matched ? "matched" : "did not match"} ${condition.operator} ${condition.value}%`,
+      observedValues: { indicator: "EMA_DEVIATION_PCT", period: condition.period,
+        operator: condition.operator, expected: condition.value, observed, close: close.toString(), ema: observedEma },
+      children: [],
+    };
+  }
+
   if ("indicator" in condition) {
-    const observedEma = calculateEma(context.candles, condition.period);
-    if (observedEma === null) return insufficient("EMA_DISTANCE", condition.period, context.candles.length);
-    const close = new Big(context.candles.at(-1)!.close);
+    const observedEma = context.indicatorCache
+      ? context.indicatorCache.ema(condition.period, endIndex(context))
+      : calculateEma(historicalCandles(context), condition.period);
+    if (observedEma === null) return insufficient("EMA_DISTANCE", condition.period, availableCandles(context));
+    const close = new Big(latestCandle(context).close);
     const ema = new Big(observedEma);
     const distancePct = ema.eq(0) ? null : Number(close.minus(ema).abs().div(ema).times(100));
     const sideMatched = condition.position === "ABOVE" ? close.gt(ema) : close.lt(ema);
@@ -157,9 +194,9 @@ function evaluateNode(
   }
 
   const rule = condition.candleSequence;
-  if (context.candles.length < rule.count)
-    return insufficient("CANDLE_SEQUENCE", rule.count, context.candles.length);
-  const selected = context.candles.slice(-rule.count);
+  if (availableCandles(context) < rule.count)
+    return insufficient("CANDLE_SEQUENCE", rule.count, availableCandles(context));
+  const selected = trailingCandles(context, rule.count);
   const matched = matchesCandleSequence(selected, rule);
   return {
     type: "CANDLE_SEQUENCE", matched,
@@ -181,7 +218,15 @@ export function evaluateCondition(
   condition: StrategyCondition,
   context: ConditionEvaluationContext,
 ): ConditionEvaluation {
-  if (context.candles.some((candle) => !candle.isClosed))
+  if (historicalCandles(context).some((candle) => !candle.isClosed))
     throw new Error("condition evaluation requires closed candles");
+  return evaluateNode(condition, context);
+}
+
+/** Internal fast path for a history that the backtest runner already validated. */
+export function evaluateValidatedCondition(
+  condition: StrategyCondition,
+  context: ConditionEvaluationContext,
+): ConditionEvaluation {
   return evaluateNode(condition, context);
 }

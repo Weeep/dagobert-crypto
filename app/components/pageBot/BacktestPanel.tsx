@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { BotDto } from "@/src/modules/bot/dto/BotDto";
 import { BotApiClient, type BacktestProgress, type BacktestView } from "./BotApiClient";
 import { conditionObservationSummaries } from "./backtestDecisionPresentation";
@@ -20,12 +20,14 @@ export function BacktestPanel({ api, bots }: Props) {
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [progress, setProgress] = useState<BacktestProgress | null>(null);
+  const [includeFullTimeline, setIncludeFullTimeline] = useState(false);
 
   const run = async () => {
     setBusy(true); setMessage(""); setErrorMessage(""); setResult(null); setProgress(null);
     try {
       const completed = await api.runBacktest(botId,
-        new Date(`${from}T00:00:00.000Z`).toISOString(), new Date(`${to}T23:59:59.999Z`).toISOString(), setProgress);
+        new Date(`${from}T00:00:00.000Z`).toISOString(), new Date(`${to}T23:59:59.999Z`).toISOString(),
+        includeFullTimeline, setProgress);
       setResult(completed);
       setMessage(`Backtest completed · run ${completed.runId}`);
     } catch (error) { setErrorMessage(error instanceof Error ? error.message : "The backtest failed unexpectedly. Please retry."); }
@@ -48,6 +50,13 @@ export function BacktestPanel({ api, bots }: Props) {
       <button type="button" disabled={busy || !botId || !from || !to || from > to} onClick={() => void run()}
         className="self-end rounded-xl bg-emerald-700 px-5 py-2.5 font-semibold hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40">
         {busy ? "Running backtest…" : "Run backtest"}</button>
+      <label className="flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300 md:col-span-4">
+        <input type="checkbox" checked={includeFullTimeline}
+          onChange={(event) => setIncludeFullTimeline(event.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-emerald-600" />
+        <span><span className="font-semibold text-slate-200">Save full decision timeline</span>
+          <span className="mt-1 block text-xs text-slate-500">Disabled by default for faster backtests. Fill-triggering decisions remain available from the executed fills table.</span></span>
+      </label>
     </div>
     {busy && <div className="mt-5 rounded-xl border border-cyan-900 bg-slate-950 p-4" aria-live="polite">
       <div className="flex flex-wrap justify-between gap-2 text-sm"><span className="font-semibold text-cyan-200">
@@ -71,6 +80,9 @@ export function BacktestPanel({ api, bots }: Props) {
 }
 
 function BacktestResult({ result }: { result: BacktestView }) {
+  const [selectedFill, setSelectedFill] = useState<number | null>(null);
+  const decisionsByCandle = useMemo(() => new Map(result.decisions.map((decision) =>
+    [decision.candleId, decision])), [result.decisions]);
   const metrics = [
     ["Net profit", `${signed(result.metrics.netProfit)} USDC`], ["Return", `${signed(result.metrics.returnPct)}%`],
     ["Ending equity", `${number(result.metrics.endingEquity)} USDC`], ["Max drawdown", `${number(result.metrics.maximumDrawdownPct)}%`],
@@ -83,15 +95,32 @@ function BacktestResult({ result }: { result: BacktestView }) {
     <div><h3 className="mb-3 text-lg font-semibold">Executed fills</h3>
       <div className="overflow-x-auto rounded-xl border border-slate-700"><table className="min-w-full text-left text-sm">
         <thead className="bg-slate-950 text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">Time</th><th className="px-4 py-3">Side</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Quantity</th><th className="px-4 py-3">Fee</th></tr></thead>
-        <tbody className="divide-y divide-slate-800">{result.fills.map((fill, index) => <tr key={`${fill.positionId}-${fill.side}-${index}`}>
-          <td className="px-4 py-3 text-slate-300">{new Date(fill.filledAt).toLocaleString()}</td>
-          <td className={`px-4 py-3 font-bold ${fill.side === "BUY" ? "text-emerald-400" : "text-rose-400"}`}>{fill.side}</td>
-          <td className="px-4 py-3">{number(fill.price)}</td><td className="px-4 py-3">{number(fill.quantity)}</td><td className="px-4 py-3">{number(fill.fee)}</td>
-        </tr>)}</tbody></table>{result.fills.length === 0 && <p className="p-5 text-sm text-slate-500">No orders were filled in this range.</p>}</div></div>
-    <div><div className="mb-3"><h3 className="text-lg font-semibold">Decision timeline</h3>
+        <tbody className="divide-y divide-slate-800">{result.fills.map((fill, index) => {
+          const decision = fill.decisionCandleId ? decisionsByCandle.get(fill.decisionCandleId) : undefined;
+          const expanded = selectedFill === index;
+          return <Fragment key={`${fill.positionId}-${fill.side}-${index}`}><tr role={decision ? "button" : undefined}
+            tabIndex={decision ? 0 : undefined} aria-expanded={decision ? expanded : undefined}
+            onClick={() => decision && setSelectedFill(expanded ? null : index)}
+            onKeyDown={(event) => { if (decision && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault(); setSelectedFill(expanded ? null : index); } }}
+            className={decision ? "cursor-pointer hover:bg-slate-800/70 focus:bg-slate-800/70 focus:outline-none" : undefined}>
+            <td className="px-4 py-3 text-slate-300">{new Date(fill.filledAt).toLocaleString()}</td>
+            <td className={`px-4 py-3 font-bold ${fill.side === "BUY" ? "text-emerald-400" : "text-rose-400"}`}>{fill.side}</td>
+            <td className="px-4 py-3">{number(fill.price)}</td><td className="px-4 py-3">{number(fill.quantity)}</td>
+            <td className="px-4 py-3">{number(fill.fee)}{decision && <span className="ml-2 text-xs text-cyan-400">{expanded ? "Hide details" : "Why?"}</span>}</td>
+          </tr>{expanded && decision && <tr><td colSpan={5} className="bg-slate-950 p-4">
+            <DecisionDetails decision={decision} />
+          </td></tr>}</Fragment>;
+        })}</tbody></table>{result.fills.length === 0 && <p className="p-5 text-sm text-slate-500">No orders were filled in this range.</p>}</div></div>
+    {result.includeFullTimeline && <div><div className="mb-3"><h3 className="text-lg font-semibold">Decision timeline</h3>
       <p className="text-xs text-slate-500">Observed indicator values show exactly why each entry and exit condition matched or failed.</p></div>
       <div className="max-h-[32rem] space-y-2 overflow-auto pr-1">
-      {result.decisions.map((decision) => <div key={decision.candleId} className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm">
+      {result.decisions.map((decision) => <DecisionDetails key={decision.candleId} decision={decision} />)}</div></div>}
+  </div>;
+}
+
+function DecisionDetails({ decision }: { decision: BacktestView["decisions"][number] }) {
+  return <div className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-slate-400">{new Date(decision.evaluation.evaluatedCandleOpenTime).toLocaleString()}</span>
           <span className={`font-bold ${decision.executionOutcome === "ENTRY_SUPPRESSED" ? "text-amber-400" : decision.evaluation.action === "BUY" ? "text-emerald-400" : decision.evaluation.action === "SELL" ? "text-rose-400" : "text-slate-400"}`}>
@@ -113,8 +142,7 @@ function BacktestResult({ result }: { result: BacktestView }) {
               matched={positionExit.evaluation.matched}
               summaries={conditionObservationSummaries(positionExit.evaluation)} />)}
         </div>}
-      </div>)}</div></div>
-  </div>;
+      </div>;
 }
 
 function ConditionDetails({ label, matched, summaries }: { label: string; matched: boolean; summaries: string[] }) {

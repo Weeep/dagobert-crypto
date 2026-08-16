@@ -14,7 +14,7 @@ export class RunBacktestUseCase {
     private readonly start: StartBotUseCase, private readonly persistence: BacktestRunPersistenceRepository) {}
 
   async execute(userId: string, botId: string, range: { from: Date; to: Date },
-    onProgress?: (progress: HistoricalBacktestProgress) => void) {
+    onProgress?: (progress: HistoricalBacktestProgress) => void, includeFullTimeline = false) {
     const bot = await this.bots.findById(botId);
     if (!bot || bot.userId !== userId) return { ok: false as const, error: "Bot not found", status: 404, result: null };
     if (bot.mode !== "BACKTEST") return { ok: false as const, error: "Bot is not in backtest mode", status: 409, result: null };
@@ -54,9 +54,8 @@ export class RunBacktestUseCase {
     const execution = { assignedBudget: bot.assignedBudget, amountPerPosition: bot.amountPerPosition,
       feeRate: bot.feeRate, slippageRate: bot.slippageRate };
     const runner = await runHistoricalBacktestAsync({ definition: validated.definition, candles: history,
-      backtestFrom: range.from, backtestTo: range.to, execution, onProgress });
-    const decisionCounts = runner.decisions.reduce((counts, decision) => ({ ...counts,
-      [decision.evaluation.action]: counts[decision.evaluation.action] + 1 }), { HOLD: 0, BUY: 0, SELL: 0 });
+      backtestFrom: range.from, backtestTo: range.to, execution, onProgress, includeFullTimeline });
+    const decisionCounts = runner.actionCounts;
     const metrics = calculateBacktestMetrics(runner, evaluated, execution);
     const started = await this.start.execute(botId, range);
     if (!started.ok) return { ok: false as const, error: started.error, status: 409, result: null };
@@ -69,9 +68,8 @@ export class RunBacktestUseCase {
     }
     return { ok: true as const, error: "", status: 200,
       result: { runId: started.run.id, metrics,
-        decisions: runner.decisions, fills: runner.fills, events: runner.events,
-        snapshots: runner.snapshots, positions: runner.portfolio.closedPositions,
-        openPositions: runner.portfolio.openPositions } };
+        includeFullTimeline,
+        decisions: runner.decisions, fills: runner.fills } };
   }
 
   private validDate(value: Date) { return value instanceof Date && Number.isFinite(value.getTime()); }

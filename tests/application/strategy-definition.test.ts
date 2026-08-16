@@ -69,6 +69,8 @@ describe("strategy definition v1", () => {
       { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: -0.1 } },
       { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 100.1 } },
       { ...example, entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 2.25 } },
+      { ...example, entry: { indicator: "EMA_DEVIATION_PCT", period: 14, operator: "EQ", value: -2 } },
+      { ...example, entry: { indicator: "EMA_DEVIATION_PCT", period: 14, operator: "LTE", value: Number.NaN } },
       { ...example, entry: { indicator: "EMA_CROSS_CONFIRMATION", period: 100, direction: "ABOVE", confirmationCandles: 0 } },
       { ...example, entry: { indicator: "EMA_CROSS_CONFIRMATION", period: 100, direction: "SIDEWAYS", confirmationCandles: 3 } },
       { ...example, entry: { candleSequence: { count: 3, direction: "BLUE", minimumBodyChangePct: 1 } } },
@@ -87,6 +89,8 @@ describe("strategy definition v1", () => {
       entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 0 } }).ok, true);
     assert.equal(validateStrategyDefinition({ ...example,
       entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 100 } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example,
+      entry: { indicator: "EMA_DEVIATION_PCT", period: 100, operator: "LTE", value: -2 } }).ok, true);
     assert.equal(validateStrategyDefinition({ ...example,
       entry: { indicator: "EMA_CROSS_CONFIRMATION", period: 100, direction: "ABOVE", confirmationCandles: 3 } }).ok, true);
     assert.equal(validateStrategyDefinition({ ...example,

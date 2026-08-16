@@ -17,6 +17,8 @@ export function conditionObservationSummaries(evaluation: ConditionEvaluation): 
     const distance = values.distancePct === null ? "—" : `${numeric(values.distancePct)}%`;
     return [`Close ${numeric(values.close)} · EMA(${numeric(values.period)}): ${numeric(values.ema)} · ${numeric(values.position)} · distance ${distance} · ${evaluation.matched ? "matched" : "not matched"}`];
   }
+  if (evaluation.type === "EMA_DEVIATION_PCT")
+    return [`Close ${numeric(values.close)} · EMA(${numeric(values.period)}): ${numeric(values.ema)} · signed deviation ${numeric(values.observed)}% · condition ${comparison(values.operator)} ${numeric(values.expected)}% · ${evaluation.matched ? "matched" : "not matched"}`];
   if (evaluation.type === "EMA_CROSS_CONFIRMATION")
     return [`EMA(${numeric(values.period)}) crossing ${numeric(values.direction)} · ${numeric(values.confirmationCandles)} confirmation candles · closes ${numeric(values.closes)} · EMAs ${numeric(values.emas)} · ${evaluation.matched ? "matched" : "not matched"}`];
   if (evaluation.type === "POSITION_RETURN_PCT")

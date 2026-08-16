@@ -77,6 +77,21 @@ describe("pure condition-tree evaluator", () => {
       { candles: equal }).matched, false);
   });
 
+  test("compares signed EMA deviation percentages across both sides of the EMA", () => {
+    const below = candles([100, 96]); // EMA(2) = 98, close deviation is about -2.0408%.
+    const atBoundary = candles([100, 100]);
+    assert.equal(evaluateCondition({ indicator: "EMA_DEVIATION_PCT", period: 2,
+      operator: "LTE", value: -2 }, { candles: below }).matched, true);
+    assert.equal(evaluateCondition({ indicator: "EMA_DEVIATION_PCT", period: 2,
+      operator: "GTE", value: -2 }, { candles: below }).matched, false);
+    assert.equal(evaluateCondition({ indicator: "EMA_DEVIATION_PCT", period: 2,
+      operator: "LT", value: 0 }, { candles: atBoundary }).matched, false);
+    const result = evaluateCondition({ indicator: "EMA_DEVIATION_PCT", period: 2,
+      operator: "LTE", value: -2 }, { candles: below });
+    assert.equal(result.type, "EMA_DEVIATION_PCT");
+    assert.ok(Math.abs(Number(result.observedValues.observed) + 2.0408163265306123) < 1e-12);
+  });
+
   test("confirms an EMA crossing against each candle's contemporaneous EMA only once", () => {
     const condition = { indicator: "EMA_CROSS_CONFIRMATION" as const, period: 2,
       direction: "ABOVE" as const, confirmationCandles: 3 };
@@ -122,6 +137,19 @@ describe("pure condition-tree evaluator", () => {
       { candleSequence: { count: 1, direction: "RED", minimumBodyChangePct: 0 } },
       { candles: [{ ...history[0], isClosed: false }] },
     ), /requires closed candles/);
+  });
+
+  test("bounds uncached endIndex indicator evaluation to its causal prefix", () => {
+    const history = candles([10, 11, 9, 100]);
+    const rsi = { indicator: "RSI" as const, period: 2, operator: "LT" as const, value: 100 };
+    const ema = { indicator: "EMA_DISTANCE" as const, period: 2, position: "ABOVE" as const };
+    assert.deepEqual(evaluateCondition(rsi, { candles: history, endIndex: 2 }),
+      evaluateCondition(rsi, { candles: history.slice(0, 3) }));
+    assert.deepEqual(evaluateCondition(ema, { candles: history, endIndex: 2 }),
+      evaluateCondition(ema, { candles: history.slice(0, 3) }));
+    assert.doesNotThrow(() => evaluateCondition(ema, {
+      candles: [...history.slice(0, 3), { ...history[3], isClosed: false }], endIndex: 2,
+    }));
   });
 });
 

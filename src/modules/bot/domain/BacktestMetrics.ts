@@ -33,16 +33,7 @@ export function calculateBacktestMetrics(result: HistoricalBacktestResult, evalu
   if (!finalSnapshot) throw new Error("final portfolio snapshot is required for metrics");
   const endingEquity = new Big(finalSnapshot.totalEquity);
   const netProfit = endingEquity.minus(initial);
-  let peak = initial;
-  let maximumDrawdown = new Big(0);
-  for (const snapshot of result.snapshots) {
-    const equity = new Big(snapshot.portfolio.totalEquity);
-    if (equity.gt(peak)) peak = equity;
-    if (peak.gt(0)) {
-      const drawdown = peak.minus(equity).div(peak).times(100);
-      if (drawdown.gt(maximumDrawdown)) maximumDrawdown = drawdown;
-    }
-  }
+  const maximumDrawdown = new Big(result.maximumDrawdownPct);
   const closed = result.portfolio.closedPositions;
   const wins = closed.filter((position) => new Big(position.realizedPnl).gt(0));
   const grossProfit = wins.reduce((total, position) => total.plus(position.realizedPnl), new Big(0));

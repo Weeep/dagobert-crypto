@@ -11,11 +11,18 @@ describe("strategy rule-builder tree operations", () => {
     assert.equal(GROUP_CHILD_KINDS.includes("EMA_CROSS_CONFIRMATION"), true);
   });
 
+  test("exposes signed EMA deviation in both GUI rule selectors", () => {
+    assert.deepEqual(CONDITION_KIND_OPTIONS.find(({ value }) => value === "EMA_DEVIATION_PCT"),
+      { value: "EMA_DEVIATION_PCT", label: "EMA signed deviation %" });
+    assert.equal(GROUP_CHILD_KINDS.includes("EMA_DEVIATION_PCT"), true);
+  });
+
   test("creates every supported rule kind", () => {
     assert.equal(conditionKind(newCondition("ALL")), "ALL");
     assert.equal(conditionKind(newCondition("ANY")), "ANY");
     assert.equal(conditionKind(newCondition("RSI")), "RSI");
     assert.equal(conditionKind(newCondition("EMA_DISTANCE")), "EMA_DISTANCE");
+    assert.equal(conditionKind(newCondition("EMA_DEVIATION_PCT")), "EMA_DEVIATION_PCT");
     assert.equal(conditionKind(newCondition("EMA_CROSS_CONFIRMATION")), "EMA_CROSS_CONFIRMATION");
     assert.equal(conditionKind(newCondition("CANDLE_SEQUENCE")), "CANDLE_SEQUENCE");
     assert.equal(conditionKind(newCondition("POSITION_RETURN_PCT")), "POSITION_RETURN_PCT");
@@ -24,6 +31,9 @@ describe("strategy rule-builder tree operations", () => {
     });
     assert.deepEqual(newCondition("EMA_DISTANCE"), {
       indicator: "EMA_DISTANCE", period: 100, position: "ABOVE", maximumDistancePct: 2,
+    });
+    assert.deepEqual(newCondition("EMA_DEVIATION_PCT"), {
+      indicator: "EMA_DEVIATION_PCT", period: 100, operator: "LTE", value: -2,
     });
     assert.deepEqual(newCondition("EMA_CROSS_CONFIRMATION"), {
       indicator: "EMA_CROSS_CONFIRMATION", period: 100, direction: "ABOVE", confirmationCandles: 3,
