@@ -160,6 +160,9 @@ describe("deterministic historical backtest runner", () => {
       /strictly ordered/);
     assert.throws(() => run([{ ...timeline[0], pairSymbol: "ETHUSDC" }, ...timeline.slice(1)]),
       /one market/);
+    const overlapping = timeline.map((item, index) => index === 0
+      ? { ...item, closeTime: new Date(timeline[1].closeTime.getTime() + 1) } : item);
+    assert.throws(() => run(overlapping), /future close at evaluation time/);
   });
 
   test("keeps BUY decisions but rejects execution when all cash is reserved or invested", () => {

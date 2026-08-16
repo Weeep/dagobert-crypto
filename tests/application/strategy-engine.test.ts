@@ -123,6 +123,19 @@ describe("pure condition-tree evaluator", () => {
       { candles: [{ ...history[0], isClosed: false }] },
     ), /requires closed candles/);
   });
+
+  test("bounds uncached endIndex indicator evaluation to its causal prefix", () => {
+    const history = candles([10, 11, 9, 100]);
+    const rsi = { indicator: "RSI" as const, period: 2, operator: "LT" as const, value: 100 };
+    const ema = { indicator: "EMA_DISTANCE" as const, period: 2, position: "ABOVE" as const };
+    assert.deepEqual(evaluateCondition(rsi, { candles: history, endIndex: 2 }),
+      evaluateCondition(rsi, { candles: history.slice(0, 3) }));
+    assert.deepEqual(evaluateCondition(ema, { candles: history, endIndex: 2 }),
+      evaluateCondition(ema, { candles: history.slice(0, 3) }));
+    assert.doesNotThrow(() => evaluateCondition(ema, {
+      candles: [...history.slice(0, 3), { ...history[3], isClosed: false }], endIndex: 2,
+    }));
+  });
 });
 
 describe("strategy engine", () => {

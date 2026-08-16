@@ -130,6 +130,15 @@ function validateHistoricalInput(input: HistoricalBacktestInput) {
       candle.openTime.getTime() <= input.backtestTo.getTime());
   if (evaluationIndexes.length === 0)
     throw new HistoricalBacktestInputError("backtest range does not contain a candle");
+  const evaluationIndexSet = new Set(evaluationIndexes.map(({ index }) => index));
+  const lastEvaluationIndex = evaluationIndexes.at(-1)!.index;
+  let latestPrefixClose = Number.NEGATIVE_INFINITY;
+  for (let index = 0; index <= lastEvaluationIndex; index += 1) {
+    const close = input.candles[index].closeTime.getTime();
+    latestPrefixClose = Math.max(latestPrefixClose, close);
+    if (evaluationIndexSet.has(index) && latestPrefixClose > close)
+      throw new HistoricalBacktestInputError("candle history cannot contain a future close at evaluation time");
+  }
   return evaluationIndexes;
 }
 

@@ -35,6 +35,8 @@ const trailingCandles = (context: ConditionEvaluationContext, count: number) => 
   const end = endIndex(context) + 1;
   return context.candles.slice(Math.max(0, end - count), end);
 };
+const historicalCandles = (context: ConditionEvaluationContext) =>
+  context.endIndex === undefined ? context.candles : context.candles.slice(0, endIndex(context) + 1);
 
 function compare(observed: number | string, expected: number, operator: ComparisonOperator): boolean {
   const left = new Big(observed);
@@ -77,7 +79,7 @@ function evaluateNode(
     const required = condition.period + 1;
     const observed = context.indicatorCache
       ? context.indicatorCache.rsi(condition.period, endIndex(context))
-      : calculateRsi(context.candles, condition.period);
+      : calculateRsi(historicalCandles(context), condition.period);
     if (observed === null) return insufficient("RSI", required, availableCandles(context));
     const matched = compare(observed, condition.value, condition.operator);
     return {
@@ -149,7 +151,7 @@ function evaluateNode(
   if ("indicator" in condition) {
     const observedEma = context.indicatorCache
       ? context.indicatorCache.ema(condition.period, endIndex(context))
-      : calculateEma(context.candles, condition.period);
+      : calculateEma(historicalCandles(context), condition.period);
     if (observedEma === null) return insufficient("EMA_DISTANCE", condition.period, availableCandles(context));
     const close = new Big(latestCandle(context).close);
     const ema = new Big(observedEma);
@@ -196,7 +198,7 @@ export function evaluateCondition(
   condition: StrategyCondition,
   context: ConditionEvaluationContext,
 ): ConditionEvaluation {
-  if (context.candles.some((candle) => !candle.isClosed))
+  if (historicalCandles(context).some((candle) => !candle.isClosed))
     throw new Error("condition evaluation requires closed candles");
   return evaluateNode(condition, context);
 }
