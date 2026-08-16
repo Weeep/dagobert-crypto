@@ -95,6 +95,20 @@ describe("pure condition-tree evaluator", () => {
     assert.equal(below.matched, true);
   });
 
+  test("seeds confirmed crossing EMA from the same bounded window in live runs and backtests", () => {
+    const condition = { indicator: "EMA_CROSS_CONFIRMATION" as const, period: 2,
+      direction: "ABOVE" as const, confirmationCandles: 1 };
+    const fullPrefix = candles([100, 100, 1, 1, 2]);
+    const liveWindow = fullPrefix.slice(-3);
+
+    const backtestResult = evaluateCondition(condition, { candles: fullPrefix });
+    const liveResult = evaluateCondition(condition, { candles: liveWindow });
+
+    assert.equal(liveResult.matched, true);
+    assert.equal(backtestResult.matched, liveResult.matched);
+    assert.deepEqual(backtestResult.observedValues.emas, liveResult.observedValues.emas);
+  });
+
   test("reports the full EMA crossing warm-up requirement", () => {
     const result = evaluateCondition({ indicator: "EMA_CROSS_CONFIRMATION", period: 100,
       direction: "ABOVE", confirmationCandles: 3 }, { candles: candles([10, 11]) });

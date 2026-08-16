@@ -109,10 +109,13 @@ function evaluateNode(
     const required = condition.period + condition.confirmationCandles;
     if (context.candles.length < required)
       return insufficient("EMA_CROSS_CONFIRMATION", required, context.candles.length);
-    const firstIndex = context.candles.length - condition.confirmationCandles - 1;
-    const selected = context.candles.slice(firstIndex);
+    // Use the same bounded input in live evaluation and backtests. Live runs load
+    // exactly `required` candles, while backtests pass the complete prefix.
+    const calculationCandles = context.candles.slice(-required);
+    const firstIndex = calculationCandles.length - condition.confirmationCandles - 1;
+    const selected = calculationCandles.slice(firstIndex);
     const emas = selected.map((_, index) =>
-      calculateEma(context.candles.slice(0, firstIndex + index + 1), condition.period)!);
+      calculateEma(calculationCandles.slice(0, firstIndex + index + 1), condition.period)!);
     const closes = selected.map((candle) => new Big(candle.close));
     const confirmedSides = closes.slice(1).map((close, index) => condition.direction === "ABOVE"
       ? close.gt(emas[index + 1]) : close.lt(emas[index + 1]));
