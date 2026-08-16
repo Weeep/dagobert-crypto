@@ -5,6 +5,7 @@ import {
   calculateEma,
   calculateRsi,
   classifyCandleDirection,
+  createHistoricalIndicatorCache,
   matchesCandleSequence,
 } from "@/src/modules/strategy";
 import { TradingAnalysis, type DCandle } from "@/app/lib/TradingAnalysis";
@@ -40,6 +41,18 @@ describe("shared technical indicators", () => {
   test("rejects invalid periods and explicitly open candles", () => {
     assert.throws(() => calculateRsi(prices([1, 2]), 0), /positive safe integer/);
     assert.throws(() => calculateEma([{ close: "1", isClosed: false }], 1), /closed candles/);
+  });
+
+  test("incremental historical cache exactly matches every causal prefix", () => {
+    const history = prices([10, 11, 9, 12, 12, 8, 15, 14, 18, 13]);
+    const cache = createHistoricalIndicatorCache(history);
+    for (const period of [1, 2, 3, 5]) {
+      history.forEach((_, index) => {
+        const prefix = history.slice(0, index + 1);
+        assert.equal(cache.ema(period, index), calculateEma(prefix, period));
+        assert.equal(cache.rsi(period, index), calculateRsi(prefix, period));
+      });
+    }
   });
 
   test("extends historical candles in chronological order without looking ahead", () => {

@@ -1,6 +1,7 @@
 import type { Candle } from "@/src/modules/market";
 import {
-  evaluateStrategy,
+  createHistoricalIndicatorCache,
+  evaluateValidatedHistoricalStrategy,
   validateStrategyDefinition,
   type StrategyDefinitionV1,
   type StrategyEvaluation,
@@ -132,6 +133,7 @@ function validateHistoricalInput(input: HistoricalBacktestInput) {
  */
 function* historicalBacktestSteps(input: HistoricalBacktestInput): Generator<HistoricalBacktestProgress, HistoricalBacktestResult> {
   const evaluationIndexes = validateHistoricalInput(input);
+  const indicatorCache = createHistoricalIndicatorCache(input.candles);
   const evaluationIndexSet = new Set(evaluationIndexes.map(({ index }) => index));
   const lastEvaluationIndex = evaluationIndexes.at(-1)!.index;
   let portfolio = createBacktestPortfolio(input.execution);
@@ -178,9 +180,11 @@ function* historicalBacktestSteps(input: HistoricalBacktestInput): Generator<His
       pending = null;
     }
 
-    const evaluation = evaluateStrategy({
+    const evaluation = evaluateValidatedHistoricalStrategy({
       definition: input.definition,
-      candles: input.candles.slice(0, index + 1),
+      candles: input.candles,
+      candleIndex: index,
+      indicatorCache,
       evaluatedCandle: candle,
       position: { hasOpenPositions: portfolio.openPositions.length > 0,
         openPositionCount: portfolio.openPositions.length,

@@ -6,8 +6,8 @@ export { CreateStrategyUseCase } from "./application/CreateStrategyUseCase";
 export type { CreateStrategyInput } from "./application/CreateStrategyUseCase";
 export { AddStrategyVersionUseCase } from "./application/AddStrategyVersionUseCase";
 export { ActivateStrategyVersionUseCase } from "./application/ActivateStrategyVersionUseCase";
-export { calculateEma, calculateRsi } from "./domain/TechnicalIndicators";
-export type { IndicatorPrice } from "./domain/TechnicalIndicators";
+export { calculateEma, calculateRsi, createHistoricalIndicatorCache } from "./domain/TechnicalIndicators";
+export type { HistoricalIndicatorCache, IndicatorPrice } from "./domain/TechnicalIndicators";
 export {
   calculateCandleBodyChangePct,
   classifyCandleDirection,
@@ -38,7 +38,7 @@ export type {
   ConditionEvaluationContext,
   ConditionObservedValues,
 } from "./domain/ConditionEvaluator";
-export { evaluateStrategy, StrategyEngineInputError } from "./domain/StrategyEngine";
+export { evaluateStrategy, evaluateValidatedHistoricalStrategy, StrategyEngineInputError } from "./domain/StrategyEngine";
 export type {
   StrategyAction,
   StrategyEngineInput,
