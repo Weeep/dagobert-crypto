@@ -23,6 +23,7 @@ export {
 export type {
   ComparisonOperator,
   EmaDistanceCondition,
+  EmaDeviationPctCondition,
   EmaPosition,
   EntryPolicy,
   EntryTrigger,

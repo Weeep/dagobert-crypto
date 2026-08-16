@@ -11,7 +11,7 @@ import type { StrategyPositionLotContext } from "./StrategyEngine";
 
 export type ConditionObservedValues = Record<string, string | number | boolean | null | string[]>;
 export type ConditionEvaluation = {
-  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_CROSS_CONFIRMATION" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
+  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
   matched: boolean;
   reasonCode: string;
   explanation: string;
@@ -145,6 +145,26 @@ function evaluateNode(
         direction: condition.direction, confirmationCandles: condition.confirmationCandles,
         closes: closes.map(String), emas: emas.map(String), previousOnOppositeSide,
         confirmedSides: confirmedSides.map(String) }, children: [],
+    };
+  }
+
+  if ("indicator" in condition && condition.indicator === "EMA_DEVIATION_PCT") {
+    const observedEma = context.indicatorCache
+      ? context.indicatorCache.ema(condition.period, endIndex(context))
+      : calculateEma(historicalCandles(context), condition.period);
+    if (observedEma === null) return insufficient("EMA_DEVIATION_PCT", condition.period, availableCandles(context));
+    const close = new Big(latestCandle(context).close);
+    const ema = new Big(observedEma);
+    const deviationPct = ema.eq(0) ? null : close.minus(ema).div(ema).times(100);
+    const matched = deviationPct !== null && compare(deviationPct.toString(), condition.value, condition.operator);
+    const observed = deviationPct?.toString() ?? null;
+    return {
+      type: "EMA_DEVIATION_PCT", matched,
+      reasonCode: `EMA_DEVIATION_PCT_${matched ? "MATCHED" : "NOT_MATCHED"}`,
+      explanation: `Close deviation from EMA(${condition.period}) was ${observed ?? "undefined"}% and ${matched ? "matched" : "did not match"} ${condition.operator} ${condition.value}%`,
+      observedValues: { indicator: "EMA_DEVIATION_PCT", period: condition.period,
+        operator: condition.operator, expected: condition.value, observed, close: close.toString(), ema: observedEma },
+      children: [],
     };
   }
 

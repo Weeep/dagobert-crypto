@@ -77,6 +77,21 @@ describe("pure condition-tree evaluator", () => {
       { candles: equal }).matched, false);
   });
 
+  test("compares signed EMA deviation percentages across both sides of the EMA", () => {
+    const below = candles([100, 96]); // EMA(2) = 98, close deviation is about -2.0408%.
+    const atBoundary = candles([100, 100]);
+    assert.equal(evaluateCondition({ indicator: "EMA_DEVIATION_PCT", period: 2,
+      operator: "LTE", value: -2 }, { candles: below }).matched, true);
+    assert.equal(evaluateCondition({ indicator: "EMA_DEVIATION_PCT", period: 2,
+      operator: "GTE", value: -2 }, { candles: below }).matched, false);
+    assert.equal(evaluateCondition({ indicator: "EMA_DEVIATION_PCT", period: 2,
+      operator: "LT", value: 0 }, { candles: atBoundary }).matched, false);
+    const result = evaluateCondition({ indicator: "EMA_DEVIATION_PCT", period: 2,
+      operator: "LTE", value: -2 }, { candles: below });
+    assert.equal(result.type, "EMA_DEVIATION_PCT");
+    assert.ok(Math.abs(Number(result.observedValues.observed) + 2.0408163265306123) < 1e-12);
+  });
+
   test("confirms an EMA crossing against each candle's contemporaneous EMA only once", () => {
     const condition = { indicator: "EMA_CROSS_CONFIRMATION" as const, period: 2,
       direction: "ABOVE" as const, confirmationCandles: 3 };

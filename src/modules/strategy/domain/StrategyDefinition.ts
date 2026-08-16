@@ -18,6 +18,12 @@ export type EmaDistanceCondition = {
   position: EmaPosition;
   maximumDistancePct?: number;
 };
+export type EmaDeviationPctCondition = {
+  indicator: "EMA_DEVIATION_PCT";
+  period: number;
+  operator: ComparisonOperator;
+  value: number;
+};
 export type EmaCrossConfirmationCondition = {
   indicator: "EMA_CROSS_CONFIRMATION";
   period: number;
@@ -33,6 +39,7 @@ export type StrategyCondition =
   | RsiCondition
   | PositionReturnPctCondition
   | EmaDistanceCondition
+  | EmaDeviationPctCondition
   | EmaCrossConfirmationCondition
   | CandleSequenceCondition;
 
@@ -124,6 +131,14 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
           issue(`${path}.position`, "VALUE", "position must be ABOVE or BELOW");
         if (candidate.maximumDistancePct !== undefined && !percentageWithAtMostOneDecimal(candidate.maximumDistancePct))
           issue(`${path}.maximumDistancePct`, "VALUE", "maximumDistancePct must be between 0 and 100 with at most one decimal place");
+      } else if (candidate.indicator === "EMA_DEVIATION_PCT") {
+        if (!exactKeys(candidate, ["indicator", "period", "operator", "value"]))
+          issue(path, "PROPERTIES", "EMA_DEVIATION_PCT condition contains unsupported properties");
+        if (!positiveInteger(candidate.period)) issue(`${path}.period`, "VALUE", "period must be a positive safe integer");
+        if (!["LT", "LTE", "GT", "GTE"].includes(candidate.operator as string))
+          issue(`${path}.operator`, "UNSUPPORTED_OPERATOR", "EMA_DEVIATION_PCT supports LT, LTE, GT, and GTE");
+        if (typeof candidate.value !== "number" || !Number.isFinite(candidate.value))
+          issue(`${path}.value`, "VALUE", "EMA_DEVIATION_PCT value must be a finite signed percentage");
       } else if (candidate.indicator === "EMA_CROSS_CONFIRMATION") {
         if (!exactKeys(candidate, ["indicator", "period", "direction", "confirmationCandles"]))
           issue(path, "PROPERTIES", "EMA_CROSS_CONFIRMATION condition contains unsupported properties");
