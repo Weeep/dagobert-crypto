@@ -1,16 +1,8 @@
 "use client";
 
 import type { StrategyCondition } from "@/src/modules/strategy/domain/StrategyDefinition";
-import { appendCondition, conditionKind, newCondition, removeCondition,
-  replaceCondition, type ConditionKind } from "./strategyRuleTree";
-
-const kinds: Array<{ value: ConditionKind; label: string }> = [
-  { value: "ALL", label: "All conditions" }, { value: "ANY", label: "Any condition" },
-  { value: "RSI", label: "RSI" }, { value: "EMA_DISTANCE", label: "EMA distance" },
-  { value: "EMA_CROSS_CONFIRMATION", label: "Confirmed EMA crossing" },
-  { value: "CANDLE_SEQUENCE", label: "Candle sequence" },
-  { value: "POSITION_RETURN_PCT", label: "Position net return %" },
-];
+import { appendCondition, CONDITION_KIND_OPTIONS, conditionKind, GROUP_CHILD_KINDS,
+  newCondition, removeCondition, replaceCondition, type ConditionKind } from "./strategyRuleTree";
 const inputClass = "rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400";
 
 type Props = {
@@ -35,7 +27,7 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
         <span className="min-w-20 text-xs font-semibold uppercase tracking-widest text-cyan-300">{label}</span>
         <select aria-label={`${label} rule type`} className={inputClass} value={kind}
           onChange={(event) => replace(newCondition(event.target.value as ConditionKind))}>
-          {kinds.filter((item) => positionConditionsAllowed || item.value !== "POSITION_RETURN_PCT")
+          {CONDITION_KIND_OPTIONS.filter((item) => positionConditionsAllowed || item.value !== "POSITION_RETURN_PCT")
             .map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
         {removable && <button type="button" className="ml-auto rounded-lg border border-rose-700 px-3 py-2 text-xs text-rose-200 hover:bg-rose-950"
@@ -48,12 +40,12 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
           onChange={onChange} removable={groupChildren.length > 1}
           positionConditionsAllowed={positionConditionsAllowed} />)}
         <div className="flex flex-wrap gap-2 pt-1">
-          {(["RSI", "EMA_DISTANCE", "EMA_CROSS_CONFIRMATION", "CANDLE_SEQUENCE", "POSITION_RETURN_PCT", "ALL", "ANY"] as ConditionKind[])
+          {GROUP_CHILD_KINDS
             .filter((childKind) => positionConditionsAllowed || childKind !== "POSITION_RETURN_PCT").map((childKind) =>
             <button type="button" key={childKind}
               className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:border-cyan-500 hover:text-cyan-200"
               onClick={() => onChange(appendCondition(root, path, newCondition(childKind)))}>
-              + {kinds.find((item) => item.value === childKind)?.label}
+              + {CONDITION_KIND_OPTIONS.find((item) => item.value === childKind)?.label}
             </button>)}
         </div>
       </div>}

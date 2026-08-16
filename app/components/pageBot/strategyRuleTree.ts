@@ -2,6 +2,21 @@ import type { StrategyCondition } from "@/src/modules/strategy/domain/StrategyDe
 
 export type ConditionKind = "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_CROSS_CONFIRMATION" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
 
+export const CONDITION_KIND_OPTIONS: ReadonlyArray<{ value: ConditionKind; label: string }> = [
+  { value: "ALL", label: "All conditions" },
+  { value: "ANY", label: "Any condition" },
+  { value: "RSI", label: "RSI" },
+  { value: "EMA_DISTANCE", label: "EMA distance" },
+  { value: "EMA_CROSS_CONFIRMATION", label: "EMA cross confirmation" },
+  { value: "CANDLE_SEQUENCE", label: "Candle sequence" },
+  { value: "POSITION_RETURN_PCT", label: "Position net return %" },
+];
+
+export const GROUP_CHILD_KINDS: readonly ConditionKind[] = [
+  "RSI", "EMA_DISTANCE", "EMA_CROSS_CONFIRMATION", "CANDLE_SEQUENCE",
+  "POSITION_RETURN_PCT", "ALL", "ANY",
+];
+
 export const conditionKind = (condition: StrategyCondition): ConditionKind => {
   if ("all" in condition) return "ALL";
   if ("any" in condition) return "ANY";

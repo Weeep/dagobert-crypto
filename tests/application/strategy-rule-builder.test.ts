@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import test, { describe } from "node:test";
-import { appendCondition, conditionAt, conditionKind, newCondition,
-  removeCondition, replaceCondition } from "@/app/components/pageBot/strategyRuleTree";
+import { appendCondition, CONDITION_KIND_OPTIONS, conditionAt, conditionKind, GROUP_CHILD_KINDS,
+  newCondition, removeCondition, replaceCondition } from "@/app/components/pageBot/strategyRuleTree";
 import { validateStrategyDefinition } from "@/src/modules/strategy";
 
 describe("strategy rule-builder tree operations", () => {
+  test("exposes EMA cross confirmation in both GUI rule selectors", () => {
+    assert.deepEqual(CONDITION_KIND_OPTIONS.find(({ value }) => value === "EMA_CROSS_CONFIRMATION"),
+      { value: "EMA_CROSS_CONFIRMATION", label: "EMA cross confirmation" });
+    assert.equal(GROUP_CHILD_KINDS.includes("EMA_CROSS_CONFIRMATION"), true);
+  });
+
   test("creates every supported rule kind", () => {
     assert.equal(conditionKind(newCondition("ALL")), "ALL");
     assert.equal(conditionKind(newCondition("ANY")), "ANY");
