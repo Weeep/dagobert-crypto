@@ -22,6 +22,8 @@ export function requiredCandles(condition: StrategyCondition): number {
   if (condition.indicator === "POSITION_RETURN_PCT") return 1;
   if (condition.indicator === "EMA_CROSS_CONFIRMATION")
     return condition.period + condition.confirmationCandles;
+  if (condition.indicator === "MARKET_REGIME") return 100;
+  if (condition.indicator === "EMA_SLOPE") return condition.period + condition.lookbackCandles;
   return condition.indicator === "RSI" ? condition.period + 1 : condition.period;
 }
 

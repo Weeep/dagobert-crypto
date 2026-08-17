@@ -111,6 +111,31 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
         <p className="text-xs text-slate-500 sm:col-span-3">Matches once when the selected number of closes are strictly on the chosen side of their own EMA, immediately after a close on the opposite side.</p>
       </div>}
 
+      {"indicator" in condition && condition.indicator === "MARKET_REGIME" &&
+        <div className="mt-4 grid gap-3 sm:grid-cols-1">
+          <Field label="Required regime"><select className={inputClass} value={condition.value}
+            onChange={(event) => replace({ ...condition, value: event.target.value as typeof condition.value })}>
+            {(["BULLISH", "BEARISH", "SIDEWAYS"] as const).map((value) => <option key={value}>{value}</option>)}
+          </select></Field>
+          <p className="text-xs text-slate-500">Bullish means EMA7 &gt; EMA25 &gt; EMA100; bearish is the reverse ordering. Every other ordering is sideways.</p>
+        </div>}
+
+      {"indicator" in condition && condition.indicator === "EMA_SLOPE" &&
+        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <Field label="EMA period"><input className={inputClass} type="number" min={1} step={1}
+            value={condition.period} onChange={(event) => replace({ ...condition, period: Number(event.target.value) })} /></Field>
+          <Field label="Lookback candles"><input className={inputClass} type="number" min={1} step={1}
+            value={condition.lookbackCandles}
+            onChange={(event) => replace({ ...condition, lookbackCandles: Number(event.target.value) })} /></Field>
+          <Field label="Operator"><select className={inputClass} value={condition.operator}
+            onChange={(event) => replace({ ...condition, operator: event.target.value as typeof condition.operator })}>
+            {(["LT", "LTE", "GT", "GTE"] as const).map((operator) => <option key={operator}>{operator}</option>)}
+          </select></Field>
+          <Field label="Slope threshold %"><input className={inputClass} type="number" step="0.1"
+            value={condition.value} onChange={(event) => replace({ ...condition, value: Number(event.target.value) })} /></Field>
+          <p className="text-xs text-slate-500 sm:col-span-4">Signed EMA percentage change over the selected candle lookback. Positive values mean the EMA rose.</p>
+        </div>}
+
       {"indicator" in condition && condition.indicator === "POSITION_RETURN_PCT" &&
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Field label="Operator"><select className={inputClass} value={condition.operator}

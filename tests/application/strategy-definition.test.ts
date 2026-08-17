@@ -94,6 +94,10 @@ describe("strategy definition v1", () => {
     assert.equal(validateStrategyDefinition({ ...example,
       entry: { indicator: "EMA_CROSS_CONFIRMATION", period: 100, direction: "ABOVE", confirmationCandles: 3 } }).ok, true);
     assert.equal(validateStrategyDefinition({ ...example,
+      entry: { indicator: "MARKET_REGIME", value: "BULLISH" } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example,
+      entry: { indicator: "EMA_SLOPE", period: 100, lookbackCandles: 12, operator: "GTE", value: 0.3 } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example,
       entryPolicy: { trigger: "ON_FALSE_TO_TRUE", cooldownCandles: 12 } }).ok, true);
     assert.equal(validateStrategyDefinition({ ...example, exit: { any: [
       { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 },

@@ -66,7 +66,7 @@ An `any` group matches when one or more children match. It must contain at least
 
 ## 3. Comparison operators
 
-RSI, signed EMA-deviation, and position-return conditions support these operators:
+RSI, signed EMA-deviation, EMA-slope, and position-return conditions support these operators:
 
 | Operator | Meaning |
 | --- | --- |
@@ -263,6 +263,45 @@ netReturnPct = (netExitProceeds - entryOutflow) / entryOutflow * 100
 
 Each open lot is evaluated independently. Only lots for which the exit tree matches are selected for sale.
 
+### 4.7. `MARKET_REGIME`
+
+Classifies the market from the strict ordering of three fixed EMAs:
+
+- `BULLISH` when EMA7 > EMA25 > EMA100;
+- `BEARISH` when EMA7 < EMA25 < EMA100;
+- `SIDEWAYS` for every other ordering, including equal EMA values.
+
+```json
+{
+  "indicator": "MARKET_REGIME",
+  "value": "BULLISH"
+}
+```
+
+The condition matches when the calculated classification equals `value`. The only supported values are `BULLISH`, `BEARISH`, and `SIDEWAYS`. It requires 100 closed candles.
+
+### 4.8. `EMA_SLOPE`
+
+Compares an EMA's signed percentage change over a candle lookback:
+
+```text
+(current EMA(period) - EMA(period) lookbackCandles ago) / EMA(period) lookbackCandles ago * 100
+```
+
+For example, this matches when EMA100 rose by at least 0.3% over the last 12 candles:
+
+```json
+{
+  "indicator": "EMA_SLOPE",
+  "period": 100,
+  "lookbackCandles": 12,
+  "operator": "GTE",
+  "value": 0.3
+}
+```
+
+Both `period` and `lookbackCandles` must be positive integers. `value` is a finite signed percentage, so negative thresholds can describe falling EMAs. The supported operators are `LT`, `LTE`, `GT`, and `GTE`. The condition requires `period + lookbackCandles` closed candles (112 in the example).
+
 ## 5. Entry trigger policy
 
 The optional `entryPolicy` controls when a matching entry condition may open a new position.
@@ -403,6 +442,8 @@ The system loads enough history for the most demanding branch in the complete co
 | `EMA_DISTANCE` | `period` |
 | `EMA_DEVIATION_PCT` | `period` |
 | `EMA_CROSS_CONFIRMATION` | `period + confirmationCandles` |
+| `MARKET_REGIME` | 100 |
+| `EMA_SLOPE` | `period + lookbackCandles` |
 | `candleSequence` | `count` |
 | `POSITION_RETURN_PCT` | 1, plus an open-position and fee context |
 | `all` / `any` | maximum requirement among their children |
@@ -412,7 +453,7 @@ When there is not enough history, the affected leaf reports `INSUFFICIENT_HISTOR
 ## 8. Common configuration mistakes
 
 - Using `POSITION_RETURN_PCT` in `entry`: it is not supported because it requires an open position-lot context.
-- Supplying zero or a fractional `period`, `confirmationCandles`, or `count`: these values must be positive integers.
+- Supplying zero or a fractional `period`, `lookbackCandles`, `confirmationCandles`, or `count`: these values must be positive integers.
 - Using `maximumDistancePct: 2.25` with `EMA_DISTANCE`: at most one decimal place is supported; use a value such as `2.2` instead.
 - Expecting equality to count as the new `ABOVE` or `BELOW` side: confirmation and distance checks use strict comparisons on the new side.
 - Using a level condition without an entry trigger policy: an RSI or EMA-distance condition that remains true for several candles can cause multiple entries. Use `ON_FALSE_TO_TRUE` or a cooldown when that is not desired.

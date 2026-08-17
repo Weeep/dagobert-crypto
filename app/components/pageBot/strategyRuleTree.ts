@@ -1,6 +1,6 @@
 import type { StrategyCondition } from "@/src/modules/strategy/domain/StrategyDefinition";
 
-export type ConditionKind = "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
+export type ConditionKind = "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "MARKET_REGIME" | "EMA_SLOPE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
 
 export const CONDITION_KIND_OPTIONS: ReadonlyArray<{ value: ConditionKind; label: string }> = [
   { value: "ALL", label: "All conditions" },
@@ -9,12 +9,14 @@ export const CONDITION_KIND_OPTIONS: ReadonlyArray<{ value: ConditionKind; label
   { value: "EMA_DISTANCE", label: "EMA proximity (legacy)" },
   { value: "EMA_DEVIATION_PCT", label: "EMA signed deviation %" },
   { value: "EMA_CROSS_CONFIRMATION", label: "EMA cross confirmation" },
+  { value: "MARKET_REGIME", label: "Market regime" },
+  { value: "EMA_SLOPE", label: "EMA slope %" },
   { value: "CANDLE_SEQUENCE", label: "Candle sequence" },
   { value: "POSITION_RETURN_PCT", label: "Position net return %" },
 ];
 
 export const GROUP_CHILD_KINDS: readonly ConditionKind[] = [
-  "RSI", "EMA_DISTANCE", "EMA_DEVIATION_PCT", "EMA_CROSS_CONFIRMATION", "CANDLE_SEQUENCE",
+  "RSI", "EMA_DISTANCE", "EMA_DEVIATION_PCT", "EMA_CROSS_CONFIRMATION", "MARKET_REGIME", "EMA_SLOPE", "CANDLE_SEQUENCE",
   "POSITION_RETURN_PCT", "ALL", "ANY",
 ];
 
@@ -35,6 +37,9 @@ export const newCondition = (kind: ConditionKind): StrategyCondition => {
     return { indicator: "EMA_DEVIATION_PCT", period: 100, operator: "LTE", value: -2 };
   if (kind === "EMA_CROSS_CONFIRMATION")
     return { indicator: "EMA_CROSS_CONFIRMATION", period: 100, direction: "ABOVE", confirmationCandles: 3 };
+  if (kind === "MARKET_REGIME") return { indicator: "MARKET_REGIME", value: "BULLISH" };
+  if (kind === "EMA_SLOPE")
+    return { indicator: "EMA_SLOPE", period: 100, lookbackCandles: 12, operator: "GTE", value: 0.3 };
   if (kind === "POSITION_RETURN_PCT")
     return { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 };
   return { candleSequence: { count: 3, direction: "RED", minimumBodyChangePct: 1 } };

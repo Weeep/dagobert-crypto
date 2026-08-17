@@ -22,6 +22,8 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
       { $ref: "#/$defs/emaDistance" }, { $ref: "#/$defs/candleSequence" },
       { $ref: "#/$defs/emaDeviationPct" },
       { $ref: "#/$defs/emaCrossConfirmation" },
+      { $ref: "#/$defs/marketRegime" },
+      { $ref: "#/$defs/emaSlope" },
       { $ref: "#/$defs/positionReturnPct" },
     ] },
     all: { type: "object", additionalProperties: false, required: ["all"], properties: {
@@ -48,6 +50,16 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
       required: ["indicator", "period", "direction", "confirmationCandles"], properties: {
         indicator: { const: "EMA_CROSS_CONFIRMATION" }, period: { type: "integer", minimum: 1 },
         direction: { enum: ["ABOVE", "BELOW"] }, confirmationCandles: { type: "integer", minimum: 1 },
+      } },
+    marketRegime: { type: "object", additionalProperties: false,
+      required: ["indicator", "value"], properties: {
+        indicator: { const: "MARKET_REGIME" }, value: { enum: ["BULLISH", "BEARISH", "SIDEWAYS"] },
+      } },
+    emaSlope: { type: "object", additionalProperties: false,
+      required: ["indicator", "period", "lookbackCandles", "operator", "value"], properties: {
+        indicator: { const: "EMA_SLOPE" }, period: { type: "integer", minimum: 1 },
+        lookbackCandles: { type: "integer", minimum: 1 },
+        operator: { enum: ["LT", "LTE", "GT", "GTE"] }, value: { type: "number" },
       } },
     positionReturnPct: { type: "object", additionalProperties: false,
       required: ["indicator", "operator", "value"], properties: {

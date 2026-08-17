@@ -11,7 +11,7 @@ import type { StrategyPositionLotContext } from "./StrategyEngine";
 
 export type ConditionObservedValues = Record<string, string | number | boolean | null | string[]>;
 export type ConditionEvaluation = {
-  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
+  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "MARKET_REGIME" | "EMA_SLOPE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
   matched: boolean;
   reasonCode: string;
   explanation: string;
@@ -146,6 +146,43 @@ function evaluateNode(
         closes: closes.map(String), emas: emas.map(String), previousOnOppositeSide,
         confirmedSides: confirmedSides.map(String) }, children: [],
     };
+  }
+
+  if ("indicator" in condition && condition.indicator === "MARKET_REGIME") {
+    const periods = [7, 25, 100] as const;
+    const emas = periods.map((period) => context.indicatorCache
+      ? context.indicatorCache.ema(period, endIndex(context))
+      : calculateEma(historicalCandles(context), period));
+    if (emas.some((ema) => ema === null)) return insufficient("MARKET_REGIME", 100, availableCandles(context));
+    const [ema7, ema25, ema100] = emas as [number, number, number];
+    const observed = ema7 > ema25 && ema25 > ema100 ? "BULLISH"
+      : ema7 < ema25 && ema25 < ema100 ? "BEARISH" : "SIDEWAYS";
+    const matched = observed === condition.value;
+    return { type: "MARKET_REGIME", matched,
+      reasonCode: `MARKET_REGIME_${matched ? "MATCHED" : "NOT_MATCHED"}`,
+      explanation: `Market regime was ${observed} and ${matched ? "matched" : "did not match"} ${condition.value}`,
+      observedValues: { indicator: "MARKET_REGIME", expected: condition.value, observed, ema7, ema25, ema100 },
+      children: [] };
+  }
+
+  if ("indicator" in condition && condition.indicator === "EMA_SLOPE") {
+    const required = condition.period + condition.lookbackCandles;
+    if (availableCandles(context) < required) return insufficient("EMA_SLOPE", required, availableCandles(context));
+    const currentIndex = endIndex(context);
+    const previousIndex = currentIndex - condition.lookbackCandles;
+    const currentEma = context.indicatorCache?.ema(condition.period, currentIndex)
+      ?? calculateEma(historicalCandles(context), condition.period);
+    const previousEma = context.indicatorCache?.ema(condition.period, previousIndex)
+      ?? calculateEma(historicalCandles(context).slice(0, previousIndex + 1), condition.period);
+    if (currentEma === null || previousEma === null) return insufficient("EMA_SLOPE", required, availableCandles(context));
+    const slopePct = new Big(previousEma).eq(0) ? null
+      : new Big(currentEma).minus(previousEma).div(previousEma).times(100).toString();
+    const matched = slopePct !== null && compare(slopePct, condition.value, condition.operator);
+    return { type: "EMA_SLOPE", matched, reasonCode: `EMA_SLOPE_${matched ? "MATCHED" : "NOT_MATCHED"}`,
+      explanation: `EMA(${condition.period}) changed ${slopePct ?? "undefined"}% over ${condition.lookbackCandles} candles and ${matched ? "matched" : "did not match"} ${condition.operator} ${condition.value}%`,
+      observedValues: { indicator: "EMA_SLOPE", period: condition.period,
+        lookbackCandles: condition.lookbackCandles, operator: condition.operator, expected: condition.value,
+        observed: slopePct, previousEma, currentEma }, children: [] };
   }
 
   if ("indicator" in condition && condition.indicator === "EMA_DEVIATION_PCT") {

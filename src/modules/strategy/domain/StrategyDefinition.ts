@@ -30,6 +30,15 @@ export type EmaCrossConfirmationCondition = {
   direction: EmaPosition;
   confirmationCandles: number;
 };
+export type MarketRegime = "BULLISH" | "BEARISH" | "SIDEWAYS";
+export type MarketRegimeCondition = { indicator: "MARKET_REGIME"; value: MarketRegime };
+export type EmaSlopeCondition = {
+  indicator: "EMA_SLOPE";
+  period: number;
+  lookbackCandles: number;
+  operator: ComparisonOperator;
+  value: number;
+};
 export type CandleSequenceCondition = {
   candleSequence: { count: number; direction: "RED" | "GREEN" | "DOJI"; minimumBodyChangePct: number };
 };
@@ -41,6 +50,8 @@ export type StrategyCondition =
   | EmaDistanceCondition
   | EmaDeviationPctCondition
   | EmaCrossConfirmationCondition
+  | MarketRegimeCondition
+  | EmaSlopeCondition
   | CandleSequenceCondition;
 
 export type StrategyDefinitionV1 = {
@@ -147,6 +158,21 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
           issue(`${path}.direction`, "VALUE", "direction must be ABOVE or BELOW");
         if (!positiveInteger(candidate.confirmationCandles))
           issue(`${path}.confirmationCandles`, "VALUE", "confirmationCandles must be a positive safe integer");
+      } else if (candidate.indicator === "MARKET_REGIME") {
+        if (!exactKeys(candidate, ["indicator", "value"]))
+          issue(path, "PROPERTIES", "MARKET_REGIME condition contains unsupported properties");
+        if (!["BULLISH", "BEARISH", "SIDEWAYS"].includes(candidate.value as string))
+          issue(`${path}.value`, "VALUE", "MARKET_REGIME value must be BULLISH, BEARISH, or SIDEWAYS");
+      } else if (candidate.indicator === "EMA_SLOPE") {
+        if (!exactKeys(candidate, ["indicator", "period", "lookbackCandles", "operator", "value"]))
+          issue(path, "PROPERTIES", "EMA_SLOPE condition contains unsupported properties");
+        if (!positiveInteger(candidate.period)) issue(`${path}.period`, "VALUE", "period must be a positive safe integer");
+        if (!positiveInteger(candidate.lookbackCandles))
+          issue(`${path}.lookbackCandles`, "VALUE", "lookbackCandles must be a positive safe integer");
+        if (!["LT", "LTE", "GT", "GTE"].includes(candidate.operator as string))
+          issue(`${path}.operator`, "UNSUPPORTED_OPERATOR", "EMA_SLOPE supports LT, LTE, GT, and GTE");
+        if (typeof candidate.value !== "number" || !Number.isFinite(candidate.value))
+          issue(`${path}.value`, "VALUE", "EMA_SLOPE value must be a finite signed percentage");
       } else if (candidate.indicator === "POSITION_RETURN_PCT") {
         if (!exactKeys(candidate, ["indicator", "operator", "value"]))
           issue(path, "PROPERTIES", "POSITION_RETURN_PCT condition contains unsupported properties");

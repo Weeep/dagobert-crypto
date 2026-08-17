@@ -92,6 +92,35 @@ describe("pure condition-tree evaluator", () => {
     assert.ok(Math.abs(Number(result.observedValues.observed) + 2.0408163265306123) < 1e-12);
   });
 
+  test("classifies market regime from EMA7, EMA25, and EMA100 ordering", () => {
+    const rising = candles(Array.from({ length: 100 }, (_, index) => index + 1));
+    const bullish = evaluateCondition({ indicator: "MARKET_REGIME", value: "BULLISH" }, { candles: rising });
+    assert.equal(bullish.matched, true);
+    assert.equal(bullish.observedValues.observed, "BULLISH");
+    const falling = candles(Array.from({ length: 100 }, (_, index) => 100 - index));
+    assert.equal(evaluateCondition({ indicator: "MARKET_REGIME", value: "BEARISH" },
+      { candles: falling }).matched, true);
+    const flat = candles(Array(100).fill(10));
+    assert.equal(evaluateCondition({ indicator: "MARKET_REGIME", value: "SIDEWAYS" },
+      { candles: flat }).matched, true);
+    assert.equal(evaluateCondition({ indicator: "MARKET_REGIME", value: "BULLISH" },
+      { candles: candles([1, 2]) }).reasonCode, "INSUFFICIENT_HISTORY");
+  });
+
+  test("compares signed EMA slope over the configured candle lookback", () => {
+    const history = candles([100, 100, 100, 103]);
+    const rising = evaluateCondition({ indicator: "EMA_SLOPE", period: 2, lookbackCandles: 2,
+      operator: "GTE", value: 1 }, { candles: history });
+    assert.equal(rising.matched, true);
+    assert.equal(rising.observedValues.previousEma, 100);
+    assert.equal(rising.observedValues.currentEma, 102);
+    assert.equal(rising.observedValues.observed, "2");
+    assert.equal(evaluateCondition({ indicator: "EMA_SLOPE", period: 2, lookbackCandles: 2,
+      operator: "GT", value: 2 }, { candles: history }).matched, false);
+    assert.equal(evaluateCondition({ indicator: "EMA_SLOPE", period: 2, lookbackCandles: 2,
+      operator: "GTE", value: 1 }, { candles: history.slice(1) }).reasonCode, "INSUFFICIENT_HISTORY");
+  });
+
   test("confirms an EMA crossing against each candle's contemporaneous EMA only once", () => {
     const condition = { indicator: "EMA_CROSS_CONFIRMATION" as const, period: 2,
       direction: "ABOVE" as const, confirmationCandles: 3 };
