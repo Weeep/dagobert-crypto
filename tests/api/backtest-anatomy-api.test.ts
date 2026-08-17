@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createBacktestAnatomyHandler } from "@/pages/api/backtests";
+import { backtestStrategyIdentity, createBacktestAnatomyHandler } from "@/pages/api/backtests";
 
 const request = (method: string) => ({ method, cookies: {} }) as unknown as NextApiRequest;
 const response = () => { const state = { status: 200, body: undefined as unknown, allow: "" };
@@ -10,7 +10,7 @@ const response = () => { const state = { status: 200, body: undefined as unknown
   return { state, res }; };
 
 test("backtest anatomy API returns only the authenticated user's grouped history", async () => {
-  const calls: string[] = []; const strategies = [{ id: "strategy", name: "RSI", runs: [] }];
+  const calls: string[] = []; const strategies = [{ id: "strategy", name: "RSI", versions: [] }];
   const handler = createBacktestAnatomyHandler({ listForUser: async (userId) => { calls.push(userId); return strategies; } },
     async () => "owner");
   const output = response(); await handler(request("GET"), output.res);
@@ -25,4 +25,12 @@ test("backtest anatomy API enforces its method and sanitizes failures", async ()
     async () => "owner")(request("GET"), failed.res);
   assert.equal(failed.state.status, 500);
   assert.deepEqual(failed.state.body, { error: { code: "INTERNAL_ERROR", message: "Backtest history could not be loaded" } });
+});
+
+test("backtest grouping uses the immutable run snapshot instead of the bot's current strategy", () => {
+  const identity = backtestStrategyIdentity({ strategyId: "momentum", version: 9,
+    definition: { name: "EMA100 Momentum Breakout", entry: { all: [] } } },
+  { id: "pullback", name: "EMA100 RSI Pullback", version: 2 });
+  assert.deepEqual(identity, { id: "momentum", name: "EMA100 Momentum Breakout", version: 9,
+    definition: { name: "EMA100 Momentum Breakout", entry: { all: [] } } });
 });
