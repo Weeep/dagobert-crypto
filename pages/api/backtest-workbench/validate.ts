@@ -32,9 +32,16 @@ export const createWorkbenchValidationHandler = (
     const interval = MARKET_INTERVAL_MILLISECONDS[timeframe];
     const expectedFirst = new Date(Math.ceil(from.getTime() / interval) * interval);
     const expectedLast = new Date(Math.floor(to.getTime() / interval) * interval);
-    const boundaryCandles = await candles.findRange(row.pairSymbol, timeframe, expectedFirst, expectedLast);
-    const firstCandle = boundaryCandles[0]?.openTime.getTime() === expectedFirst.getTime();
-    const lastCandle = boundaryCandles.at(-1)?.openTime.getTime() === expectedLast.getTime();
+    const [firstBoundary, lastBoundary] = await Promise.all([
+      candles.findRange(row.pairSymbol, timeframe, expectedFirst, expectedFirst),
+      expectedFirst.getTime() === expectedLast.getTime()
+        ? Promise.resolve([])
+        : candles.findRange(row.pairSymbol, timeframe, expectedLast, expectedLast),
+    ]);
+    const firstCandle = firstBoundary[0]?.openTime.getTime() === expectedFirst.getTime();
+    const lastCandle = expectedFirst.getTime() === expectedLast.getTime()
+      ? firstCandle
+      : lastBoundary[0]?.openTime.getTime() === expectedLast.getTime();
     return { id: row.id, valid: firstCandle && lastCandle, firstCandle, lastCandle,
       expectedFirst: expectedFirst.toISOString(), expectedLast: expectedLast.toISOString(),
       message: firstCandle && lastCandle ? "Both boundary candles are available." :
