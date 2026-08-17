@@ -4,6 +4,7 @@ import type { Candle } from "@/src/modules/market";
 import {
   evaluateCondition,
   evaluateStrategy,
+  createHistoricalIndicatorCache,
   type StrategyDefinitionV1,
   type StrategyPositionContext,
 } from "@/src/modules/strategy";
@@ -119,6 +120,28 @@ describe("pure condition-tree evaluator", () => {
       operator: "GT", value: 2 }, { candles: history }).matched, false);
     assert.equal(evaluateCondition({ indicator: "EMA_SLOPE", period: 2, lookbackCandles: 2,
       operator: "GTE", value: 1 }, { candles: history.slice(1) }).reasonCode, "INSUFFICIENT_HISTORY");
+  });
+
+  test("uses the same bounded EMA seeds in cached backtests and live windows", () => {
+    const prefix = candles([
+      ...Array(100).fill(100),
+      ...Array.from({ length: 100 }, (_, index) => 200 + index),
+    ]);
+    const cache = createHistoricalIndicatorCache(prefix);
+
+    for (const condition of [
+      { indicator: "MARKET_REGIME" as const, value: "BULLISH" as const },
+      { indicator: "EMA_SLOPE" as const, period: 2, lookbackCandles: 2,
+        operator: "GTE" as const, value: 0 },
+    ]) {
+      const required = condition.indicator === "MARKET_REGIME"
+        ? 100 : condition.period + condition.lookbackCandles;
+      const backtest = evaluateCondition(condition, {
+        candles: prefix, endIndex: prefix.length - 1, indicatorCache: cache,
+      });
+      const live = evaluateCondition(condition, { candles: prefix.slice(-required) });
+      assert.deepEqual(backtest, live);
+    }
   });
 
   test("confirms an EMA crossing against each candle's contemporaneous EMA only once", () => {

@@ -150,9 +150,11 @@ function evaluateNode(
 
   if ("indicator" in condition && condition.indicator === "MARKET_REGIME") {
     const periods = [7, 25, 100] as const;
-    const emas = periods.map((period) => context.indicatorCache
-      ? context.indicatorCache.ema(period, endIndex(context))
-      : calculateEma(historicalCandles(context), period));
+    // Live evaluation loads exactly the required trailing history. Recompute
+    // from that same bounded window in backtests so each EMA has an identical
+    // SMA seed in both execution modes.
+    const calculationCandles = trailingCandles(context, 100);
+    const emas = periods.map((period) => calculateEma(calculationCandles, period));
     if (emas.some((ema) => ema === null)) return insufficient("MARKET_REGIME", 100, availableCandles(context));
     const [ema7, ema25, ema100] = emas as [number, number, number];
     const observed = ema7 > ema25 && ema25 > ema100 ? "BULLISH"
@@ -168,12 +170,12 @@ function evaluateNode(
   if ("indicator" in condition && condition.indicator === "EMA_SLOPE") {
     const required = condition.period + condition.lookbackCandles;
     if (availableCandles(context) < required) return insufficient("EMA_SLOPE", required, availableCandles(context));
-    const currentIndex = endIndex(context);
-    const previousIndex = currentIndex - condition.lookbackCandles;
-    const currentEma = context.indicatorCache?.ema(condition.period, currentIndex)
-      ?? calculateEma(historicalCandles(context), condition.period);
-    const previousEma = context.indicatorCache?.ema(condition.period, previousIndex)
-      ?? calculateEma(historicalCandles(context).slice(0, previousIndex + 1), condition.period);
+    // Bound both EMA calculations to the history live evaluation requests.
+    // The earlier value is the SMA seed after `period` candles and the current
+    // value is obtained after applying the following lookback candles.
+    const calculationCandles = trailingCandles(context, required);
+    const previousEma = calculateEma(calculationCandles.slice(0, condition.period), condition.period);
+    const currentEma = calculateEma(calculationCandles, condition.period);
     if (currentEma === null || previousEma === null) return insufficient("EMA_SLOPE", required, availableCandles(context));
     const slopePct = new Big(previousEma).eq(0) ? null
       : new Big(currentEma).minus(previousEma).div(previousEma).times(100).toString();
