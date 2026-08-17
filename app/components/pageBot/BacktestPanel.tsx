@@ -38,7 +38,8 @@ export function BacktestPanel({ api, bots }: Props) {
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-400">Historical execution</p>
         <h2 className="mt-1 text-2xl font-bold">Run backtest</h2>
-        <p className="mt-2 max-w-3xl text-sm text-slate-400">Run the selected bot against persisted closed candles. Signals execute at the next candle open with configured fees and slippage.</p></div>
+        <p className="mt-2 max-w-3xl text-sm text-slate-400">Run the selected bot against persisted closed candles. Signals execute at the next candle open with configured fees and slippage.</p>
+        <a href="/backtests" className="mt-3 inline-block text-sm font-semibold text-cyan-400 hover:text-cyan-300">View backtest anatomy →</a></div>
       <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${busy ? "border-amber-600 bg-amber-950 text-amber-200" : result ? "border-emerald-600 bg-emerald-950 text-emerald-200" : "border-slate-600 bg-slate-800 text-slate-300"}`}>
         {busy ? "RUNNING…" : result ? "COMPLETED" : "READY"}</span>
     </div>

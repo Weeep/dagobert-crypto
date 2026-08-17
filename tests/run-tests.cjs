@@ -35,4 +35,5 @@ require('./infrastructure/redis-database-tooling.test.ts');
 require('./api/read-api.test.ts');
 require('./api/strategy-api.test.ts');
 require('./api/backtest-api.test.ts');
+require('./api/backtest-anatomy-api.test.ts');
 require('./infrastructure/http-read-repositories.test.ts');
