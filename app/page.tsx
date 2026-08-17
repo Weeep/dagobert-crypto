@@ -9,12 +9,14 @@ import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 import PageBot from "./components/pageBot/PageBot";
+import NewBotWorkbench from "./components/pageBot/NewBotWorkbench";
 
 const pages = {
   Transactions: PageTransactions,
   Charts: Charts,
   Config: PageConfig,
-  Bot: PageBot,
+  Bot: NewBotWorkbench,
+  "Bot (deprecated)": PageBot,
 };
 
 export default function Home() {
