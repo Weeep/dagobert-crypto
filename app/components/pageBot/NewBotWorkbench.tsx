@@ -12,6 +12,10 @@ import { newCondition } from "./strategyRuleTree";
 
 type MarketRow = { id: string; pairSymbol: string; timeframe: string; validation?: Validation };
 type Validation = { valid: boolean; firstCandle: boolean; lastCandle: boolean; message: string };
+type BacktestResult = { id: string; rowId: string; pairSymbol: string; timeframe: string; candleCount: number;
+  decisions: { HOLD: number; BUY: number; SELL: number }; buyCount: number; sellCount: number; openBuyCount: number;
+  nearMisses: { condition: string; count: number }[]; metrics: { netProfit: string; returnPct: string;
+    endingEquity: string; maximumDrawdownPct: string; totalFees: string; tradeCount: number } };
 const fresh = (): StrategyDefinitionV1 => ({ schemaVersion: 1, name: "New backtest strategy",
   entryPolicy: { trigger: "ON_FALSE_TO_TRUE", cooldownCandles: 0 }, entry: { all: [newCondition("RSI")] },
   exit: { all: [{ indicator: "RSI", period: 14, operator: "GTE", value: 80 }] } });
@@ -27,6 +31,8 @@ export default function NewBotWorkbench() {
   const [jsonError, setJsonError] = useState(""); const [issues, setIssues] = useState<StrategyValidationIssue[]>([]);
   const [pairs, setPairs] = useState<PairDto[]>([]); const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [workbenchId, setWorkbenchId] = useState(""); const [results, setResults] = useState<BacktestResult[]>([]);
+  const [saving, setSaving] = useState(""); const [saved, setSaved] = useState<Record<string, string>>({});
   const [from, setFrom] = useState(() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 30); return isoDate(d); });
   const [to, setTo] = useState(() => isoDate(new Date()));
   const [rows, setRows] = useState<MarketRow[]>(() => [initialRow()]);
@@ -55,6 +61,40 @@ export default function NewBotWorkbench() {
     } catch (error) { setMessage(error instanceof Error ? error.message : "Validation failed"); } finally { setBusy(false); }
   };
   const validCount = rows.filter((row) => row.validation?.valid).length;
+  const runBacktest = async () => {
+    setBusy(true); setMessage(""); setResults([]); setWorkbenchId(""); setSaved({});
+    try {
+      if (jsonError) throw new Error("Fix the strategy JSON before running the backtest.");
+      const strategy = await strategyApi.validate(definition); setIssues(strategy.issues);
+      if (!strategy.valid) throw new Error("The strategy contains validation errors.");
+      const coverageResponse = await fetch("/api/backtest-workbench/validate", { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rows,
+          from: `${from}T00:00:00.000Z`, to: `${to}T23:59:59.999Z` }) });
+      const coverage = await coverageResponse.json();
+      if (!coverageResponse.ok) throw new Error(coverage.error?.message ?? "Validation failed");
+      setRows((current) => current.map((row) => ({ ...row,
+        validation: coverage.results.find((result: { id: string }) => result.id === row.id) })));
+      const eligible = rows.filter((row) => coverage.results.find((result: Validation & { id: string }) =>
+        result.id === row.id)?.valid);
+      if (!eligible.length) throw new Error("No row has both boundary candles; nothing can be backtested.");
+      const response = await fetch("/api/backtest-workbench/run", { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ definition, rows: eligible,
+          from: `${from}T00:00:00.000Z`, to: `${to}T23:59:59.999Z` }) });
+      const body = await response.json(); if (!response.ok) throw new Error(body.error?.message ?? "Backtest failed");
+      setWorkbenchId(body.workbenchId); setResults(body.results);
+      setMessage(`${body.results.length} temporary bot backtest completed. Results remain in memory for one hour.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Backtest failed"); }
+    finally { setBusy(false); }
+  };
+  const save = async (kind: "strategy" | "bot" | "run", resultId = "", detail = "summary") => {
+    const key = `${kind}:${resultId}:${detail}`; setSaving(key); setMessage("");
+    try { const response = await fetch("/api/backtest-workbench/save", { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workbenchId, resultId, kind, detail }) });
+      const body = await response.json(); if (!response.ok) throw new Error(body.error?.message ?? "Save failed");
+      setSaved((current) => ({ ...current, [key]: "Saved" })); setMessage(`${kind} saved successfully.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Save failed"); }
+    finally { setSaving(""); }
+  };
 
   return <div className="mx-auto max-w-[1600px] text-slate-100">
     <div className="mb-6"><p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400">New bot workbench</p>
@@ -80,7 +120,14 @@ export default function NewBotWorkbench() {
         <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5"><div className="grid gap-4 sm:grid-cols-2"><label className="flex flex-col gap-2 text-sm">From<input type="date" className={input} value={from} onChange={(e) => { setFrom(e.target.value); clearCoverage(); }} /></label><label className="flex flex-col gap-2 text-sm">To<input type="date" className={input} value={to} onChange={(e) => { setTo(e.target.value); clearCoverage(); }} /></label></div>
           <button disabled={busy || !from || !to || from > to} onClick={() => void validate()} className="mt-4 w-full rounded-xl border border-emerald-600 px-5 py-3 font-semibold text-emerald-200 disabled:opacity-40">{busy ? "Validating…" : "Validate strategy & candle coverage"}</button></section>
         <section className="rounded-2xl border border-emerald-900 bg-gradient-to-br from-slate-900 to-emerald-950/30 p-5"><div className="flex flex-wrap items-center justify-between gap-4"><div><h3 className="text-xl font-bold">Run backtest</h3><p className="text-sm text-slate-400">Fixed settings: 55 USDC budget · 10 USDC/position · 0.001 fee · 0.001 slippage.</p></div><span className="rounded-full bg-slate-950 px-3 py-1 text-xs">{validCount} / {rows.length} ready</span></div>
-          <button disabled className="mt-5 w-full rounded-xl bg-emerald-700 px-5 py-3 font-bold opacity-40">Run backtest · coming in phase 2</button><p className="mt-2 text-xs text-slate-500">Phase 2 will add in-memory bots, near-miss grouping, parallel results, and selective strategy/bot/run saving.</p></section>
+          <button disabled={busy || !from || !to || from > to} onClick={() => void runBacktest()} className="mt-5 w-full rounded-xl bg-emerald-700 px-5 py-3 font-bold hover:bg-emerald-600 disabled:opacity-40">{busy ? "Validating & running…" : "Run backtest"}</button><p className="mt-2 text-xs text-slate-500">Validation is repeated automatically. Rows without complete boundary coverage are skipped.</p></section>
+        {results.length > 0 && <section className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-2xl font-bold">Parallel results</h3><p className="text-sm text-slate-400">Temporary results are not written to the database until you choose what to save.</p></div>
+          <button disabled={Boolean(saving) || Boolean(saved["strategy::summary"])} onClick={() => void save("strategy")} className="rounded-xl border border-cyan-600 px-4 py-2 text-sm text-cyan-200 disabled:opacity-50">{saved["strategy::summary"] ?? "Save strategy"}</button></div>
+          {results.map((result) => <article key={result.id} className="rounded-2xl border border-slate-700 bg-slate-900 p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="text-xl font-bold text-cyan-200">{result.pairSymbol} · {result.timeframe}</h4><p className="text-xs text-slate-500">{result.candleCount} candles evaluated</p></div><div className={`text-right ${Number(result.metrics.netProfit) >= 0 ? "text-emerald-300" : "text-rose-300"}`}><strong className="text-xl">{result.metrics.netProfit} USDC</strong><p className="text-xs">{result.metrics.returnPct}% return</p></div></div>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4"><div className="rounded-lg bg-slate-950 p-3"><span className="text-slate-500">BUY fills</span><strong className="block">{result.buyCount}</strong></div><div className="rounded-lg bg-slate-950 p-3"><span className="text-slate-500">SELL fills</span><strong className="block">{result.sellCount}</strong></div><div className="rounded-lg bg-slate-950 p-3"><span className="text-slate-500">Open BUYs</span><strong className="block">{result.openBuyCount}</strong></div><div className="rounded-lg bg-slate-950 p-3"><span className="text-slate-500">Max drawdown</span><strong className="block">{result.metrics.maximumDrawdownPct}%</strong></div></div>
+            {result.nearMisses.length > 0 && <div className="mt-4 rounded-xl border border-amber-900/70 bg-amber-950/20 p-4"><h5 className="font-semibold text-amber-200">1 condition missed</h5><div className="mt-2 flex flex-wrap gap-2">{result.nearMisses.map((miss) => <span key={miss.condition} className="rounded-full bg-slate-950 px-3 py-1 text-xs"><strong className="text-amber-300">{miss.count}</strong> {miss.condition}</span>)}</div></div>}
+            <div className="mt-4 flex flex-wrap gap-2">{(["bot", "run"] as const).map((kind) => kind === "bot" ? <button key={kind} disabled={Boolean(saving) || Boolean(saved[`bot:${result.id}:summary`])} onClick={() => void save("bot", result.id)} className="rounded-lg border border-slate-600 px-3 py-2 text-xs disabled:opacity-50">{saved[`bot:${result.id}:summary`] ?? "Save bot"}</button> : <span key={kind} className="contents"><button disabled={Boolean(saving) || Boolean(saved[`run:${result.id}:summary`])} onClick={() => void save("run", result.id, "summary")} className="rounded-lg border border-emerald-700 px-3 py-2 text-xs text-emerald-200 disabled:opacity-50">{saved[`run:${result.id}:summary`] ?? "Save run · BUY/SELL only"}</button><button disabled={Boolean(saving) || Boolean(saved[`run:${result.id}:detailed`])} onClick={() => void save("run", result.id, "detailed")} className="rounded-lg border border-cyan-700 px-3 py-2 text-xs text-cyan-200 disabled:opacity-50">{saved[`run:${result.id}:detailed`] ?? "Save detailed run"}</button></span>)}</div>
+          </article>)}</section>}
         {issues.length > 0 && <div className="rounded-xl border border-rose-800 p-4 text-xs text-rose-200">{issues.map((i) => <p key={i.path}><code>{i.path}</code> — {i.message}</p>)}</div>}
         {message && <p role="status" className="rounded-xl border border-slate-700 bg-slate-900 p-4 text-sm">{message}</p>}
       </main>
