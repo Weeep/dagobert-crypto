@@ -23,7 +23,7 @@ export class CreateStrategyUseCase {
     const now = new Date();
     const strategyId = randomUUID();
     const strategy: Strategy = {
-      id: strategyId, userId: input.userId, name, description: input.description?.trim() ?? "",
+      id: strategyId, userId: input.userId, name, description: input.description?.trim() ?? "", archivedAt: null,
       versions: [{ id: randomUUID(), strategyId, version: 1, schemaVersion: input.schemaVersion ?? 1,
         definition: validated.definition, createdAt: now }], createdAt: now, updatedAt: now,
     };

@@ -14,6 +14,7 @@ export type Strategy = {
   userId: string;
   name: string;
   description: string;
+  archivedAt?: Date | null;
   versions: StrategyVersion[];
   createdAt: Date;
   updatedAt: Date;

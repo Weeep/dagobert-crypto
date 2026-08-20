@@ -8,15 +8,15 @@ import PageConfig from "./components/pageConfig/PageConfig";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
-import PageBot from "./components/pageBot/PageBot";
 import NewBotWorkbench from "./components/pageBot/NewBotWorkbench";
+import StrategiesAndBots from "./components/pageBot/StrategiesAndBots";
 
 const pages = {
   Transactions: PageTransactions,
   Charts: Charts,
   Config: PageConfig,
-  Bot: NewBotWorkbench,
-  "Bot (deprecated)": PageBot,
+  "Strategies & Bots": StrategiesAndBots,
+  "Bot Workbench": NewBotWorkbench,
 };
 
 export default function Home() {
@@ -63,14 +63,14 @@ export default function Home() {
   const addPageContent = () => {
     return (
       <div>
-        <header className="flex justify-between items-center p-4 border-b border-gray-700">
-          <h1 className="text-4xl font-bold">Dagobert</h1>
-          <nav className="flex flex-wrap items-center justify-end">
-            {Object.keys(pages).map((page) => (
+        <header className="flex flex-col gap-4 border-b border-gray-700 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <h1 className="text-3xl font-bold sm:text-4xl">Dagobert</h1>
+          <nav className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+            {(["Transactions", "Charts", "Config"] as const).map((page) => (
               <button
                 key={page}
                 onClick={() => setActivePage(page as keyof typeof pages)}
-                className={`w-36 ml-4 my-1 px-4 py-2 rounded-full font-bold transition-colors ${
+                className={`min-w-0 rounded-full px-4 py-2 text-sm font-bold transition-colors sm:w-32 ${
                   activePage === page
                     ? "bg-cyan-700 text-gray-100"
                     : "bg-blue-500 hover:bg-cyan-600 text-gray-100"
@@ -79,15 +79,23 @@ export default function Home() {
                 {page}
               </button>
             ))}
+            <details className="group relative min-w-0">
+              <summary className={`cursor-pointer list-none rounded-full px-4 py-2 text-sm font-bold ${activePage === "Strategies & Bots" || activePage === "Bot Workbench" ? "bg-cyan-700" : "bg-blue-500 hover:bg-cyan-600"}`}>Bot ▾</summary>
+              <div className="mt-2 flex w-[min(19rem,calc(100vw-2rem))] flex-col gap-1 rounded-2xl border border-slate-600 bg-slate-900 p-2 shadow-2xl sm:absolute sm:right-0 sm:z-40">
+                <button onClick={() => setActivePage("Strategies & Bots")} className="rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-800">Strategies &amp; Bots</button>
+                <button onClick={() => setActivePage("Bot Workbench")} className="rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-800">Bot Workbench</button>
+                <a href="/backtests" className="rounded-xl px-4 py-3 text-left text-sm hover:bg-slate-800">Backtest analysis</a>
+              </div>
+            </details>
             <button
               onClick={logout}
-              className="w-12 ml-4 my-1 px-4 py-2 rounded-full bg-blue-500 hover:bg-cyan-600"
+              className="w-12 rounded-full bg-blue-500 px-4 py-2 hover:bg-cyan-600"
             >
               <FontAwesomeIcon icon={faRightFromBracket} />
             </button>
           </nav>
         </header>
-        <main className="p-8">
+        <main className="min-w-0 p-3 sm:p-5 lg:p-8">
           <div className="container mx-auto">
             {ActivePageComponent && <ActivePageComponent />}
           </div>

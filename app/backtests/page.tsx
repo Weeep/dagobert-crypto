@@ -8,7 +8,7 @@ const number = (value: string) => Number(value).toLocaleString(undefined, { maxi
 const profit = (value: string) => `${Number(value) >= 0 ? "+" : ""}${number(value)} USDC`;
 const dateTime = (value: string | null) => value ? new Date(value).toLocaleString() : "—";
 
-export default function BacktestAnatomyPage() {
+export default function BacktestAnalysisPage() {
   const router = useRouter();
   const [strategies, setStrategies] = useState<BacktestAnatomyStrategy[]>([]);
   const [loading, setLoading] = useState(true); const [error, setError] = useState("");
@@ -26,7 +26,7 @@ export default function BacktestAnatomyPage() {
     <div className="mx-auto max-w-7xl">
       <a href="/" className="text-sm font-semibold text-cyan-400 hover:text-cyan-300">← Back to Dagobert</a>
       <div className="mt-5"><p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-400">Historical execution</p>
-        <h1 className="mt-1 text-3xl font-bold">Backtest anatomy</h1>
+        <h1 className="mt-1 text-3xl font-bold">Backtest analysis</h1>
         <p className="mt-2 text-sm text-slate-400">Every historical run, grouped by strategy. Open a run to inspect linked entries, exits and realized profit.</p></div>
       {loading && <p className="mt-8 text-slate-400">Loading backtest history…</p>}
       {error && <p role="alert" className="mt-8 rounded-xl border border-rose-700 bg-rose-950/50 p-4 text-rose-100">{error}</p>}

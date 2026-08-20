@@ -7,7 +7,7 @@ const mapVersion = (row: StrategyWithVersions["versions"][number]): StrategyVers
   definition: row.definition as unknown as StrategyDefinitionV1, createdAt: row.createdAt,
 });
 const mapStrategy = (row: StrategyWithVersions): Strategy => ({
-  id: row.id, userId: row.userId, name: row.name, description: row.description,
+  id: row.id, userId: row.userId, name: row.name, description: row.description, archivedAt: row.archivedAt,
   versions: row.versions.map(mapVersion), createdAt: row.createdAt, updatedAt: row.updatedAt,
 });
 const json = (value: unknown) => value as Prisma.InputJsonValue;
@@ -29,10 +29,10 @@ export class PrismaStrategyRepository implements StrategyRepository {
     await this.prisma.strategy.upsert({
       where: { id: strategy.id },
       create: { id: strategy.id, userId: strategy.userId, name: strategy.name,
-        description: strategy.description, createdAt: strategy.createdAt, updatedAt: strategy.updatedAt,
+        description: strategy.description, archivedAt: strategy.archivedAt, createdAt: strategy.createdAt, updatedAt: strategy.updatedAt,
         versions: { create: strategy.versions.map((v) => ({ id: v.id, version: v.version,
           schemaVersion: v.schemaVersion, definition: json(v.definition), createdAt: v.createdAt })) } },
-      update: { name: strategy.name, description: strategy.description, updatedAt: strategy.updatedAt },
+      update: { name: strategy.name, description: strategy.description, archivedAt: strategy.archivedAt, updatedAt: strategy.updatedAt },
     });
   }
   async createNextVersion(strategyId: string, definition: StrategyVersion["definition"], schemaVersion: number, createdAt: Date) {
