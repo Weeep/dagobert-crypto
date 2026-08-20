@@ -52,7 +52,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         item!.runner.decisions.some((decision) => decision.candleId === event.candleId && decision.evaluation.action !== "HOLD")),
       snapshots: [item!.runner.snapshots.at(-1)!],
     };
-    await postgresRepositories.backtestRunPersistenceRepository.persistCompleted(started.run.id, runner);
+    try {
+      await postgresRepositories.backtestRunPersistenceRepository.persistCompleted(started.run.id, runner);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Backtest persistence failed";
+      await postgresRepositories.backtestRunPersistenceRepository.markFailed(started.run.id, message)
+        .catch(() => undefined);
+      throw error;
+    }
     response.runId = started.run.id;
     return res.status(201).json(response);
   } catch (error) { return res.status(422).json({ error: { message: error instanceof Error ? error.message : "Save failed" } }); }

@@ -11,6 +11,7 @@ require('./application/backtest-portfolio.test.ts');
 require('./application/historical-backtest-runner.test.ts');
 require('./application/backtest-persistence-plan.test.ts');
 require('./application/run-backtest.test.ts');
+require('./application/backtest-workbench.test.ts');
 require('./application/backtest-decision-presentation.test.ts');
 require('./application/entry-trigger-policy.test.ts');
 require('./application/strategy-indicators.test.ts');

@@ -19,6 +19,16 @@ export type StoredWorkbench = { id: string; userId: string; definition: Strategy
   results: Map<string, { summary: WorkbenchResult; runner: HistoricalBacktestResult }> };
 
 const registry = new Map<string, StoredWorkbench>();
+const removeAtExpiry = (stored: StoredWorkbench) => {
+  const timeout = setTimeout(() => {
+    if (registry.get(stored.id) === stored) registry.delete(stored.id);
+  }, Math.max(0, stored.expiresAt - Date.now()));
+  timeout.unref?.();
+};
+export const storeWorkbench = (stored: StoredWorkbench) => {
+  registry.set(stored.id, stored);
+  removeAtExpiry(stored);
+};
 export const getStoredWorkbench = (id: string, userId: string) => {
   const stored = registry.get(id);
   if (!stored || stored.userId !== userId || stored.expiresAt < Date.now()) { registry.delete(id); return null; }
@@ -26,6 +36,12 @@ export const getStoredWorkbench = (id: string, userId: string) => {
 };
 
 const conditionLabel = (condition: StrategyCondition, evaluation: ConditionEvaluation): string => {
+  if ("all" in condition || "any" in condition) {
+    const type = "all" in condition ? "ALL" : "ANY";
+    const children = "all" in condition ? condition.all : condition.any;
+    return `${type}(${children.map((child, index) =>
+      conditionLabel(child, evaluation.children[index] ?? evaluation)).join(", ")})`;
+  }
   if ("indicator" in condition) {
     if (condition.indicator === "MARKET_REGIME") return `MARKET_REGIME ${condition.value}`;
     if (condition.indicator === "EMA_CROSS_CONFIRMATION")
@@ -88,7 +104,7 @@ export async function runWorkbench(input: { userId: string; definition: unknown;
     from: input.from, to: input.to, expiresAt: Date.now() + 60 * 60 * 1000,
     botIds: new Map(),
     results: new Map(resultRows.map((item) => [item.summary.id, item])) };
-  registry.set(stored.id, stored);
+  storeWorkbench(stored);
   return { workbenchId: stored.id, expiresAt: new Date(stored.expiresAt).toISOString(),
     results: resultRows.map(({ summary }) => summary) };
 }
