@@ -19,7 +19,7 @@ as the implementation.
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | Complete | Steps 0-5 and the external acceptance gate are complete; the Prisma suite and Binance/PostgreSQL smoke test verified idempotent closed-candle ingestion, gap handling, and restart safety. |
 | Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
-| Phase 4: backtesting | In progress | Steps 1-4 and Step 4A entry trigger policy are complete; position-aware exits, additional conditions, and the golden gate remain. |
+| Phase 4: backtesting | In progress | Steps 1-4D are complete, including position-aware exits and confirmed EMA crossings; the persistence acceptance gate remains. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
 | Phase 7: Spot test and live trading | Not started | Market orders can be tested and then placed on Binance Spot. |
@@ -807,7 +807,7 @@ idempotent persistence boundary.
 - [x] Step 4A: configurable level/edge entry triggers and post-fill candle cooldown.
 - [x] Step 4B: position-aware exit selection and selected-lot lifecycle.
 - [x] Step 4C: fee-aware per-lot percentage-return exit condition.
-- [ ] Step 4D: confirmed EMA crossing condition.
+- [x] Step 4D: confirmed EMA crossing condition.
 - [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.
 
 #### Step 0B execution and accounting contract
@@ -949,6 +949,26 @@ idempotent persistence boundary.
   default to `ON_FALSE_TO_TRUE` with zero cooldown to avoid accidental repeated
   entries, while loaded legacy definitions visibly retain their level-triggered
   default until a new immutable version is saved.
+
+#### Step 4D confirmed EMA crossing contract
+
+- `EMA_CROSS_CONFIRMATION` requires a positive EMA period, an `ABOVE` or
+  `BELOW` direction, and a positive confirmation-candle count. It is available
+  in nested entry and exit trees, the JSON Schema, the rule builder, and the
+  documented v1 strategy format.
+- The close immediately before the confirmation sequence must be on the
+  opposite side of, or equal to, its contemporaneous EMA. Every confirmation
+  close must then be strictly on the requested new side of its own
+  contemporaneous EMA.
+- Evaluation requires `period + confirmationCandles` closed candles and uses the
+  same bounded trailing window in historical and live execution. This keeps EMA
+  seeding deterministic across modes and prevents future candles from entering
+  the calculation.
+- The Phase 4 application golden fixture exercises the production historical
+  runner from a confirmed cross through next-open entry, fee-aware selected-lot
+  exit, next-open full-lot close, events, snapshots, and metrics. Step 5 remains
+  open until the corresponding transactional persistence acceptance gate is
+  added and the complete Phase 4 suite is verified against PostgreSQL.
 
 #### Work
 
@@ -1179,3 +1199,4 @@ At the start of every bot-related task:
 | 2026-08-15 | Phase 4 Step 4 exposes owned synchronous backtest execution through the API and Bot GUI with deterministic performance metrics, a fee/slippage-aware buy-and-hold benchmark, executed fill history, and decision reasons. |
 | 2026-08-15 | Backtest decision rows render the already persisted condition trees and observed indicator values, including RSI period, value, operator, and threshold, so HOLD and warm-up outcomes are diagnosable without reading raw JSON. |
 | 2026-08-15 | Entry execution supports backward-compatible `EVERY_MATCHING_CANDLE`, episode-based `ON_FALSE_TO_TRUE`, and an optional post-fill candle cooldown; new GUI definitions default to episode-based triggering. |
+| 2026-08-21 | Phase 4 Step 4D is closed after auditing confirmed EMA crossing across validation, schema, GUI, documentation, live/backtest bounded history, and production-runner coverage. A committed application golden fixture now fixes the complete deterministic result and metrics; Step 5 remains open for the PostgreSQL persistence gate. |
