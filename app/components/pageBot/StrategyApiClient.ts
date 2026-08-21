@@ -1,5 +1,6 @@
 import type { StrategyDto } from "@/src/modules/strategy/dto/StrategyDto";
 import type { StrategyDefinitionV1, StrategyValidationIssue } from "@/src/modules/strategy/domain/StrategyDefinition";
+import type { StrategyPerformanceDto } from "@/pages/api/strategies/performance";
 
 type StrategyVersionDto = StrategyDto["versions"][number];
 type ApiError = { error?: { message?: string } };
@@ -18,6 +19,10 @@ export class StrategyApiClient {
 
   async list() {
     return (await this.request<{ strategies: StrategyDto[] }>("/api/strategies")).strategies;
+  }
+
+  async performance() {
+    return (await this.request<{ performance: StrategyPerformanceDto[] }>("/api/strategies/performance")).performance;
   }
 
   async validate(definition: StrategyDefinitionV1) {
