@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PairDto } from "@/src/modules/pair/dto/PairDto";
-import { validateStrategyDefinition, type StrategyDefinitionV1,
+import type { StrategyDto } from "@/src/modules/strategy/dto/StrategyDto";
+import { type StrategyDefinitionV1,
   type StrategyValidationIssue } from "@/src/modules/strategy/domain/StrategyDefinition";
 import { MARKET_INTERVALS } from "@/src/shared/domain/MarketInterval";
 import { BotApiClient } from "./BotApiClient";
 import { StrategyApiClient } from "./StrategyApiClient";
-import { StrategyRuleNode } from "./StrategyRuleNode";
+import { StrategyRuleBuilder, parseStrategyJson } from "./StrategyRuleBuilder";
 import { newCondition } from "./strategyRuleTree";
 
 type MarketRow = { id: string; pairSymbol: string; timeframe: string; validation?: Validation };
@@ -30,6 +31,7 @@ export default function NewBotWorkbench() {
   const [json, setJson] = useState(() => JSON.stringify(fresh(), null, 2));
   const [jsonError, setJsonError] = useState(""); const [issues, setIssues] = useState<StrategyValidationIssue[]>([]);
   const [pairs, setPairs] = useState<PairDto[]>([]); const [message, setMessage] = useState("");
+  const [strategies, setStrategies] = useState<StrategyDto[]>([]); const [selectedStrategy, setSelectedStrategy] = useState("");
   const [busy, setBusy] = useState(false);
   const [workbenchId, setWorkbenchId] = useState(""); const [results, setResults] = useState<BacktestResult[]>([]);
   const [saving, setSaving] = useState(""); const [saved, setSaved] = useState<Record<string, string>>({});
@@ -37,13 +39,10 @@ export default function NewBotWorkbench() {
   const [to, setTo] = useState(() => isoDate(new Date()));
   const [rows, setRows] = useState<MarketRow[]>(() => [initialRow()]);
   const strategyApi = useMemo(() => new StrategyApiClient(), []);
-  useEffect(() => { new BotApiClient().listPairs().then(setPairs).catch((error) => setMessage(error.message)); }, []);
+  useEffect(() => { Promise.all([new BotApiClient().listPairs(), strategyApi.list()]).then(([loadedPairs, loadedStrategies]) => { setPairs(loadedPairs); setStrategies(loadedStrategies); }).catch((error) => setMessage(error.message)); }, [strategyApi]);
   const updateDefinition = (next: StrategyDefinitionV1) => { setDefinition(next); setJson(JSON.stringify(next, null, 2)); setJsonError(""); setIssues([]); };
-  const editJson = (value: string) => { setJson(value); try {
-    const parsed: unknown = JSON.parse(value); const validation = validateStrategyDefinition(parsed);
-    if (!validation.ok) { setIssues(validation.issues); setJsonError("The JSON is syntactically valid but is not a valid strategy."); return; }
-    setDefinition(validation.definition); setJsonError(""); setIssues([]);
-  } catch { setJsonError("The JSON is not valid yet. Fix its syntax to update the visual builder."); } };
+  const editJson = (value: string) => { setJson(value); const parsed = parseStrategyJson(value); setIssues(parsed.issues); setJsonError(parsed.error); if (parsed.definition) setDefinition(parsed.definition); };
+  const selectStrategy = (id: string) => { setSelectedStrategy(id); const strategy = strategies.find((item) => item.id === id); updateDefinition(strategy ? structuredClone(strategy.versions.at(-1)!.definition) : fresh()); };
   const updateRow = (id: string, patch: Partial<MarketRow>) => setRows((current) =>
     current.map((row) => row.id === id ? { ...row, ...patch, validation: undefined } : row));
   const clearCoverage = () => setRows((current) => current.map(({ validation: _validation, ...row }) => row));
@@ -100,14 +99,7 @@ export default function NewBotWorkbench() {
     <div className="mb-6"><p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400">New bot workbench</p>
       <h2 className="mt-1 text-3xl font-bold">Build once. Backtest many markets.</h2><p className="mt-2 text-sm text-slate-400">Create a temporary strategy and validate several pair/timeframe combinations before running them.</p></div>
     <div className="grid gap-6 xl:grid-cols-[minmax(420px,42%)_1fr]">
-      <aside className="space-y-5 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:pr-2">
-        <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5"><label className="flex flex-col gap-2 text-sm">Strategy name<input className={input} value={definition.name} onChange={(e) => updateDefinition({ ...definition, name: e.target.value })} /></label></section>
-        <div><h3 className="mb-2 font-semibold text-emerald-300">Entry conditions</h3><StrategyRuleNode condition={definition.entry} root={definition.entry} path={[]} label="Entry root" onChange={(entry) => updateDefinition({ ...definition, entry })} /></div>
-        <div><h3 className="mb-2 font-semibold text-rose-300">Exit conditions</h3><StrategyRuleNode condition={definition.exit} root={definition.exit} path={[]} label="Exit root" positionConditionsAllowed onChange={(exit) => updateDefinition({ ...definition, exit })} /></div>
-        <section className="rounded-2xl border border-cyan-900 bg-slate-900 p-4"><div className="mb-2 flex justify-between"><h3 className="font-semibold">Editable JSON</h3><span className="text-xs text-cyan-300">schema v1</span></div>
-          <textarea aria-label="Editable strategy JSON" spellCheck={false} value={json} onChange={(e) => editJson(e.target.value)} className={`${input} min-h-80 w-full resize-y font-mono text-xs leading-5`} />
-          {jsonError && <p role="alert" className="mt-2 text-xs text-rose-300">{jsonError}</p>}</section>
-      </aside>
+      <aside className="min-w-0 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:pr-2"><StrategyRuleBuilder definition={definition} onChange={updateDefinition} json={json} onJsonChange={editJson} jsonError={jsonError} strategies={strategies} selectedId={selectedStrategy} onSelect={selectStrategy} issues={issues} /></aside>
       <main className="space-y-5">
         <section className="rounded-2xl border border-slate-700 bg-slate-900 p-5"><div className="flex items-center justify-between"><div><h3 className="text-xl font-bold">Markets</h3><p className="text-sm text-slate-400">Each valid row becomes one temporary 55 USDC bot.</p></div>
           <button className="rounded-xl border border-cyan-700 px-4 py-2 text-sm text-cyan-200" onClick={() => setRows((r) => [...r, createRow()])}>+ Add</button></div>

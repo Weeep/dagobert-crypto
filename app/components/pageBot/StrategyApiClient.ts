@@ -1,5 +1,6 @@
 import type { StrategyDto } from "@/src/modules/strategy/dto/StrategyDto";
 import type { StrategyDefinitionV1, StrategyValidationIssue } from "@/src/modules/strategy/domain/StrategyDefinition";
+import type { StrategyPerformanceDto } from "@/pages/api/strategies/performance";
 
 type StrategyVersionDto = StrategyDto["versions"][number];
 type ApiError = { error?: { message?: string } };
@@ -11,13 +12,17 @@ export class StrategyApiClient {
     const response = await this.fetchImplementation.call(globalThis, url, {
       ...init, headers: { Accept: "application/json", ...(init?.body ? { "Content-Type": "application/json" } : {}) },
     });
-    const body = await response.json() as T & ApiError;
+    const body = (response.status === 204 ? {} : await response.json()) as T & ApiError;
     if (!response.ok) throw new Error(body.error?.message ?? `Strategy API request failed (${response.status})`);
     return body;
   }
 
   async list() {
     return (await this.request<{ strategies: StrategyDto[] }>("/api/strategies")).strategies;
+  }
+
+  async performance() {
+    return (await this.request<{ performance: StrategyPerformanceDto[] }>("/api/strategies/performance")).performance;
   }
 
   async validate(definition: StrategyDefinitionV1) {
@@ -41,5 +46,15 @@ export class StrategyApiClient {
     return (await this.request<{ version: StrategyVersionDto }>(`/api/strategies/${encodeURIComponent(strategyId)}/versions`, {
       method: "POST", body: JSON.stringify({ schemaVersion: 1, definition }),
     })).version;
+  }
+
+  async update(strategyId: string, patch: { name?: string; description?: string; archived?: boolean }) {
+    return (await this.request<{ strategy: StrategyDto }>(`/api/strategies/${encodeURIComponent(strategyId)}`, {
+      method: "PATCH", body: JSON.stringify(patch),
+    })).strategy;
+  }
+
+  async delete(strategyId: string) {
+    await this.request<unknown>(`/api/strategies/${encodeURIComponent(strategyId)}`, { method: "DELETE" });
   }
 }

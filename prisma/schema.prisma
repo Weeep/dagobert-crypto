@@ -186,11 +186,13 @@ model Strategy {
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   description String            @default("")
+  archivedAt  DateTime?         @map("archived_at") @db.Timestamptz(3)
   versions    StrategyVersion[]
   createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@unique([userId, name])
+  @@index([userId, archivedAt])
   @@map("strategies")
 }
 
