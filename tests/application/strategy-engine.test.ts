@@ -67,6 +67,17 @@ describe("pure condition-tree evaluator", () => {
     assert.equal(missing.reasonCode, "POSITION_CONTEXT_REQUIRED");
   });
 
+  test("includes the first candle close after a lot fills after the interval open", () => {
+    const history = candles([110, 107]);
+    const result = evaluateCondition({ indicator: "TRAILING_RETURN_PCT", activationPct: 5,
+      minimumExitPct: 3, trailingDistancePct: 3 }, { candles: history, exitFeeRate: "0",
+      position: { id: "late-fill", entryPrice: "100", quantity: "1", entryCost: "100",
+        entryFees: "0", openedAt: new Date(start + 1).toISOString() } });
+    assert.equal(result.observedValues.highestReturnPct, "10");
+    assert.equal(result.observedValues.trailingThreshold, "7");
+    assert.equal(result.matched, true);
+  });
+
   test("evaluates nested all/any groups and retains every explainable child result", () => {
     const history = candles([44.34, 44.09, 44.15, 43.61, 44.33, 44.83, 45.1, 45.42,
       45.84, 46.08, 45.89, 46.03, 45.61, 46.28, 46.28, 46, 46.03, 46.41, 46.22, 45.64]);

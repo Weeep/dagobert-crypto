@@ -133,7 +133,9 @@ function evaluateNode(
       explanation: "TRAILING_RETURN_PCT requires an open position lot, its opening time, and exit fee rate",
       observedValues: { observed: null, highestReturnPct: null, trailingThreshold: null }, children: [],
     };
-    const lotCandles = historicalCandles(context).filter((candle) => candle.openTime >= openedAt);
+    // A fill can arrive after an interval has opened. Its close is still the first
+    // observable closed-candle return for the lot, so compare the close timestamp.
+    const lotCandles = historicalCandles(context).filter((candle) => candle.closeTime > openedAt);
     if (lotCandles.length === 0) return insufficient("TRAILING_RETURN_PCT", 1, 0);
     const returns = lotCandles.map((candle) => calculateNetReturn(context.position!, candle.close,
       context.exitFeeRate!).value);

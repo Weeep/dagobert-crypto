@@ -86,9 +86,11 @@ export class EvaluateStrategyForClosedCandleUseCase {
     }, null);
     // Trailing maxima are derived from immutable closed-candle history instead of persisted
     // state, so restarts and backtests use exactly the same calculation.
+    // Ceiling is intentional: a fill just after an interval open still needs that
+    // interval's eventual close included in every subsequent reconstruction.
     const lotHistory = !usesTrailingReturn(validated.definition.exit) || oldestOpening === null ? 1 :
-      Math.floor((candle.openTime.getTime() - oldestOpening) /
-        MARKET_INTERVAL_MILLISECONDS[configuration.timeframe]) + 1;
+      Math.max(1, Math.ceil((candle.openTime.getTime() - oldestOpening) /
+        MARKET_INTERVAL_MILLISECONDS[configuration.timeframe]) + 1);
     const lookback = Math.max(requiredCandles(validated.definition.entry),
       requiredCandles(validated.definition.exit), lotHistory);
     const history = await this.candles.findClosedHistoryEndingAt(
