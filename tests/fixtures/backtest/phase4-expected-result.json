@@ -1,0 +1,1037 @@
+{
+  "result": {
+    "portfolio": {
+      "initialCash": "55",
+      "cash": "55.93936447347961207243026735",
+      "reservations": [],
+      "openPositions": [],
+      "closedPositions": [
+        {
+          "id": "position:golden-candle-003",
+          "entryPrice": "14.07",
+          "quantity": "0.71002203198365245274",
+          "entryNotional": "9.99000999000999000999",
+          "entryFee": "0.00999000999000999001",
+          "openedAt": "2026-01-01T04:00:00.000Z",
+          "exitPrice": "15.4225",
+          "exitNotional": "10.95031478826787995238265",
+          "exitFee": "0.01095031478826787995238265",
+          "realizedPnl": "0.93936447347961207243026735",
+          "closedAt": "2026-01-01T06:00:00.000Z"
+        }
+      ],
+      "realizedPnl": "0.93936447347961207243026735",
+      "totalFees": "0.02094032477827786996238265"
+    },
+    "decisions": [
+      {
+        "candleId": "golden-candle-003",
+        "evaluation": {
+          "action": "BUY",
+          "reasonCode": "ENTRY_MATCHED",
+          "explanation": "Entry matched and no actionable exit has priority",
+          "policyReasons": [
+            "ENTRY_MATCHED"
+          ],
+          "evaluatedCandleId": "golden-candle-003",
+          "evaluatedCandleOpenTime": "2026-01-01T03:00:00.000Z",
+          "position": {
+            "hasOpenPositions": false,
+            "openPositionCount": 0,
+            "exitFeeRate": "0.001",
+            "positions": []
+          },
+          "positionExits": [],
+          "selectedPositionIds": [],
+          "exit": {
+            "type": "POSITION_RETURN_PCT",
+            "matched": false,
+            "reasonCode": "POSITION_CONTEXT_REQUIRED",
+            "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+            "observedValues": {
+              "observed": null,
+              "operator": "GTE",
+              "expected": 5
+            },
+            "children": []
+          },
+          "entry": {
+            "type": "EMA_CROSS_CONFIRMATION",
+            "matched": true,
+            "reasonCode": "EMA_CROSS_CONFIRMATION_MATCHED",
+            "explanation": "EMA(2) ABOVE crossing was confirmed by 2 candles",
+            "observedValues": {
+              "indicator": "EMA_CROSS_CONFIRMATION",
+              "period": 2,
+              "direction": "ABOVE",
+              "confirmationCandles": 2,
+              "closes": [
+                "9",
+                "12",
+                "13"
+              ],
+              "emas": [
+                "9.5",
+                "11.166666666666666",
+                "12.38888888888889"
+              ],
+              "previousOnOppositeSide": true,
+              "confirmedSides": [
+                "true",
+                "true"
+              ]
+            },
+            "children": []
+          }
+        },
+        "executionOutcome": "ENTRY_RESERVED",
+        "executionReason": "ENTRY_RESERVED_FOR_NEXT_OPEN"
+      },
+      {
+        "candleId": "golden-candle-004",
+        "evaluation": {
+          "action": "HOLD",
+          "reasonCode": "NO_ACTIONABLE_CONDITION",
+          "explanation": "Neither an actionable exit nor entry matched",
+          "policyReasons": [
+            "NO_ACTIONABLE_CONDITION"
+          ],
+          "evaluatedCandleId": "golden-candle-004",
+          "evaluatedCandleOpenTime": "2026-01-01T04:00:00.000Z",
+          "position": {
+            "hasOpenPositions": true,
+            "openPositionCount": 1,
+            "exitFeeRate": "0.001",
+            "positions": [
+              {
+                "id": "position:golden-candle-003",
+                "entryPrice": "14.07",
+                "quantity": "0.71002203198365245274",
+                "entryCost": "9.99000999000999000999",
+                "entryFees": "0.00999000999000999001",
+                "openedAt": "2026-01-01T04:00:00.000Z"
+              }
+            ]
+          },
+          "positionExits": [
+            {
+              "positionId": "position:golden-candle-003",
+              "evaluation": {
+                "type": "POSITION_RETURN_PCT",
+                "matched": false,
+                "reasonCode": "POSITION_RETURN_PCT_NOT_MATCHED",
+                "explanation": "Position position:golden-candle-003 net return -0.69631860676636796% did not match GTE 5%",
+                "observedValues": {
+                  "indicator": "POSITION_RETURN_PCT",
+                  "positionId": "position:golden-candle-003",
+                  "operator": "GTE",
+                  "expected": 5,
+                  "observed": "-0.69631860676636796",
+                  "close": "14",
+                  "quantity": "0.71002203198365245274",
+                  "entryCost": "9.99000999000999000999",
+                  "entryFees": "0.00999000999000999001",
+                  "grossExitValue": "9.94030844777113433836",
+                  "estimatedExitFee": "0.00994030844777113433836",
+                  "netExitProceeds": "9.93036813932336320402164",
+                  "exitFeeRate": "0.001"
+                },
+                "children": []
+              }
+            }
+          ],
+          "selectedPositionIds": [],
+          "exit": {
+            "type": "POSITION_RETURN_PCT",
+            "matched": false,
+            "reasonCode": "POSITION_CONTEXT_REQUIRED",
+            "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+            "observedValues": {
+              "observed": null,
+              "operator": "GTE",
+              "expected": 5
+            },
+            "children": []
+          },
+          "entry": {
+            "type": "EMA_CROSS_CONFIRMATION",
+            "matched": false,
+            "reasonCode": "EMA_CROSS_CONFIRMATION_NOT_MATCHED",
+            "explanation": "EMA(2) ABOVE crossing was not confirmed by 2 candles",
+            "observedValues": {
+              "indicator": "EMA_CROSS_CONFIRMATION",
+              "period": 2,
+              "direction": "ABOVE",
+              "confirmationCandles": 2,
+              "closes": [
+                "12",
+                "13",
+                "14"
+              ],
+              "emas": [
+                "10.5",
+                "12.166666666666666",
+                "13.38888888888889"
+              ],
+              "previousOnOppositeSide": false,
+              "confirmedSides": [
+                "true",
+                "true"
+              ]
+            },
+            "children": []
+          }
+        },
+        "executionOutcome": "HOLD",
+        "executionReason": "NO_ACTIONABLE_CONDITION"
+      },
+      {
+        "candleId": "golden-candle-005",
+        "evaluation": {
+          "action": "SELL",
+          "reasonCode": "EXIT_MATCHED",
+          "explanation": "Exit matched and has priority while positions are open",
+          "policyReasons": [
+            "EXIT_MATCHED"
+          ],
+          "evaluatedCandleId": "golden-candle-005",
+          "evaluatedCandleOpenTime": "2026-01-01T05:00:00.000Z",
+          "position": {
+            "hasOpenPositions": true,
+            "openPositionCount": 1,
+            "exitFeeRate": "0.001",
+            "positions": [
+              {
+                "id": "position:golden-candle-003",
+                "entryPrice": "14.07",
+                "quantity": "0.71002203198365245274",
+                "entryCost": "9.99000999000999000999",
+                "entryFees": "0.00999000999000999001",
+                "openedAt": "2026-01-01T04:00:00.000Z"
+              }
+            ]
+          },
+          "positionExits": [
+            {
+              "positionId": "position:golden-candle-003",
+              "evaluation": {
+                "type": "POSITION_RETURN_PCT",
+                "matched": true,
+                "reasonCode": "POSITION_RETURN_PCT_MATCHED",
+                "explanation": "Position position:golden-candle-003 net return 13.489921592267008046% matched GTE 5%",
+                "observedValues": {
+                  "indicator": "POSITION_RETURN_PCT",
+                  "positionId": "position:golden-candle-003",
+                  "operator": "GTE",
+                  "expected": 5,
+                  "observed": "13.489921592267008046",
+                  "close": "16",
+                  "quantity": "0.71002203198365245274",
+                  "entryCost": "9.99000999000999000999",
+                  "entryFees": "0.00999000999000999001",
+                  "grossExitValue": "11.36035251173843924384",
+                  "estimatedExitFee": "0.01136035251173843924384",
+                  "netExitProceeds": "11.34899215922670080459616",
+                  "exitFeeRate": "0.001"
+                },
+                "children": []
+              }
+            }
+          ],
+          "selectedPositionIds": [
+            "position:golden-candle-003"
+          ],
+          "exit": {
+            "type": "POSITION_RETURN_PCT",
+            "matched": false,
+            "reasonCode": "POSITION_CONTEXT_REQUIRED",
+            "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+            "observedValues": {
+              "observed": null,
+              "operator": "GTE",
+              "expected": 5
+            },
+            "children": []
+          },
+          "entry": {
+            "type": "EMA_CROSS_CONFIRMATION",
+            "matched": false,
+            "reasonCode": "EMA_CROSS_CONFIRMATION_NOT_MATCHED",
+            "explanation": "EMA(2) ABOVE crossing was not confirmed by 2 candles",
+            "observedValues": {
+              "indicator": "EMA_CROSS_CONFIRMATION",
+              "period": 2,
+              "direction": "ABOVE",
+              "confirmationCandles": 2,
+              "closes": [
+                "13",
+                "14",
+                "16"
+              ],
+              "emas": [
+                "12.5",
+                "13.5",
+                "15.166666666666666"
+              ],
+              "previousOnOppositeSide": false,
+              "confirmedSides": [
+                "true",
+                "true"
+              ]
+            },
+            "children": []
+          }
+        },
+        "executionOutcome": "EXIT_SCHEDULED",
+        "executionReason": "EXIT_SCHEDULED_FOR_NEXT_OPEN"
+      },
+      {
+        "candleId": "golden-candle-006",
+        "evaluation": {
+          "action": "HOLD",
+          "reasonCode": "NO_ACTIONABLE_CONDITION",
+          "explanation": "Neither an actionable exit nor entry matched",
+          "policyReasons": [
+            "NO_ACTIONABLE_CONDITION"
+          ],
+          "evaluatedCandleId": "golden-candle-006",
+          "evaluatedCandleOpenTime": "2026-01-01T06:00:00.000Z",
+          "position": {
+            "hasOpenPositions": false,
+            "openPositionCount": 0,
+            "exitFeeRate": "0.001",
+            "positions": []
+          },
+          "positionExits": [],
+          "selectedPositionIds": [],
+          "exit": {
+            "type": "POSITION_RETURN_PCT",
+            "matched": false,
+            "reasonCode": "POSITION_CONTEXT_REQUIRED",
+            "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+            "observedValues": {
+              "observed": null,
+              "operator": "GTE",
+              "expected": 5
+            },
+            "children": []
+          },
+          "entry": {
+            "type": "EMA_CROSS_CONFIRMATION",
+            "matched": false,
+            "reasonCode": "EMA_CROSS_CONFIRMATION_NOT_MATCHED",
+            "explanation": "EMA(2) ABOVE crossing was not confirmed by 2 candles",
+            "observedValues": {
+              "indicator": "EMA_CROSS_CONFIRMATION",
+              "period": 2,
+              "direction": "ABOVE",
+              "confirmationCandles": 2,
+              "closes": [
+                "14",
+                "16",
+                "15"
+              ],
+              "emas": [
+                "13.5",
+                "15.166666666666666",
+                "15.055555555555555"
+              ],
+              "previousOnOppositeSide": false,
+              "confirmedSides": [
+                "true",
+                "false"
+              ]
+            },
+            "children": []
+          }
+        },
+        "executionOutcome": "HOLD",
+        "executionReason": "NO_ACTIONABLE_CONDITION"
+      },
+      {
+        "candleId": "golden-candle-007",
+        "evaluation": {
+          "action": "HOLD",
+          "reasonCode": "NO_ACTIONABLE_CONDITION",
+          "explanation": "Neither an actionable exit nor entry matched",
+          "policyReasons": [
+            "NO_ACTIONABLE_CONDITION"
+          ],
+          "evaluatedCandleId": "golden-candle-007",
+          "evaluatedCandleOpenTime": "2026-01-01T07:00:00.000Z",
+          "position": {
+            "hasOpenPositions": false,
+            "openPositionCount": 0,
+            "exitFeeRate": "0.001",
+            "positions": []
+          },
+          "positionExits": [],
+          "selectedPositionIds": [],
+          "exit": {
+            "type": "POSITION_RETURN_PCT",
+            "matched": false,
+            "reasonCode": "POSITION_CONTEXT_REQUIRED",
+            "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+            "observedValues": {
+              "observed": null,
+              "operator": "GTE",
+              "expected": 5
+            },
+            "children": []
+          },
+          "entry": {
+            "type": "EMA_CROSS_CONFIRMATION",
+            "matched": false,
+            "reasonCode": "EMA_CROSS_CONFIRMATION_NOT_MATCHED",
+            "explanation": "EMA(2) ABOVE crossing was not confirmed by 2 candles",
+            "observedValues": {
+              "indicator": "EMA_CROSS_CONFIRMATION",
+              "period": 2,
+              "direction": "ABOVE",
+              "confirmationCandles": 2,
+              "closes": [
+                "16",
+                "15",
+                "15"
+              ],
+              "emas": [
+                "15",
+                "15",
+                "15"
+              ],
+              "previousOnOppositeSide": false,
+              "confirmedSides": [
+                "false",
+                "false"
+              ]
+            },
+            "children": []
+          }
+        },
+        "executionOutcome": "HOLD",
+        "executionReason": "NO_ACTIONABLE_CONDITION"
+      }
+    ],
+    "fills": [
+      {
+        "side": "BUY",
+        "positionId": "position:golden-candle-003",
+        "price": "14.07",
+        "quantity": "0.71002203198365245274",
+        "notional": "9.99000999000999000999",
+        "fee": "0.00999000999000999001",
+        "cashChange": "-10",
+        "filledAt": "2026-01-01T04:00:00.000Z",
+        "decisionCandleId": "golden-candle-003"
+      },
+      {
+        "side": "SELL",
+        "positionId": "position:golden-candle-003",
+        "price": "15.4225",
+        "quantity": "0.71002203198365245274",
+        "notional": "10.95031478826787995238265",
+        "fee": "0.01095031478826787995238265",
+        "cashChange": "10.93936447347961207243026735",
+        "filledAt": "2026-01-01T06:00:00.000Z",
+        "decisionCandleId": "golden-candle-005"
+      }
+    ],
+    "events": [
+      {
+        "sequenceNumber": 1,
+        "eventType": "DECISION_MADE",
+        "candleId": "golden-candle-003",
+        "occurredAt": "2026-01-01T03:59:59.999Z",
+        "payload": {
+          "candleId": "golden-candle-003",
+          "evaluation": {
+            "action": "BUY",
+            "reasonCode": "ENTRY_MATCHED",
+            "explanation": "Entry matched and no actionable exit has priority",
+            "policyReasons": [
+              "ENTRY_MATCHED"
+            ],
+            "evaluatedCandleId": "golden-candle-003",
+            "evaluatedCandleOpenTime": "2026-01-01T03:00:00.000Z",
+            "position": {
+              "hasOpenPositions": false,
+              "openPositionCount": 0,
+              "exitFeeRate": "0.001",
+              "positions": []
+            },
+            "positionExits": [],
+            "selectedPositionIds": [],
+            "exit": {
+              "type": "POSITION_RETURN_PCT",
+              "matched": false,
+              "reasonCode": "POSITION_CONTEXT_REQUIRED",
+              "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+              "observedValues": {
+                "observed": null,
+                "operator": "GTE",
+                "expected": 5
+              },
+              "children": []
+            },
+            "entry": {
+              "type": "EMA_CROSS_CONFIRMATION",
+              "matched": true,
+              "reasonCode": "EMA_CROSS_CONFIRMATION_MATCHED",
+              "explanation": "EMA(2) ABOVE crossing was confirmed by 2 candles",
+              "observedValues": {
+                "indicator": "EMA_CROSS_CONFIRMATION",
+                "period": 2,
+                "direction": "ABOVE",
+                "confirmationCandles": 2,
+                "closes": [
+                  "9",
+                  "12",
+                  "13"
+                ],
+                "emas": [
+                  "9.5",
+                  "11.166666666666666",
+                  "12.38888888888889"
+                ],
+                "previousOnOppositeSide": true,
+                "confirmedSides": [
+                  "true",
+                  "true"
+                ]
+              },
+              "children": []
+            }
+          },
+          "executionOutcome": "ENTRY_RESERVED",
+          "executionReason": "ENTRY_RESERVED_FOR_NEXT_OPEN"
+        }
+      },
+      {
+        "sequenceNumber": 2,
+        "eventType": "ENTRY_RESERVED",
+        "candleId": "golden-candle-003",
+        "occurredAt": "2026-01-01T03:59:59.999Z",
+        "payload": {
+          "reservation": {
+            "id": "entry:golden-candle-003",
+            "amount": "10"
+          }
+        }
+      },
+      {
+        "sequenceNumber": 3,
+        "eventType": "ENTRY_FILLED",
+        "candleId": "golden-candle-004",
+        "occurredAt": "2026-01-01T04:00:00.000Z",
+        "payload": {
+          "decisionCandleId": "golden-candle-003",
+          "fill": {
+            "side": "BUY",
+            "positionId": "position:golden-candle-003",
+            "price": "14.07",
+            "quantity": "0.71002203198365245274",
+            "notional": "9.99000999000999000999",
+            "fee": "0.00999000999000999001",
+            "cashChange": "-10",
+            "filledAt": "2026-01-01T04:00:00.000Z"
+          }
+        }
+      },
+      {
+        "sequenceNumber": 4,
+        "eventType": "DECISION_MADE",
+        "candleId": "golden-candle-004",
+        "occurredAt": "2026-01-01T04:59:59.999Z",
+        "payload": {
+          "candleId": "golden-candle-004",
+          "evaluation": {
+            "action": "HOLD",
+            "reasonCode": "NO_ACTIONABLE_CONDITION",
+            "explanation": "Neither an actionable exit nor entry matched",
+            "policyReasons": [
+              "NO_ACTIONABLE_CONDITION"
+            ],
+            "evaluatedCandleId": "golden-candle-004",
+            "evaluatedCandleOpenTime": "2026-01-01T04:00:00.000Z",
+            "position": {
+              "hasOpenPositions": true,
+              "openPositionCount": 1,
+              "exitFeeRate": "0.001",
+              "positions": [
+                {
+                  "id": "position:golden-candle-003",
+                  "entryPrice": "14.07",
+                  "quantity": "0.71002203198365245274",
+                  "entryCost": "9.99000999000999000999",
+                  "entryFees": "0.00999000999000999001",
+                  "openedAt": "2026-01-01T04:00:00.000Z"
+                }
+              ]
+            },
+            "positionExits": [
+              {
+                "positionId": "position:golden-candle-003",
+                "evaluation": {
+                  "type": "POSITION_RETURN_PCT",
+                  "matched": false,
+                  "reasonCode": "POSITION_RETURN_PCT_NOT_MATCHED",
+                  "explanation": "Position position:golden-candle-003 net return -0.69631860676636796% did not match GTE 5%",
+                  "observedValues": {
+                    "indicator": "POSITION_RETURN_PCT",
+                    "positionId": "position:golden-candle-003",
+                    "operator": "GTE",
+                    "expected": 5,
+                    "observed": "-0.69631860676636796",
+                    "close": "14",
+                    "quantity": "0.71002203198365245274",
+                    "entryCost": "9.99000999000999000999",
+                    "entryFees": "0.00999000999000999001",
+                    "grossExitValue": "9.94030844777113433836",
+                    "estimatedExitFee": "0.00994030844777113433836",
+                    "netExitProceeds": "9.93036813932336320402164",
+                    "exitFeeRate": "0.001"
+                  },
+                  "children": []
+                }
+              }
+            ],
+            "selectedPositionIds": [],
+            "exit": {
+              "type": "POSITION_RETURN_PCT",
+              "matched": false,
+              "reasonCode": "POSITION_CONTEXT_REQUIRED",
+              "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+              "observedValues": {
+                "observed": null,
+                "operator": "GTE",
+                "expected": 5
+              },
+              "children": []
+            },
+            "entry": {
+              "type": "EMA_CROSS_CONFIRMATION",
+              "matched": false,
+              "reasonCode": "EMA_CROSS_CONFIRMATION_NOT_MATCHED",
+              "explanation": "EMA(2) ABOVE crossing was not confirmed by 2 candles",
+              "observedValues": {
+                "indicator": "EMA_CROSS_CONFIRMATION",
+                "period": 2,
+                "direction": "ABOVE",
+                "confirmationCandles": 2,
+                "closes": [
+                  "12",
+                  "13",
+                  "14"
+                ],
+                "emas": [
+                  "10.5",
+                  "12.166666666666666",
+                  "13.38888888888889"
+                ],
+                "previousOnOppositeSide": false,
+                "confirmedSides": [
+                  "true",
+                  "true"
+                ]
+              },
+              "children": []
+            }
+          },
+          "executionOutcome": "HOLD",
+          "executionReason": "NO_ACTIONABLE_CONDITION"
+        }
+      },
+      {
+        "sequenceNumber": 5,
+        "eventType": "DECISION_MADE",
+        "candleId": "golden-candle-005",
+        "occurredAt": "2026-01-01T05:59:59.999Z",
+        "payload": {
+          "candleId": "golden-candle-005",
+          "evaluation": {
+            "action": "SELL",
+            "reasonCode": "EXIT_MATCHED",
+            "explanation": "Exit matched and has priority while positions are open",
+            "policyReasons": [
+              "EXIT_MATCHED"
+            ],
+            "evaluatedCandleId": "golden-candle-005",
+            "evaluatedCandleOpenTime": "2026-01-01T05:00:00.000Z",
+            "position": {
+              "hasOpenPositions": true,
+              "openPositionCount": 1,
+              "exitFeeRate": "0.001",
+              "positions": [
+                {
+                  "id": "position:golden-candle-003",
+                  "entryPrice": "14.07",
+                  "quantity": "0.71002203198365245274",
+                  "entryCost": "9.99000999000999000999",
+                  "entryFees": "0.00999000999000999001",
+                  "openedAt": "2026-01-01T04:00:00.000Z"
+                }
+              ]
+            },
+            "positionExits": [
+              {
+                "positionId": "position:golden-candle-003",
+                "evaluation": {
+                  "type": "POSITION_RETURN_PCT",
+                  "matched": true,
+                  "reasonCode": "POSITION_RETURN_PCT_MATCHED",
+                  "explanation": "Position position:golden-candle-003 net return 13.489921592267008046% matched GTE 5%",
+                  "observedValues": {
+                    "indicator": "POSITION_RETURN_PCT",
+                    "positionId": "position:golden-candle-003",
+                    "operator": "GTE",
+                    "expected": 5,
+                    "observed": "13.489921592267008046",
+                    "close": "16",
+                    "quantity": "0.71002203198365245274",
+                    "entryCost": "9.99000999000999000999",
+                    "entryFees": "0.00999000999000999001",
+                    "grossExitValue": "11.36035251173843924384",
+                    "estimatedExitFee": "0.01136035251173843924384",
+                    "netExitProceeds": "11.34899215922670080459616",
+                    "exitFeeRate": "0.001"
+                  },
+                  "children": []
+                }
+              }
+            ],
+            "selectedPositionIds": [
+              "position:golden-candle-003"
+            ],
+            "exit": {
+              "type": "POSITION_RETURN_PCT",
+              "matched": false,
+              "reasonCode": "POSITION_CONTEXT_REQUIRED",
+              "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+              "observedValues": {
+                "observed": null,
+                "operator": "GTE",
+                "expected": 5
+              },
+              "children": []
+            },
+            "entry": {
+              "type": "EMA_CROSS_CONFIRMATION",
+              "matched": false,
+              "reasonCode": "EMA_CROSS_CONFIRMATION_NOT_MATCHED",
+              "explanation": "EMA(2) ABOVE crossing was not confirmed by 2 candles",
+              "observedValues": {
+                "indicator": "EMA_CROSS_CONFIRMATION",
+                "period": 2,
+                "direction": "ABOVE",
+                "confirmationCandles": 2,
+                "closes": [
+                  "13",
+                  "14",
+                  "16"
+                ],
+                "emas": [
+                  "12.5",
+                  "13.5",
+                  "15.166666666666666"
+                ],
+                "previousOnOppositeSide": false,
+                "confirmedSides": [
+                  "true",
+                  "true"
+                ]
+              },
+              "children": []
+            }
+          },
+          "executionOutcome": "EXIT_SCHEDULED",
+          "executionReason": "EXIT_SCHEDULED_FOR_NEXT_OPEN"
+        }
+      },
+      {
+        "sequenceNumber": 6,
+        "eventType": "EXIT_SCHEDULED",
+        "candleId": "golden-candle-005",
+        "occurredAt": "2026-01-01T05:59:59.999Z",
+        "payload": {
+          "positionIds": [
+            "position:golden-candle-003"
+          ]
+        }
+      },
+      {
+        "sequenceNumber": 7,
+        "eventType": "POSITIONS_CLOSED",
+        "candleId": "golden-candle-006",
+        "occurredAt": "2026-01-01T06:00:00.000Z",
+        "payload": {
+          "decisionCandleId": "golden-candle-005",
+          "fills": [
+            {
+              "side": "SELL",
+              "positionId": "position:golden-candle-003",
+              "price": "15.4225",
+              "quantity": "0.71002203198365245274",
+              "notional": "10.95031478826787995238265",
+              "fee": "0.01095031478826787995238265",
+              "cashChange": "10.93936447347961207243026735",
+              "filledAt": "2026-01-01T06:00:00.000Z"
+            }
+          ],
+          "positionIds": [
+            "position:golden-candle-003"
+          ]
+        }
+      },
+      {
+        "sequenceNumber": 8,
+        "eventType": "DECISION_MADE",
+        "candleId": "golden-candle-006",
+        "occurredAt": "2026-01-01T06:59:59.999Z",
+        "payload": {
+          "candleId": "golden-candle-006",
+          "evaluation": {
+            "action": "HOLD",
+            "reasonCode": "NO_ACTIONABLE_CONDITION",
+            "explanation": "Neither an actionable exit nor entry matched",
+            "policyReasons": [
+              "NO_ACTIONABLE_CONDITION"
+            ],
+            "evaluatedCandleId": "golden-candle-006",
+            "evaluatedCandleOpenTime": "2026-01-01T06:00:00.000Z",
+            "position": {
+              "hasOpenPositions": false,
+              "openPositionCount": 0,
+              "exitFeeRate": "0.001",
+              "positions": []
+            },
+            "positionExits": [],
+            "selectedPositionIds": [],
+            "exit": {
+              "type": "POSITION_RETURN_PCT",
+              "matched": false,
+              "reasonCode": "POSITION_CONTEXT_REQUIRED",
+              "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+              "observedValues": {
+                "observed": null,
+                "operator": "GTE",
+                "expected": 5
+              },
+              "children": []
+            },
+            "entry": {
+              "type": "EMA_CROSS_CONFIRMATION",
+              "matched": false,
+              "reasonCode": "EMA_CROSS_CONFIRMATION_NOT_MATCHED",
+              "explanation": "EMA(2) ABOVE crossing was not confirmed by 2 candles",
+              "observedValues": {
+                "indicator": "EMA_CROSS_CONFIRMATION",
+                "period": 2,
+                "direction": "ABOVE",
+                "confirmationCandles": 2,
+                "closes": [
+                  "14",
+                  "16",
+                  "15"
+                ],
+                "emas": [
+                  "13.5",
+                  "15.166666666666666",
+                  "15.055555555555555"
+                ],
+                "previousOnOppositeSide": false,
+                "confirmedSides": [
+                  "true",
+                  "false"
+                ]
+              },
+              "children": []
+            }
+          },
+          "executionOutcome": "HOLD",
+          "executionReason": "NO_ACTIONABLE_CONDITION"
+        }
+      },
+      {
+        "sequenceNumber": 9,
+        "eventType": "DECISION_MADE",
+        "candleId": "golden-candle-007",
+        "occurredAt": "2026-01-01T07:59:59.999Z",
+        "payload": {
+          "candleId": "golden-candle-007",
+          "evaluation": {
+            "action": "HOLD",
+            "reasonCode": "NO_ACTIONABLE_CONDITION",
+            "explanation": "Neither an actionable exit nor entry matched",
+            "policyReasons": [
+              "NO_ACTIONABLE_CONDITION"
+            ],
+            "evaluatedCandleId": "golden-candle-007",
+            "evaluatedCandleOpenTime": "2026-01-01T07:00:00.000Z",
+            "position": {
+              "hasOpenPositions": false,
+              "openPositionCount": 0,
+              "exitFeeRate": "0.001",
+              "positions": []
+            },
+            "positionExits": [],
+            "selectedPositionIds": [],
+            "exit": {
+              "type": "POSITION_RETURN_PCT",
+              "matched": false,
+              "reasonCode": "POSITION_CONTEXT_REQUIRED",
+              "explanation": "POSITION_RETURN_PCT requires an open position lot and exit fee rate",
+              "observedValues": {
+                "observed": null,
+                "operator": "GTE",
+                "expected": 5
+              },
+              "children": []
+            },
+            "entry": {
+              "type": "EMA_CROSS_CONFIRMATION",
+              "matched": false,
+              "reasonCode": "EMA_CROSS_CONFIRMATION_NOT_MATCHED",
+              "explanation": "EMA(2) ABOVE crossing was not confirmed by 2 candles",
+              "observedValues": {
+                "indicator": "EMA_CROSS_CONFIRMATION",
+                "period": 2,
+                "direction": "ABOVE",
+                "confirmationCandles": 2,
+                "closes": [
+                  "16",
+                  "15",
+                  "15"
+                ],
+                "emas": [
+                  "15",
+                  "15",
+                  "15"
+                ],
+                "previousOnOppositeSide": false,
+                "confirmedSides": [
+                  "false",
+                  "false"
+                ]
+              },
+              "children": []
+            }
+          },
+          "executionOutcome": "HOLD",
+          "executionReason": "NO_ACTIONABLE_CONDITION"
+        }
+      }
+    ],
+    "snapshots": [
+      {
+        "candleId": "golden-candle-003",
+        "capturedAt": "2026-01-01T03:59:59.999Z",
+        "portfolio": {
+          "cash": "55",
+          "reservedCash": "10",
+          "availableCash": "45",
+          "investedCost": "0",
+          "marketValue": "0",
+          "realizedPnl": "0",
+          "unrealizedPnl": "0",
+          "totalEquity": "55",
+          "totalFees": "0",
+          "openPositionCount": 0
+        }
+      },
+      {
+        "candleId": "golden-candle-004",
+        "capturedAt": "2026-01-01T04:59:59.999Z",
+        "portfolio": {
+          "cash": "45",
+          "reservedCash": "0",
+          "availableCash": "45",
+          "investedCost": "10",
+          "marketValue": "9.94030844777113433836",
+          "realizedPnl": "0",
+          "unrealizedPnl": "-0.05969155222886566164",
+          "totalEquity": "54.94030844777113433836",
+          "totalFees": "0.00999000999000999001",
+          "openPositionCount": 1
+        }
+      },
+      {
+        "candleId": "golden-candle-005",
+        "capturedAt": "2026-01-01T05:59:59.999Z",
+        "portfolio": {
+          "cash": "45",
+          "reservedCash": "0",
+          "availableCash": "45",
+          "investedCost": "10",
+          "marketValue": "11.36035251173843924384",
+          "realizedPnl": "0",
+          "unrealizedPnl": "1.36035251173843924384",
+          "totalEquity": "56.36035251173843924384",
+          "totalFees": "0.00999000999000999001",
+          "openPositionCount": 1
+        }
+      },
+      {
+        "candleId": "golden-candle-006",
+        "capturedAt": "2026-01-01T06:59:59.999Z",
+        "portfolio": {
+          "cash": "55.93936447347961207243026735",
+          "reservedCash": "0",
+          "availableCash": "55.93936447347961207243026735",
+          "investedCost": "0",
+          "marketValue": "0",
+          "realizedPnl": "0.93936447347961207243026735",
+          "unrealizedPnl": "0",
+          "totalEquity": "55.93936447347961207243026735",
+          "totalFees": "0.02094032477827786996238265",
+          "openPositionCount": 0
+        }
+      },
+      {
+        "candleId": "golden-candle-007",
+        "capturedAt": "2026-01-01T07:59:59.999Z",
+        "portfolio": {
+          "cash": "55.93936447347961207243026735",
+          "reservedCash": "0",
+          "availableCash": "55.93936447347961207243026735",
+          "investedCost": "0",
+          "marketValue": "0",
+          "realizedPnl": "0.93936447347961207243026735",
+          "unrealizedPnl": "0",
+          "totalEquity": "55.93936447347961207243026735",
+          "totalFees": "0.02094032477827786996238265",
+          "openPositionCount": 0
+        }
+      }
+    ],
+    "evaluatedCandleIds": [
+      "golden-candle-003",
+      "golden-candle-004",
+      "golden-candle-005",
+      "golden-candle-006",
+      "golden-candle-007"
+    ],
+    "actionCounts": {
+      "HOLD": 3,
+      "BUY": 1,
+      "SELL": 1
+    },
+    "maximumDrawdownPct": "0.746957780597887471"
+  },
+  "metrics": {
+    "initialCapital": "55",
+    "endingCash": "55.93936447",
+    "endingEquity": "55.93936447",
+    "netProfit": "0.93936447",
+    "returnPct": "1.70793541",
+    "maximumDrawdownPct": "0.74695778",
+    "winRatePct": "100",
+    "profitFactor": null,
+    "totalFees": "0.02094032",
+    "tradeCount": 1,
+    "openPositionCount": 0,
+    "averageHoldingTimeMs": 7200000,
+    "buyAndHoldReturnPct": "24.2538556",
+    "buyAndHoldEndingEquity": "68.33962058",
+    "strategyVsBuyAndHoldPct": "-22.54592019"
+  }
+}
