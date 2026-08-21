@@ -19,7 +19,7 @@ as the implementation.
 | Phase 1: domain and persistence | Complete | The implementation and automated integration suite have been verified against PostgreSQL. |
 | Phase 2: market data | Complete | Steps 0-5 and the external acceptance gate are complete; the Prisma suite and Binance/PostgreSQL smoke test verified idempotent closed-candle ingestion, gap handling, and restart safety. |
 | Phase 3: strategy engine | Complete | Steps 0-9 and the golden acceptance gate are complete; fixed independent indicator references, deterministic decisions, and look-ahead rejection are covered. |
-| Phase 4: backtesting | In progress | Steps 1-4D are complete, including position-aware exits and confirmed EMA crossings; the persistence acceptance gate remains. |
+| Phase 4: backtesting | In progress | Steps 0A-4D and both Step 5 golden suites are implemented; the PostgreSQL golden gate must pass in the target environment before Phase 4 closes. |
 | Phase 5: paper trading | Not started | Bots run against live data without placing exchange orders. |
 | Phase 6: replay UI | Not started | A run can be replayed with decisions and positions on a chart. |
 | Phase 7: Spot test and live trading | Not started | Market orders can be tested and then placed on Binance Spot. |
@@ -808,7 +808,7 @@ idempotent persistence boundary.
 - [x] Step 4B: position-aware exit selection and selected-lot lifecycle.
 - [x] Step 4C: fee-aware per-lot percentage-return exit condition.
 - [x] Step 4D: confirmed EMA crossing condition.
-- [ ] Step 5: immutable golden acceptance suite and Phase 4 gate.
+- [ ] Step 5: immutable golden acceptance suites implemented; PostgreSQL Phase 4 gate verification pending.
 
 #### Step 0B execution and accounting contract
 
@@ -966,9 +966,25 @@ idempotent persistence boundary.
   the calculation.
 - The Phase 4 application golden fixture exercises the production historical
   runner from a confirmed cross through next-open entry, fee-aware selected-lot
-  exit, next-open full-lot close, events, snapshots, and metrics. Step 5 remains
-  open until the corresponding transactional persistence acceptance gate is
-  added and the complete Phase 4 suite is verified against PostgreSQL.
+  exit, next-open full-lot close, events, snapshots, and metrics.
+
+#### Step 5 golden acceptance contract
+
+- Committed candle, strategy, execution, and expected-result fixtures form the
+  immutable application contract. The production runner and metrics calculator
+  must reproduce the complete decisions, fills, positions, events, snapshots,
+  decimal accounting, and performance result on every run.
+- The PostgreSQL golden gate runs the same scenario with persisted candles and
+  compares every generated position, order, fill, non-allocation ledger entry,
+  strategy decision, indicator snapshot, replay event, and portfolio snapshot
+  with the deterministic persistence plan.
+- Two concurrent completion attempts must produce exactly one initial commit and
+  one idempotent reuse. The run becomes `COMPLETED`, its bot becomes `PAUSED`,
+  event and snapshot sequences remain monotonic, and no duplicate trading record
+  may be inserted.
+- The Phase 4 gate consists of the normal application suite plus the Prisma
+  integration suite against PostgreSQL. Phase 5 must not start unless both gates
+  pass for the commit being promoted.
 
 #### Work
 
@@ -1200,3 +1216,4 @@ At the start of every bot-related task:
 | 2026-08-15 | Backtest decision rows render the already persisted condition trees and observed indicator values, including RSI period, value, operator, and threshold, so HOLD and warm-up outcomes are diagnosable without reading raw JSON. |
 | 2026-08-15 | Entry execution supports backward-compatible `EVERY_MATCHING_CANDLE`, episode-based `ON_FALSE_TO_TRUE`, and an optional post-fill candle cooldown; new GUI definitions default to episode-based triggering. |
 | 2026-08-21 | Phase 4 Step 4D is closed after auditing confirmed EMA crossing across validation, schema, GUI, documentation, live/backtest bounded history, and production-runner coverage. A committed application golden fixture now fixes the complete deterministic result and metrics; Step 5 remains open for the PostgreSQL persistence gate. |
+| 2026-08-21 | The Phase 4 PostgreSQL golden gate is implemented against the immutable application fixture and covers the complete persisted record graph, atomic completion, monotonic replay sequences, and concurrent idempotent reuse; Phase 4 remains open until that gate passes in the target PostgreSQL environment. |
