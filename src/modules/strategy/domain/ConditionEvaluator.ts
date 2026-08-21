@@ -89,17 +89,32 @@ function evaluateNode(
   }
 
   if ("indicator" in condition && condition.indicator === "RSI") {
-    const required = condition.period + 1;
+    const crossing = condition.operator === "CROSS_ABOVE" || condition.operator === "CROSS_BELOW";
+    const required = condition.period + (crossing ? 2 : 1);
+    if (availableCandles(context) < required) return insufficient("RSI", required, availableCandles(context));
     const observed = context.indicatorCache
       ? context.indicatorCache.rsi(condition.period, endIndex(context))
       : calculateRsi(historicalCandles(context), condition.period);
     if (observed === null) return insufficient("RSI", required, availableCandles(context));
-    const matched = compare(observed, condition.value, condition.operator);
+    const previousObserved = crossing
+      ? context.indicatorCache
+        ? context.indicatorCache.rsi(condition.period, endIndex(context) - 1)
+        : calculateRsi(historicalCandles(context).slice(0, -1), condition.period)
+      : null;
+    if (crossing && previousObserved === null)
+      return insufficient("RSI", required, availableCandles(context));
+    const matched = condition.operator === "CROSS_ABOVE"
+      ? previousObserved! <= condition.value && observed > condition.value
+      : condition.operator === "CROSS_BELOW"
+        ? previousObserved! >= condition.value && observed < condition.value
+        : compare(observed, condition.value, condition.operator);
     return {
       type: "RSI", matched, reasonCode: `RSI_${matched ? "MATCHED" : "NOT_MATCHED"}`,
-      explanation: `RSI(${condition.period}) ${observed} ${matched ? "matched" : "did not match"} ${condition.operator} ${condition.value}`,
+      explanation: crossing
+        ? `RSI(${condition.period}) moved from ${previousObserved} to ${observed} and ${matched ? "matched" : "did not match"} ${condition.operator} ${condition.value}`
+        : `RSI(${condition.period}) ${observed} ${matched ? "matched" : "did not match"} ${condition.operator} ${condition.value}`,
       observedValues: { indicator: "RSI", period: condition.period, operator: condition.operator,
-        expected: condition.value, observed }, children: [],
+        expected: condition.value, observed, ...(crossing ? { previousObserved } : {}) }, children: [],
     };
   }
 

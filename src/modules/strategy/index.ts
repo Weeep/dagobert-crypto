@@ -22,6 +22,7 @@ export {
 } from "./domain/StrategyDefinition";
 export type {
   ComparisonOperator,
+  RsiOperator,
   EmaDistanceCondition,
   EmaDeviationPctCondition,
   EmaPosition,
