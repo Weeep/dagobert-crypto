@@ -50,7 +50,7 @@ async function handler(
 
   switch (action) {
     case MarginActions.OpenOrders:
-      return await openOrders(res, {});
+      return await openOrders(res, {}, client);
     case MarginActions.CancelOrder:
       return await cancelOrder(res, req.body as CancelOrderOptions, client);
     case MarginActions.NewTpOrder:
@@ -81,6 +81,7 @@ async function allOrders(
       return res.status(500).json("Error: no response from allOrders endpoint");
     }
   } catch (error: any) {
+    console.error("Binance margin all-orders failed", error);
     return res.status(500).json({ message: error?.message, error: error });
     //console.error("Error fetching margin order history:", error);
   }
@@ -147,8 +148,22 @@ async function newOrder(
   }
 }
 
-async function openOrders(res: NextApiResponse, arg1: {}) {
-  throw new Error("Function not implemented.");
+async function openOrders(
+  res: NextApiResponse,
+  options: { symbol?: string; recvWindow?: number; useServerTime?: boolean },
+  client: typeof binanceClient
+) {
+  try {
+    const response = await client.marginOpenOrders({
+      ...options,
+      useServerTime: true,
+    });
+    return res.status(200).json(response);
+  } catch (err: any) {
+    return res.status(500).json({
+      error: `Error happened: ${err.message} | ${err?.response?.data}`,
+    });
+  }
 }
 
 function isValidAction(value: any): value is MarginActions {

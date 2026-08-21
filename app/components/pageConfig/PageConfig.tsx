@@ -251,19 +251,15 @@ export default function PageConfig() {
               </div>
             </div>
 
-            <h3 className="mb-2 mt-4 text-sm font-semibold">Available spot balances</h3>
-            {binanceHealth.balances.length === 0 ? (
-              <p className="text-sm text-slate-400">No available spot balance.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {binanceHealth.balances.map((balance) => (
-                  <div key={balance.asset} className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm">
-                    <span className="font-semibold text-blue-300">{balance.asset}</span>{" "}
-                    <span className="font-mono">{balance.free}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <h3 className="mb-2 mt-4 text-sm font-semibold">
+              Available USDC spot balance
+            </h3>
+            <div className="inline-flex rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm">
+              <span className="font-mono">
+                {binanceHealth.balances[0]?.free ?? "0"}
+              </span>{" "}
+              <span className="ml-1 font-semibold text-blue-300">USDC</span>
+            </div>
           </div>
         )}
       </div>
