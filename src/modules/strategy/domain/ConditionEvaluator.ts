@@ -11,7 +11,7 @@ import type { StrategyPositionLotContext } from "./StrategyEngine";
 
 export type ConditionObservedValues = Record<string, string | number | boolean | null | string[]>;
 export type ConditionEvaluation = {
-  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "MARKET_REGIME" | "EMA_SLOPE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
+  type: "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "MARKET_REGIME" | "EMA_SLOPE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT" | "TRAILING_RETURN_PCT";
   matched: boolean;
   reasonCode: string;
   explanation: string;
@@ -45,6 +45,19 @@ function compare(observed: number | string, expected: number, operator: Comparis
   if (operator === "LTE") return left.lte(right);
   if (operator === "GT") return left.gt(right);
   return left.gte(right);
+}
+
+function calculateNetReturn(position: StrategyPositionLotContext, close: string, exitFeeRate: string) {
+  const quantity = new Big(position.quantity);
+  const entryCost = new Big(position.entryCost);
+  const entryFees = new Big(position.entryFees);
+  const entryOutflow = entryCost.plus(entryFees);
+  if (entryOutflow.lte(0)) throw new Error("position return requires positive fee-inclusive entry cost");
+  const grossExitValue = quantity.times(close);
+  const estimatedExitFee = grossExitValue.times(exitFeeRate);
+  const netExitProceeds = grossExitValue.minus(estimatedExitFee);
+  return { quantity, entryCost, entryFees, grossExitValue, estimatedExitFee, netExitProceeds,
+    value: netExitProceeds.minus(entryOutflow).div(entryOutflow).times(100) };
 }
 
 const insufficient = (type: ConditionEvaluation["type"], required: number, available: number): ConditionEvaluation => ({
@@ -97,15 +110,8 @@ function evaluateNode(
       observedValues: { observed: null, operator: condition.operator, expected: condition.value }, children: [],
     };
     const close = new Big(latestCandle(context).close);
-    const quantity = new Big(context.position.quantity);
-    const entryCost = new Big(context.position.entryCost);
-    const entryFees = new Big(context.position.entryFees);
-    const entryOutflow = entryCost.plus(entryFees);
-    if (entryOutflow.lte(0)) throw new Error("POSITION_RETURN_PCT requires positive fee-inclusive entry cost");
-    const grossExitValue = quantity.times(close);
-    const estimatedExitFee = grossExitValue.times(context.exitFeeRate);
-    const netExitProceeds = grossExitValue.minus(estimatedExitFee);
-    const netReturnPct = netExitProceeds.minus(entryOutflow).div(entryOutflow).times(100);
+    const { quantity, entryCost, entryFees, grossExitValue, estimatedExitFee, netExitProceeds,
+      value: netReturnPct } = calculateNetReturn(context.position, close.toString(), context.exitFeeRate);
     const matched = compare(netReturnPct.toString(), condition.value, condition.operator);
     return {
       type: "POSITION_RETURN_PCT", matched,
@@ -118,6 +124,35 @@ function evaluateNode(
         estimatedExitFee: estimatedExitFee.toString(), netExitProceeds: netExitProceeds.toString(),
         exitFeeRate: context.exitFeeRate }, children: [],
     };
+  }
+
+  if ("indicator" in condition && condition.indicator === "TRAILING_RETURN_PCT") {
+    const openedAt = context.position?.openedAt ? new Date(context.position.openedAt) : null;
+    if (!context.position || context.exitFeeRate === undefined || !openedAt || !Number.isFinite(openedAt.getTime())) return {
+      type: "TRAILING_RETURN_PCT", matched: false, reasonCode: "POSITION_CONTEXT_REQUIRED",
+      explanation: "TRAILING_RETURN_PCT requires an open position lot, its opening time, and exit fee rate",
+      observedValues: { observed: null, highestReturnPct: null, trailingThreshold: null }, children: [],
+    };
+    const lotCandles = historicalCandles(context).filter((candle) => candle.openTime >= openedAt);
+    if (lotCandles.length === 0) return insufficient("TRAILING_RETURN_PCT", 1, 0);
+    const returns = lotCandles.map((candle) => calculateNetReturn(context.position!, candle.close,
+      context.exitFeeRate!).value);
+    const currentReturnPct = returns.at(-1)!;
+    const highestReturnPct = returns.reduce((highest, value) => value.gt(highest) ? value : highest);
+    const activated = highestReturnPct.gte(condition.activationPct);
+    const distanceThreshold = highestReturnPct.minus(condition.trailingDistancePct);
+    const trailingThreshold = distanceThreshold.gt(condition.minimumExitPct)
+      ? distanceThreshold : new Big(condition.minimumExitPct);
+    const matched = activated && currentReturnPct.lte(trailingThreshold);
+    return { type: "TRAILING_RETURN_PCT", matched,
+      reasonCode: `TRAILING_RETURN_PCT_${matched ? "MATCHED" : activated ? "ABOVE_THRESHOLD" : "NOT_ACTIVATED"}`,
+      explanation: `Lot ${context.position.id} trailing return ${activated ? "is active" : "is not active"}; current ${currentReturnPct}%`,
+      observedValues: { indicator: "TRAILING_RETURN_PCT", positionId: context.position.id,
+        activationPct: condition.activationPct, minimumExitPct: condition.minimumExitPct,
+        trailingDistancePct: condition.trailingDistancePct, currentReturnPct: currentReturnPct.toString(),
+        observed: currentReturnPct.toString(), highestReturnPct: highestReturnPct.toString(),
+        trailingThreshold: trailingThreshold.toString(), activated, closedCandlesSinceEntry: lotCandles.length,
+        exitFeeRate: context.exitFeeRate }, children: [] };
   }
 
   if ("indicator" in condition && condition.indicator === "EMA_CROSS_CONFIRMATION") {

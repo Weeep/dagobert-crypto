@@ -59,6 +59,24 @@ const run = (candles: readonly Candle[] = timeline) => runHistoricalBacktest({
 });
 
 describe("deterministic historical backtest runner", () => {
+  test("executes a closed-candle trailing return exit at its exact backtest threshold", () => {
+    const history = [candle(0, "50", "100"), candle(1, "100", "100"),
+      candle(2, "100", "105"), candle(3, "105", "110"), candle(4, "110", "109"),
+      candle(5, "109", "108"), candle(6, "108", "107"), candle(7, "107", "107")];
+    const strategy: StrategyDefinitionV1 = { schemaVersion: 1, name: "Trailing backtest",
+      entry: { candleSequence: { count: 1, direction: "GREEN", minimumBodyChangePct: 50 } },
+      exit: { indicator: "TRAILING_RETURN_PCT", activationPct: 5,
+        minimumExitPct: 3, trailingDistancePct: 3 } };
+    const result = runHistoricalBacktest({ definition: strategy, candles: history,
+      backtestFrom: history[0].openTime, backtestTo: history.at(-1)!.openTime,
+      execution: { ...execution, feeRate: "0", slippageRate: "0" } });
+    assert.equal(result.decisions[6].evaluation.action, "SELL");
+    assert.equal(result.decisions[6].evaluation.positionExits[0].evaluation.observedValues.highestReturnPct, "10");
+    assert.equal(result.decisions[6].evaluation.positionExits[0].evaluation.observedValues.trailingThreshold, "7");
+    assert.equal(result.fills.at(-1)?.side, "SELL");
+    assert.equal(result.fills.at(-1)?.filledAt, history[7].openTime.toISOString());
+  });
+
   test("fills decisions only at the next candle open and closes every open lot", () => {
     const result = run();
     assert.deepEqual(result.decisions.map(({ evaluation }) => evaluation.action), ["BUY", "BUY", "SELL", "BUY"]);

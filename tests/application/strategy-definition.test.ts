@@ -80,6 +80,14 @@ describe("strategy definition v1", () => {
       { ...example, entry: { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 } },
       { ...example, exit: { indicator: "POSITION_RETURN_PCT", operator: "EQ", value: 2 } },
       { ...example, exit: { indicator: "POSITION_RETURN_PCT", operator: "LTE", value: Number.NaN } },
+      { ...example, entry: { indicator: "TRAILING_RETURN_PCT", activationPct: 5,
+        minimumExitPct: 3, trailingDistancePct: 3 } },
+      { ...example, exit: { indicator: "TRAILING_RETURN_PCT", activationPct: 5,
+        minimumExitPct: 6, trailingDistancePct: 3 } },
+      { ...example, exit: { indicator: "TRAILING_RETURN_PCT", activationPct: 5,
+        minimumExitPct: 3, trailingDistancePct: 0 } },
+      { ...example, exit: { indicator: "TRAILING_RETURN_PCT", activationPct: Number.NaN,
+        minimumExitPct: 3, trailingDistancePct: 3 } },
     ];
     for (const candidate of cases) assert.equal(validateStrategyDefinition(candidate).ok, false);
     assert.equal(validateStrategyDefinition(example, 2).ok, false);
@@ -102,6 +110,11 @@ describe("strategy definition v1", () => {
     assert.equal(validateStrategyDefinition({ ...example, exit: { any: [
       { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 },
       { indicator: "POSITION_RETURN_PCT", operator: "LTE", value: -4 },
+    ] } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example, exit: { any: [
+      { indicator: "POSITION_RETURN_PCT", operator: "LTE", value: -2 },
+      { all: [{ indicator: "TRAILING_RETURN_PCT", activationPct: 5,
+        minimumExitPct: 3, trailingDistancePct: 3 }] },
     ] } }).ok, true);
   });
 

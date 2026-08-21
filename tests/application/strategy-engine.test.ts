@@ -35,6 +35,38 @@ const position = (count: number): StrategyPositionContext => ({
 });
 
 describe("pure condition-tree evaluator", () => {
+  test("trails each lot's fee-aware closed-candle return without lowering its historical maximum", () => {
+    const history = candles([100, 102, 104, 105, 107, 110, 109, 108, 107]);
+    const condition = { indicator: "TRAILING_RETURN_PCT" as const,
+      activationPct: 5, minimumExitPct: 3, trailingDistancePct: 3 };
+    const lot = { id: "lot-a", entryPrice: "100", quantity: "1", entryCost: "100",
+      entryFees: "0", openedAt: history[0].openTime.toISOString() };
+    const at = (index: number) => evaluateCondition(condition,
+      { candles: history.slice(0, index + 1), position: lot, exitFeeRate: "0" });
+    assert.equal(at(3).matched, false); // activation is reached, but return remains above the floor
+    assert.equal(at(3).observedValues.activated, true);
+    assert.equal(at(5).observedValues.highestReturnPct, "10");
+    assert.equal(at(6).matched, false);
+    assert.equal(at(7).matched, false);
+    assert.equal(at(8).matched, true); // equality with the 7% threshold exits
+    assert.equal(at(8).observedValues.highestReturnPct, "10");
+    assert.equal(at(8).observedValues.trailingThreshold, "7");
+    assert.equal(evaluateCondition(condition, { candles: candles([104]), position: lot,
+      exitFeeRate: "0" }).matched, false);
+
+    const laterLot = { ...lot, id: "lot-b", openedAt: history[6].openTime.toISOString() };
+    const independent = evaluateCondition(condition, { candles: history, position: laterLot, exitFeeRate: "0" });
+    assert.equal(independent.observedValues.highestReturnPct, "9");
+    assert.equal(independent.matched, false);
+
+    const feeAware = evaluateCondition({ ...condition, activationPct: 9.9, minimumExitPct: 0 },
+      { candles: candles([110]), position: { ...lot, openedAt: new Date(start).toISOString() }, exitFeeRate: "0.001" });
+    assert.equal(feeAware.observedValues.currentReturnPct, "9.89");
+    assert.equal(feeAware.observedValues.activated, false);
+    const missing = evaluateCondition(condition, { candles: history });
+    assert.equal(missing.reasonCode, "POSITION_CONTEXT_REQUIRED");
+  });
+
   test("evaluates nested all/any groups and retains every explainable child result", () => {
     const history = candles([44.34, 44.09, 44.15, 43.61, 44.33, 44.83, 45.1, 45.42,
       45.84, 46.08, 45.89, 46.03, 45.61, 46.28, 46.28, 46, 46.03, 46.41, 46.22, 45.64]);

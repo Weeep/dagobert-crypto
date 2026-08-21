@@ -23,6 +23,8 @@ export function conditionObservationSummaries(evaluation: ConditionEvaluation): 
     return [`EMA(${numeric(values.period)}) crossing ${numeric(values.direction)} · ${numeric(values.confirmationCandles)} confirmation candles · closes ${numeric(values.closes)} · EMAs ${numeric(values.emas)} · ${evaluation.matched ? "matched" : "not matched"}`];
   if (evaluation.type === "POSITION_RETURN_PCT")
     return [`Lot ${numeric(values.positionId)} net return: ${numeric(values.observed)}% · condition ${comparison(values.operator)} ${numeric(values.expected)}% · entry fees ${numeric(values.entryFees)} · estimated exit fee ${numeric(values.estimatedExitFee)} · ${evaluation.matched ? "matched" : "not matched"}`];
+  if (evaluation.type === "TRAILING_RETURN_PCT")
+    return [`Lot ${numeric(values.positionId)} trailing return: current ${numeric(values.currentReturnPct)}% · highest ${numeric(values.highestReturnPct)}% · threshold ${numeric(values.trailingThreshold)}% · ${numeric(values.activated) === "true" ? "active" : "not active"} · ${evaluation.matched ? "matched" : "not matched"}`];
   if (evaluation.type === "CANDLE_SEQUENCE")
     return [`Last ${numeric(values.count)} candles: ${numeric(values.directions)} · expected ${numeric(values.expectedDirection)} · ${evaluation.matched ? "matched" : "not matched"}`];
   return [evaluation.explanation];
