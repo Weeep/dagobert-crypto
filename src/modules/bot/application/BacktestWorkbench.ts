@@ -52,6 +52,8 @@ const conditionLabel = (condition: StrategyCondition, evaluation: ConditionEvalu
       return `EMA(${condition.period}) deviation ${condition.operator} ${condition.value}%`;
     if (condition.indicator === "EMA_DISTANCE") return `EMA(${condition.period}) ${condition.position}`;
     if (condition.indicator === "POSITION_RETURN_PCT") return `POSITION_RETURN ${condition.operator} ${condition.value}%`;
+    if (condition.indicator === "TRAILING_RETURN_PCT")
+      return `TRAILING_RETURN ${condition.activationPct}% / ${condition.trailingDistancePct}%`;
     return `${condition.indicator}(${condition.period}) ${condition.operator} ${condition.value}`;
   }
   return evaluation.type;

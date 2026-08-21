@@ -27,7 +27,8 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
         <span className="min-w-20 text-xs font-semibold uppercase tracking-widest text-cyan-300">{label}</span>
         <select aria-label={`${label} rule type`} className={inputClass} value={kind}
           onChange={(event) => replace(newCondition(event.target.value as ConditionKind))}>
-          {CONDITION_KIND_OPTIONS.filter((item) => positionConditionsAllowed || item.value !== "POSITION_RETURN_PCT")
+          {CONDITION_KIND_OPTIONS.filter((item) => positionConditionsAllowed ||
+            !["POSITION_RETURN_PCT", "TRAILING_RETURN_PCT"].includes(item.value))
             .map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
         {removable && <button type="button" className="ml-auto rounded-lg border border-rose-700 px-3 py-2 text-xs text-rose-200 hover:bg-rose-950"
@@ -41,7 +42,8 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
           positionConditionsAllowed={positionConditionsAllowed} />)}
         <div className="flex flex-wrap gap-2 pt-1">
           {GROUP_CHILD_KINDS
-            .filter((childKind) => positionConditionsAllowed || childKind !== "POSITION_RETURN_PCT").map((childKind) =>
+            .filter((childKind) => positionConditionsAllowed ||
+              !["POSITION_RETURN_PCT", "TRAILING_RETURN_PCT"].includes(childKind)).map((childKind) =>
             <button type="button" key={childKind}
               className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:border-cyan-500 hover:text-cyan-200"
               onClick={() => onChange(appendCondition(root, path, newCondition(childKind)))}>
@@ -146,6 +148,20 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
             value={condition.value}
             onChange={(event) => replace({ ...condition, value: Number(event.target.value) })} /></Field>
           <p className="text-xs text-slate-500 sm:col-span-2">Exit-only condition. Return includes entry fees and the estimated exit fee. Combine GTE take-profit and LTE stop-loss rules inside an Any group.</p>
+        </div>}
+
+      {"indicator" in condition && condition.indicator === "TRAILING_RETURN_PCT" &&
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Field label="Activation %"><input className={inputClass} type="number" step="0.1"
+            value={condition.activationPct}
+            onChange={(event) => replace({ ...condition, activationPct: Number(event.target.value) })} /></Field>
+          <Field label="Minimum exit %"><input className={inputClass} type="number" step="0.1"
+            value={condition.minimumExitPct}
+            onChange={(event) => replace({ ...condition, minimumExitPct: Number(event.target.value) })} /></Field>
+          <Field label="Trailing distance %"><input className={inputClass} type="number" min="0.1" step="0.1"
+            value={condition.trailingDistancePct}
+            onChange={(event) => replace({ ...condition, trailingDistancePct: Number(event.target.value) })} /></Field>
+          <p className="text-xs text-slate-500 sm:col-span-3">Exit-only, fee-aware condition. Trailing activates only after the lot reaches the activation level on a closed-candle close.</p>
         </div>}
 
       {"candleSequence" in condition && <div className="mt-4 grid gap-3 sm:grid-cols-3">

@@ -25,6 +25,7 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
       { $ref: "#/$defs/marketRegime" },
       { $ref: "#/$defs/emaSlope" },
       { $ref: "#/$defs/positionReturnPct" },
+      { $ref: "#/$defs/trailingReturnPct" },
     ] },
     all: { type: "object", additionalProperties: false, required: ["all"], properties: {
       all: { type: "array", minItems: 1, items: { $ref: "#/$defs/condition" } },
@@ -66,6 +67,11 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
         indicator: { const: "POSITION_RETURN_PCT" },
         operator: { enum: ["LT", "LTE", "GT", "GTE"] },
         value: { type: "number" },
+      } },
+    trailingReturnPct: { type: "object", additionalProperties: false,
+      required: ["indicator", "activationPct", "minimumExitPct", "trailingDistancePct"], properties: {
+        indicator: { const: "TRAILING_RETURN_PCT" }, activationPct: { type: "number" },
+        minimumExitPct: { type: "number" }, trailingDistancePct: { type: "number", exclusiveMinimum: 0 },
       } },
     candleSequence: { type: "object", additionalProperties: false, required: ["candleSequence"], properties: {
       candleSequence: { type: "object", additionalProperties: false,

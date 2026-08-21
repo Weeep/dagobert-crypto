@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { BotRunRepository } from "@/src/modules/bot";
-import { isMarketInterval } from "@/src/modules/market";
+import { isMarketInterval, MARKET_INTERVAL_MILLISECONDS } from "@/src/modules/market";
 import { evaluateStrategy, type StrategyEvaluation } from "../domain/StrategyEngine";
 import { validateStrategyDefinition, type StrategyCondition } from "../domain/StrategyDefinition";
 import type {
@@ -19,7 +19,7 @@ export function requiredCandles(condition: StrategyCondition): number {
   if ("all" in condition) return Math.max(...condition.all.map(requiredCandles));
   if ("any" in condition) return Math.max(...condition.any.map(requiredCandles));
   if ("candleSequence" in condition) return condition.candleSequence.count;
-  if (condition.indicator === "POSITION_RETURN_PCT") return 1;
+  if (condition.indicator === "POSITION_RETURN_PCT" || condition.indicator === "TRAILING_RETURN_PCT") return 1;
   if (condition.indicator === "EMA_CROSS_CONFIRMATION")
     return condition.period + condition.confirmationCandles;
   if (condition.indicator === "MARKET_REGIME") return 100;
@@ -30,7 +30,14 @@ export function requiredCandles(condition: StrategyCondition): number {
 function usesPositionReturn(condition: StrategyCondition): boolean {
   if ("all" in condition) return condition.all.some(usesPositionReturn);
   if ("any" in condition) return condition.any.some(usesPositionReturn);
-  return "indicator" in condition && condition.indicator === "POSITION_RETURN_PCT";
+  return "indicator" in condition &&
+    (condition.indicator === "POSITION_RETURN_PCT" || condition.indicator === "TRAILING_RETURN_PCT");
+}
+
+function usesTrailingReturn(condition: StrategyCondition): boolean {
+  if ("all" in condition) return condition.all.some(usesTrailingReturn);
+  if ("any" in condition) return condition.any.some(usesTrailingReturn);
+  return "indicator" in condition && condition.indicator === "TRAILING_RETURN_PCT";
 }
 
 function jsonEvaluation(evaluation: StrategyEvaluation) {
@@ -72,11 +79,23 @@ export class EvaluateStrategyForClosedCandleUseCase {
       return { ok: false as const, error: "Bot run fee snapshot is required for position-return exits",
         evaluation: null, reused: false };
 
-    const lookback = Math.max(requiredCandles(validated.definition.entry), requiredCandles(validated.definition.exit));
+    const positions = await this.evaluations.findActivePositions(botRunId);
+    const oldestOpening = positions.reduce<number | null>((oldest, position) => {
+      const timestamp = position.openedAt ? new Date(position.openedAt).getTime() : Number.NaN;
+      return Number.isFinite(timestamp) ? Math.min(oldest ?? timestamp, timestamp) : oldest;
+    }, null);
+    // Trailing maxima are derived from immutable closed-candle history instead of persisted
+    // state, so restarts and backtests use exactly the same calculation.
+    // Ceiling is intentional: a fill just after an interval open still needs that
+    // interval's eventual close included in every subsequent reconstruction.
+    const lotHistory = !usesTrailingReturn(validated.definition.exit) || oldestOpening === null ? 1 :
+      Math.max(1, Math.ceil((candle.openTime.getTime() - oldestOpening) /
+        MARKET_INTERVAL_MILLISECONDS[configuration.timeframe]) + 1);
+    const lookback = Math.max(requiredCandles(validated.definition.entry),
+      requiredCandles(validated.definition.exit), lotHistory);
     const history = await this.candles.findClosedHistoryEndingAt(
       candle.pairSymbol, candle.interval, candle.openTime, lookback,
     );
-    const positions = await this.evaluations.findActivePositions(botRunId);
     let engineResult: StrategyEvaluation;
     try {
       engineResult = evaluateStrategy({

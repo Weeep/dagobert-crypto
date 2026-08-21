@@ -263,6 +263,30 @@ netReturnPct = (netExitProceeds - entryOutflow) / entryOutflow * 100
 
 Each open lot is evaluated independently. Only lots for which the exit tree matches are selected for sale.
 
+### 4.6.1. `TRAILING_RETURN_PCT`
+
+This exit-only profit-protection condition tracks each open lot's greatest fee-aware net return on **closed-candle close prices** since that lot opened. It does not use candle highs. Therefore live evaluation and backtesting are deterministic and use the same rules.
+
+```json
+{
+  "indicator": "TRAILING_RETURN_PCT",
+  "activationPct": 5,
+  "minimumExitPct": 3,
+  "trailingDistancePct": 3
+}
+```
+
+The condition cannot match until `highestReturnPct >= activationPct`. Once activated, its threshold is `max(minimumExitPct, highestReturnPct - trailingDistancePct)`, and it matches when the current net return is at or below that threshold. For example, after the configuration above reaches 10%, its threshold is 7%; closes at 9% and 8% do not match, while 7% does.
+
+| Parameter | Type | Constraint | Meaning |
+| --- | --- | --- | --- |
+| `indicator` | string | always `TRAILING_RETURN_PCT` | Condition type. |
+| `activationPct` | number | finite | Return that activates trailing. |
+| `minimumExitPct` | number | finite and no greater than activation | Floor for the exit threshold. |
+| `trailingDistancePct` | number | finite and positive | Distance below the highest return. |
+
+Net return uses the same fee-aware formula as `POSITION_RETURN_PCT`. The maximum is derived per lot from stored closed candles at or after its opening time. No derived trailing state is persisted: a restart reconstructs the same maximum from immutable candle and position history, and a newly opened lot naturally starts with fresh history.
+
 ### 4.7. `MARKET_REGIME`
 
 Classifies the market from the strict ordering of three fixed EMAs:
@@ -446,6 +470,7 @@ The system loads enough history for the most demanding branch in the complete co
 | `EMA_SLOPE` | `period + lookbackCandles` |
 | `candleSequence` | `count` |
 | `POSITION_RETURN_PCT` | 1, plus an open-position and fee context |
+| `TRAILING_RETURN_PCT` | every closed candle since the lot opened, plus position and fee context |
 | `all` / `any` | maximum requirement among their children |
 
 When there is not enough history, the affected leaf reports `INSUFFICIENT_HISTORY` and does not match. An `all` or `any` group treats it as a normal non-matching child.
@@ -453,6 +478,7 @@ When there is not enough history, the affected leaf reports `INSUFFICIENT_HISTOR
 ## 8. Common configuration mistakes
 
 - Using `POSITION_RETURN_PCT` in `entry`: it is not supported because it requires an open position-lot context.
+- Using `TRAILING_RETURN_PCT` in `entry`, a non-positive trailing distance, or a minimum exit above activation: these configurations are rejected.
 - Supplying zero or a fractional `period`, `lookbackCandles`, `confirmationCandles`, or `count`: these values must be positive integers.
 - Using `maximumDistancePct: 2.25` with `EMA_DISTANCE`: at most one decimal place is supported; use a value such as `2.2` instead.
 - Expecting equality to count as the new `ABOVE` or `BELOW` side: confirmation and distance checks use strict comparisons on the new side.

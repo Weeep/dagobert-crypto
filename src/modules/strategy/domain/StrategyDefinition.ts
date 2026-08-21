@@ -11,6 +11,12 @@ export type PositionReturnPctCondition = {
   operator: ComparisonOperator;
   value: number;
 };
+export type TrailingReturnPctCondition = {
+  indicator: "TRAILING_RETURN_PCT";
+  activationPct: number;
+  minimumExitPct: number;
+  trailingDistancePct: number;
+};
 export type EmaPosition = "ABOVE" | "BELOW";
 export type EmaDistanceCondition = {
   indicator: "EMA_DISTANCE";
@@ -47,6 +53,7 @@ export type StrategyCondition =
   | { any: StrategyCondition[] }
   | RsiCondition
   | PositionReturnPctCondition
+  | TrailingReturnPctCondition
   | EmaDistanceCondition
   | EmaDeviationPctCondition
   | EmaCrossConfirmationCondition
@@ -182,6 +189,21 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
           issue(`${path}.operator`, "UNSUPPORTED_OPERATOR", "POSITION_RETURN_PCT supports LT, LTE, GT, and GTE");
         if (typeof candidate.value !== "number" || !Number.isFinite(candidate.value))
           issue(`${path}.value`, "VALUE", "POSITION_RETURN_PCT value must be a finite signed number");
+      } else if (candidate.indicator === "TRAILING_RETURN_PCT") {
+        if (!exactKeys(candidate, ["indicator", "activationPct", "minimumExitPct", "trailingDistancePct"]))
+          issue(path, "PROPERTIES", "TRAILING_RETURN_PCT condition contains unsupported properties");
+        if (!positionConditionsAllowed)
+          issue(path, "POSITION_CONTEXT", "TRAILING_RETURN_PCT is supported only in exit conditions");
+        for (const field of ["activationPct", "minimumExitPct", "trailingDistancePct"] as const) {
+          if (typeof candidate[field] !== "number" || !Number.isFinite(candidate[field]))
+            issue(`${path}.${field}`, "VALUE", `${field} must be a finite number`);
+        }
+        if (typeof candidate.trailingDistancePct === "number" && candidate.trailingDistancePct <= 0)
+          issue(`${path}.trailingDistancePct`, "VALUE", "trailingDistancePct must be positive");
+        if (typeof candidate.minimumExitPct === "number" && typeof candidate.activationPct === "number" &&
+            Number.isFinite(candidate.minimumExitPct) && Number.isFinite(candidate.activationPct) &&
+            candidate.minimumExitPct > candidate.activationPct)
+          issue(`${path}.minimumExitPct`, "VALUE", "minimumExitPct cannot exceed activationPct");
       } else issue(`${path}.indicator`, "UNSUPPORTED_INDICATOR", "indicator is not supported");
       return;
     }

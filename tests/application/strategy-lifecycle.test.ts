@@ -26,7 +26,8 @@ const run: BotRun = { id: "run", botId: "bot", mode: "PAPER", status: "RUNNING",
   startedAt: new Date(), endedAt: null, errorMessage: null };
 
 class Runs implements BotRunRepository {
-  findById(id: string) { return Promise.resolve(id === run.id ? run : null); }
+  constructor(private readonly value: BotRun = run) {}
+  findById(id: string) { return Promise.resolve(id === this.value.id ? this.value : null); }
   findAllByBotId() { return Promise.resolve([run]); }
   save() { return Promise.resolve(); }
 }
@@ -41,10 +42,11 @@ class History implements ClosedCandleHistoryRepository {
 }
 class Evaluations implements StrategyEvaluationRepository {
   stored: PersistedStrategyEvaluation | null = null; activePositions = 0; saves = 0;
+  openedAt = candle.openTime.toISOString();
   findByRunAndCandle() { return Promise.resolve(this.stored); }
   findActivePositions() { return Promise.resolve(Array.from({ length: this.activePositions }, (_, index) => ({
     id: `position-${index}`, entryPrice: "100", quantity: "1", entryCost: "100",
-    entryFees: "0", openedAt: candle.openTime.toISOString(),
+    entryFees: "0", openedAt: this.openedAt,
   }))); }
   saveIfAbsent(value: PersistedStrategyEvaluation) { this.saves += 1; this.stored ??= value; return Promise.resolve(this.stored); }
 }
@@ -92,6 +94,24 @@ describe("closed-candle strategy evaluation application service", () => {
     const repeated = await useCase.execute("run", "candle");
     assert.equal(repeated.ok, true); assert.equal(repeated.reused, true);
     assert.equal(evaluations.saves, 1);
+  });
+
+  test("retains the first interval close when a live lot fills after that interval opens", async () => {
+    const first = { ...candle, close: "110" };
+    const second = { ...candle, id: "candle-2", openTime: new Date("2026-01-01T01:00:00Z"),
+      closeTime: new Date("2026-01-01T01:59:59.999Z"), open: "110", high: "111", low: "106", close: "107" };
+    const trailingDefinition = { ...definition, exit: { indicator: "TRAILING_RETURN_PCT" as const,
+      activationPct: 5, minimumExitPct: 3, trailingDistancePct: 3 } };
+    const trailingRun = { ...run, configurationSnapshot: { pairSymbol: "BTCUSDC", timeframe: "1h", feeRate: "0" },
+      strategySnapshot: { schemaVersion: 1, definition: trailingDefinition } };
+    const history = new History(); history.values = [first, second];
+    const evaluations = new Evaluations(); evaluations.activePositions = 1;
+    evaluations.openedAt = "2026-01-01T00:00:00.001Z";
+    const result = await new EvaluateStrategyForClosedCandleUseCase(
+      new Runs(trailingRun), history, evaluations).execute("run", "candle-2");
+    assert.equal(result.ok, true); if (!result.ok) return;
+    assert.deepEqual(history.calls, [2]);
+    assert.equal(result.evaluation.decision.action, "SELL");
   });
 
   test("rejects open targets and malicious future history without persistence", async () => {

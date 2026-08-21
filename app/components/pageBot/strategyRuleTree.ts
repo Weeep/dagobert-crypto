@@ -1,6 +1,6 @@
 import type { StrategyCondition } from "@/src/modules/strategy/domain/StrategyDefinition";
 
-export type ConditionKind = "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "MARKET_REGIME" | "EMA_SLOPE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT";
+export type ConditionKind = "ALL" | "ANY" | "RSI" | "EMA_DISTANCE" | "EMA_DEVIATION_PCT" | "EMA_CROSS_CONFIRMATION" | "MARKET_REGIME" | "EMA_SLOPE" | "CANDLE_SEQUENCE" | "POSITION_RETURN_PCT" | "TRAILING_RETURN_PCT";
 
 export const CONDITION_KIND_OPTIONS: ReadonlyArray<{ value: ConditionKind; label: string }> = [
   { value: "ALL", label: "All conditions" },
@@ -13,11 +13,12 @@ export const CONDITION_KIND_OPTIONS: ReadonlyArray<{ value: ConditionKind; label
   { value: "EMA_SLOPE", label: "EMA slope %" },
   { value: "CANDLE_SEQUENCE", label: "Candle sequence" },
   { value: "POSITION_RETURN_PCT", label: "Position net return %" },
+  { value: "TRAILING_RETURN_PCT", label: "Trailing net return %" },
 ];
 
 export const GROUP_CHILD_KINDS: readonly ConditionKind[] = [
   "RSI", "EMA_DISTANCE", "EMA_DEVIATION_PCT", "EMA_CROSS_CONFIRMATION", "MARKET_REGIME", "EMA_SLOPE", "CANDLE_SEQUENCE",
-  "POSITION_RETURN_PCT", "ALL", "ANY",
+  "POSITION_RETURN_PCT", "TRAILING_RETURN_PCT", "ALL", "ANY",
 ];
 
 export const conditionKind = (condition: StrategyCondition): ConditionKind => {
@@ -42,6 +43,8 @@ export const newCondition = (kind: ConditionKind): StrategyCondition => {
     return { indicator: "EMA_SLOPE", period: 100, lookbackCandles: 12, operator: "GTE", value: 0.3 };
   if (kind === "POSITION_RETURN_PCT")
     return { indicator: "POSITION_RETURN_PCT", operator: "GTE", value: 2 };
+  if (kind === "TRAILING_RETURN_PCT")
+    return { indicator: "TRAILING_RETURN_PCT", activationPct: 5, minimumExitPct: 3, trailingDistancePct: 3 };
   return { candleSequence: { count: 3, direction: "RED", minimumBodyChangePct: 1 } };
 };
 
