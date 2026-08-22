@@ -92,14 +92,18 @@ function evaluateNode(
     const crossing = condition.operator === "CROSS_ABOVE" || condition.operator === "CROSS_BELOW";
     const required = condition.period + (crossing ? 2 : 1);
     if (availableCandles(context) < required) return insufficient("RSI", required, availableCandles(context));
-    const observed = context.indicatorCache
-      ? context.indicatorCache.rsi(condition.period, endIndex(context))
-      : calculateRsi(historicalCandles(context), condition.period);
+    // Crossing signals must use the same bounded window in live evaluation and
+    // backtests. A cached RSI is seeded at the beginning of the complete
+    // backtest series, whereas live evaluation only loads `required` candles.
+    const crossingCandles = crossing ? trailingCandles(context, required) : null;
+    const observed = crossingCandles
+      ? calculateRsi(crossingCandles, condition.period)
+      : context.indicatorCache
+        ? context.indicatorCache.rsi(condition.period, endIndex(context))
+        : calculateRsi(historicalCandles(context), condition.period);
     if (observed === null) return insufficient("RSI", required, availableCandles(context));
-    const previousObserved = crossing
-      ? context.indicatorCache
-        ? context.indicatorCache.rsi(condition.period, endIndex(context) - 1)
-        : calculateRsi(historicalCandles(context).slice(0, -1), condition.period)
+    const previousObserved = crossingCandles
+      ? calculateRsi(crossingCandles.slice(0, -1), condition.period)
       : null;
     if (crossing && previousObserved === null)
       return insufficient("RSI", required, availableCandles(context));
