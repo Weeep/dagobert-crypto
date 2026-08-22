@@ -3,9 +3,10 @@ export const MAX_STRATEGY_DEPTH = 10;
 export const MAX_STRATEGY_NODES = 100;
 
 export type ComparisonOperator = "LT" | "LTE" | "GT" | "GTE";
+export type RsiOperator = ComparisonOperator | "CROSS_ABOVE" | "CROSS_BELOW";
 export type EntryTrigger = "EVERY_MATCHING_CANDLE" | "ON_FALSE_TO_TRUE";
 export type EntryPolicy = { trigger: EntryTrigger; cooldownCandles?: number };
-export type RsiCondition = { indicator: "RSI"; period: number; operator: ComparisonOperator; value: number };
+export type RsiCondition = { indicator: "RSI"; period: number; operator: RsiOperator; value: number };
 export type PositionReturnPctCondition = {
   indicator: "POSITION_RETURN_PCT";
   operator: ComparisonOperator;
@@ -137,8 +138,9 @@ export function validateStrategyDefinition(value: unknown, declaredSchemaVersion
         if (!nonNegativeNumber(candidate.value)) issue(`${path}.value`, "VALUE", "value must be a non-negative finite number");
         if (typeof candidate.value === "number" && candidate.value > 100)
           issue(`${path}.value`, "VALUE", "RSI value cannot exceed 100");
-        if (!["LT", "LTE", "GT", "GTE"].includes(candidate.operator as string))
-          issue(`${path}.operator`, "UNSUPPORTED_OPERATOR", "RSI supports LT, LTE, GT, and GTE");
+        if (!["LT", "LTE", "GT", "GTE", "CROSS_ABOVE", "CROSS_BELOW"].includes(candidate.operator as string))
+          issue(`${path}.operator`, "UNSUPPORTED_OPERATOR",
+            "RSI supports LT, LTE, GT, GTE, CROSS_ABOVE, and CROSS_BELOW");
       } else if (candidate.indicator === "EMA_DISTANCE") {
         if (!positiveInteger(candidate.period)) issue(`${path}.period`, "VALUE", "period must be a positive safe integer");
         const emaKeys = candidate.maximumDistancePct === undefined

@@ -24,7 +24,9 @@ export function requiredCandles(condition: StrategyCondition): number {
     return condition.period + condition.confirmationCandles;
   if (condition.indicator === "MARKET_REGIME") return 100;
   if (condition.indicator === "EMA_SLOPE") return condition.period + condition.lookbackCandles;
-  return condition.indicator === "RSI" ? condition.period + 1 : condition.period;
+  return condition.indicator === "RSI"
+    ? condition.period + (["CROSS_ABOVE", "CROSS_BELOW"].includes(condition.operator) ? 2 : 1)
+    : condition.period;
 }
 
 function usesPositionReturn(condition: StrategyCondition): boolean {

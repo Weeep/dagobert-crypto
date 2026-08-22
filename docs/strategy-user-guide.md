@@ -94,10 +94,12 @@ Compares the latest Wilder Relative Strength Index value with a threshold.
 | --- | --- | --- | --- |
 | `indicator` | string | always `RSI` | Condition type. |
 | `period` | integer | positive | RSI period. |
-| `operator` | string | `LT`, `LTE`, `GT`, or `GTE` | Comparison operator. |
+| `operator` | string | `LT`, `LTE`, `GT`, `GTE`, `CROSS_ABOVE`, or `CROSS_BELOW` | Comparison or crossing operator. |
 | `value` | number | 0–100 | RSI threshold. |
 
-RSI requires at least `period + 1` closed candles. For example, RSI14 has a 15-candle warm-up. When there is not enough history, the condition does not match and reports `INSUFFICIENT_HISTORY`.
+`CROSS_ABOVE` matches when the previous RSI was at or below the threshold and the latest RSI is above it. `CROSS_BELOW` matches when the previous RSI was at or above the threshold and the latest RSI is below it. This makes both crossing operators one-candle events rather than persistent conditions.
+
+Regular RSI comparisons require at least `period + 1` closed candles; crossing operators require one additional candle so both consecutive RSI values are available. For example, RSI14 has a 15-candle comparison warm-up and a 16-candle crossing warm-up. When there is not enough history, the condition does not match and reports `INSUFFICIENT_HISTORY`.
 
 ### 4.2. `EMA_DISTANCE`
 

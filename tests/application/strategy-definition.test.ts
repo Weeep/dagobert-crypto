@@ -54,6 +54,8 @@ describe("strategy definition v1", () => {
       ["EVERY_MATCHING_CANDLE", "ON_FALSE_TO_TRUE"]);
     assert.deepEqual(STRATEGY_DEFINITION_V1_JSON_SCHEMA.$defs.positionReturnPct.properties.operator.enum,
       ["LT", "LTE", "GT", "GTE"]);
+    assert.deepEqual(STRATEGY_DEFINITION_V1_JSON_SCHEMA.$defs.rsi.properties.operator.enum,
+      ["LT", "LTE", "GT", "GTE", "CROSS_ABOVE", "CROSS_BELOW"]);
     if (result.ok) assert.deepEqual(result.definition, example);
   });
 
@@ -99,6 +101,10 @@ describe("strategy definition v1", () => {
       entry: { indicator: "EMA_DISTANCE", period: 14, position: "ABOVE", maximumDistancePct: 100 } }).ok, true);
     assert.equal(validateStrategyDefinition({ ...example,
       entry: { indicator: "EMA_DEVIATION_PCT", period: 100, operator: "LTE", value: -2 } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example,
+      entry: { indicator: "RSI", period: 14, operator: "CROSS_ABOVE", value: 35 } }).ok, true);
+    assert.equal(validateStrategyDefinition({ ...example,
+      entry: { indicator: "RSI", period: 14, operator: "CROSS_BELOW", value: 65 } }).ok, true);
     assert.equal(validateStrategyDefinition({ ...example,
       entry: { indicator: "EMA_CROSS_CONFIRMATION", period: 100, direction: "ABOVE", confirmationCandles: 3 } }).ok, true);
     assert.equal(validateStrategyDefinition({ ...example,

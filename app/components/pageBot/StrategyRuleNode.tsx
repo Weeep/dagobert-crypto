@@ -57,10 +57,12 @@ export function StrategyRuleNode({ condition, root, path, label, onChange, remov
           onChange={(event) => replace({ ...condition, period: Number(event.target.value) })} /></Field>
         <Field label="Operator"><select className={inputClass} value={condition.operator}
           onChange={(event) => replace({ ...condition, operator: event.target.value as typeof condition.operator })}>
-          {(["LT", "LTE", "GT", "GTE"] as const).map((operator) => <option key={operator}>{operator}</option>)}
+          {(["LT", "LTE", "GT", "GTE", "CROSS_ABOVE", "CROSS_BELOW"] as const)
+            .map((operator) => <option key={operator}>{operator}</option>)}
         </select></Field>
         <Field label="RSI threshold"><input className={inputClass} type="number" min={0} max={100} step="any" value={condition.value}
           onChange={(event) => replace({ ...condition, value: Number(event.target.value) })} /></Field>
+        <p className="text-xs text-slate-500 sm:col-span-3">CROSS_ABOVE matches only when RSI moves from at or below the threshold to above it; CROSS_BELOW matches the opposite move.</p>
       </div>}
 
       {"indicator" in condition && condition.indicator === "EMA_DISTANCE" && <div className="mt-4 grid gap-3 sm:grid-cols-3">

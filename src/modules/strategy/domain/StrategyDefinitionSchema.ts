@@ -35,7 +35,8 @@ export const STRATEGY_DEFINITION_V1_JSON_SCHEMA = {
     } },
     rsi: { type: "object", additionalProperties: false, required: ["indicator", "period", "operator", "value"], properties: {
       indicator: { const: "RSI" }, period: { type: "integer", minimum: 1 },
-      operator: { enum: ["LT", "LTE", "GT", "GTE"] }, value: { type: "number", minimum: 0, maximum: 100 },
+      operator: { enum: ["LT", "LTE", "GT", "GTE", "CROSS_ABOVE", "CROSS_BELOW"] },
+      value: { type: "number", minimum: 0, maximum: 100 },
     } },
     emaDistance: { type: "object", additionalProperties: false, required: ["indicator", "period", "position"], properties: {
       indicator: { const: "EMA_DISTANCE" }, period: { type: "integer", minimum: 1 },

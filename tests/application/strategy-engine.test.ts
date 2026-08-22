@@ -104,6 +104,51 @@ describe("pure condition-tree evaluator", () => {
     assert.equal(result.observedValues.observed, null);
   });
 
+  test("matches RSI threshold crossings only on the candle that crosses", () => {
+    const above = evaluateCondition(
+      { indicator: "RSI", period: 2, operator: "CROSS_ABOVE", value: 35 },
+      { candles: candles([3, 2, 1, 2]) },
+    );
+    assert.equal(above.matched, true);
+    assert.equal(above.observedValues.previousObserved, 0);
+    assert.equal(above.observedValues.observed, 50);
+    assert.equal(evaluateCondition(
+      { indicator: "RSI", period: 2, operator: "CROSS_ABOVE", value: 35 },
+      { candles: candles([3, 2, 1, 2, 3]) },
+    ).matched, false);
+
+    const below = evaluateCondition(
+      { indicator: "RSI", period: 2, operator: "CROSS_BELOW", value: 65 },
+      { candles: candles([1, 2, 3, 2]) },
+    );
+    assert.equal(below.matched, true);
+    assert.equal(below.observedValues.previousObserved, 100);
+    assert.equal(below.observedValues.observed, 50);
+  });
+
+  test("requires two consecutive RSI values for crossing operators", () => {
+    const result = evaluateCondition(
+      { indicator: "RSI", period: 2, operator: "CROSS_ABOVE", value: 35 },
+      { candles: candles([3, 2, 1]) },
+    );
+    assert.equal(result.reasonCode, "INSUFFICIENT_HISTORY");
+    assert.equal(result.observedValues.requiredCandles, 4);
+  });
+
+  test("seeds RSI crossings from the same bounded window in live runs and backtests", () => {
+    const history = candles([100, 101, 102, 100, 105, 108]);
+    const condition = { indicator: "RSI" as const, period: 2,
+      operator: "CROSS_ABOVE" as const, value: 80 };
+    const live = evaluateCondition(condition, { candles: history.slice(-4) });
+    const backtest = evaluateCondition(condition, { candles: history, endIndex: history.length - 1,
+      indicatorCache: createHistoricalIndicatorCache(history) });
+
+    assert.equal(live.matched, true);
+    assert.deepEqual(backtest, live);
+    assert.equal(backtest.observedValues.previousObserved, 71.42857142857143);
+    assert.equal(backtest.observedValues.observed, 84.61538461538461);
+  });
+
   test("evaluates strict EMA side and an optional percentage distance", () => {
     const above = candles([10, 10, 12]);
     assert.equal(evaluateCondition({ indicator: "EMA_DISTANCE", period: 2, position: "ABOVE" },

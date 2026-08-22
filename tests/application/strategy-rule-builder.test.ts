@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test, { describe } from "node:test";
 import { appendCondition, CONDITION_KIND_OPTIONS, conditionAt, conditionKind, GROUP_CHILD_KINDS,
   newCondition, removeCondition, replaceCondition } from "@/app/components/pageBot/strategyRuleTree";
-import { validateStrategyDefinition } from "@/src/modules/strategy";
+import { requiredCandles, validateStrategyDefinition } from "@/src/modules/strategy";
 
 describe("strategy rule-builder tree operations", () => {
   test("exposes EMA cross confirmation in both GUI rule selectors", () => {
@@ -38,6 +38,12 @@ describe("strategy rule-builder tree operations", () => {
     assert.deepEqual(newCondition("EMA_CROSS_CONFIRMATION"), {
       indicator: "EMA_CROSS_CONFIRMATION", period: 100, direction: "ABOVE", confirmationCandles: 3,
     });
+  });
+
+  test("loads enough history for consecutive RSI crossing values", () => {
+    assert.equal(requiredCandles({ indicator: "RSI", period: 14, operator: "LT", value: 35 }), 15);
+    assert.equal(requiredCandles({ indicator: "RSI", period: 14, operator: "CROSS_ABOVE", value: 35 }), 16);
+    assert.equal(requiredCandles({ indicator: "RSI", period: 14, operator: "CROSS_BELOW", value: 65 }), 16);
   });
 
   test("adds, replaces, locates, and removes nested rules immutably", () => {
